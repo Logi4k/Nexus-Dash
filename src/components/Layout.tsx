@@ -176,7 +176,7 @@ export default function Layout() {
         <Sidebar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
       </div>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
         <div
           key={loc.pathname}
           className="page-enter min-h-full p-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] md:p-6 md:pb-12"
