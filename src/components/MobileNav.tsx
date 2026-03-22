@@ -73,7 +73,7 @@ export default function MobileNav({ onOpenCommandPalette }: { onOpenCommandPalet
 
   // Fetch email once on mount
   useEffect(() => {
-    getSession().then((s) => setUserEmail(s?.user.email ?? null));
+    getSession().then((s) => setUserEmail(s?.user.email ?? null)).catch(() => {});
   }, []);
 
   // Dismiss panel on click/tap outside
