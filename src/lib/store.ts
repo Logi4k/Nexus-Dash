@@ -1,6 +1,11 @@
 import { useSyncExternalStore, useCallback } from "react";
 import type { AppData } from "@/types";
 import seedData from "@/data/data.json";
+import { supabase, getSession } from "@/lib/supabase";
+
+// ── Supabase sync state ──────────────────────────────────────────────────────
+let _syncedAt: number | null = null;       // ms-since-epoch of last confirmed sync
+let _currentUserId: string | null = null;  // set after successful auth
 
 const STORAGE_KEY = "nexus_data";
 
@@ -69,13 +74,22 @@ function notify(): void {
 
 export function saveData(data: AppData): void {
   currentData = data;
-  // Always mirror to localStorage as an immediate, synchronous backup.
   localSave(data);
-  // Persist to the Tauri file store when available.
   if (isTauri) {
     tauriSave(data);
   }
   notify();
+  // ── Supabase sync (fire and forget) ────────────────────────────────────────
+  if (_currentUserId) {
+    supabase
+      .from("user_data")
+      .upsert({ user_id: _currentUserId, payload: data as unknown as Record<string, unknown> })
+      .then(({ error }) => {
+        if (!error) {
+          _syncedAt = Date.now();
+        }
+      });
+  }
 }
 
 function subscribe(callback: () => void): () => void {
@@ -99,6 +113,68 @@ if (isTauri) {
       notify();
     }
   });
+}
+
+// ── Supabase sync initialisation ─────────────────────────────────────────────
+export async function initSupabaseSync(): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+
+  _currentUserId = session.user.id;
+
+  // ── Fetch latest row from Supabase ─────────────────────────────────────────
+  try {
+    const { data: row } = await supabase
+      .from("user_data")
+      .select("payload, updated_at")
+      .eq("user_id", _currentUserId)
+      .single();
+
+    if (row) {
+      const remoteTs = new Date(row.updated_at as string).getTime();
+      if (remoteTs > (_syncedAt ?? 0)) {
+        // Remote is newer — apply it
+        currentData = mergeWithSeed(row.payload as Partial<AppData>);
+        localSave(currentData);
+        notify();
+        _syncedAt = remoteTs;
+      } else {
+        // Local is current — just record the timestamp
+        _syncedAt = Date.now();
+      }
+    } else {
+      // No row yet (first launch) — local data will upsert on first save
+      _syncedAt = Date.now();
+    }
+  } catch {
+    // Offline or network error — proceed with local data
+    _syncedAt = Date.now();
+  }
+
+  // ── Subscribe to Realtime ──────────────────────────────────────────────────
+  supabase
+    .channel("user_data_sync")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",  // handles both INSERT and UPDATE
+        schema: "public",
+        table: "user_data",
+        filter: `user_id=eq.${_currentUserId}`,
+      },
+      (payload) => {
+        const newRow = payload.new as { payload: Partial<AppData>; updated_at: string };
+        if (!newRow?.updated_at) return;
+        const incomingTs = new Date(newRow.updated_at).getTime();
+        if (incomingTs > (_syncedAt ?? 0)) {
+          currentData = mergeWithSeed(newRow.payload);
+          localSave(currentData);
+          _syncedAt = incomingTs;
+          notify();
+        }
+      }
+    )
+    .subscribe();
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
