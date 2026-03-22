@@ -5,6 +5,13 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "http:default"
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://nfs.faireconomy.media/**" },
+        { "url": "https://www.forexlive.com/**" },
+        { "url": "https://www.fxstreet.com/**" }
+      ]
+    }
   ]
 }
