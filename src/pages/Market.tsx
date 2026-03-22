@@ -39,6 +39,9 @@ import {
 } from "@/lib/utils";
 import Modal from "@/components/Modal";
 import type { MarketSession } from "@/types";
+import { tauriFetch } from "@/lib/tauriFetch";
+
+const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,12 +92,19 @@ const COUNTRY_FLAG: Record<string, string> = {
   AUD: "🇦🇺", CAD: "🇨🇦", CHF: "🇨🇭", NZD: "🇳🇿",
 };
 
-const NEWS_SOURCES = [
+const NEWS_SOURCES_PROXY = [
   { id: "forexlive", label: "ForexLive", url: "/rss/forexlive" },
-  { id: "fxstreet",  label: "FX Street", url: "/rss/fxstreet"  },
+  { id: "fxstreet",  label: "FX Street",  url: "/rss/fxstreet"  },
 ] as const;
 
-type NewsSourceId = (typeof NEWS_SOURCES)[number]["id"];
+const NEWS_SOURCES_DIRECT = [
+  { id: "forexlive", label: "ForexLive", url: "https://www.forexlive.com/feed/news" },
+  { id: "fxstreet",  label: "FX Street",  url: "https://www.fxstreet.com/rss/news"  },
+] as const;
+
+const NEWS_SOURCES = isTauri ? NEWS_SOURCES_DIRECT : NEWS_SOURCES_PROXY;
+
+type NewsSourceId = (typeof NEWS_SOURCES_PROXY)[number]["id"];
 
 interface NewsItem {
   title: string;
@@ -698,7 +708,16 @@ function ForexCalendar() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/ff-calendar/ff_calendar_${w}week.json`);
+      const url = isTauri
+        ? `https://nfs.faireconomy.media/ff_calendar_${w}week.json`
+        : `/ff-calendar/ff_calendar_${w}week.json`;
+      const res = await tauriFetch(url, isTauri ? {
+        headers: {
+          "Referer": "https://www.forexfactory.com/",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/json",
+        },
+      } : undefined);
       if (res.status === 404 && w === "next") {
         throw new Error("Next week's calendar isn't published yet — check back closer to the weekend.");
       }
@@ -1284,7 +1303,7 @@ function NewsFeed() {
     setError(null);
     const { url } = NEWS_SOURCES.find((s) => s.id === src)!;
     try {
-      const res = await fetch(url);
+      const res = await tauriFetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const xml = await res.text();
       const doc = new DOMParser().parseFromString(xml, "text/xml");
