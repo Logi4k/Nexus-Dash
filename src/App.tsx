@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
@@ -11,6 +11,9 @@ import Investments from "@/pages/Investments";
 import Journal from "@/pages/Journal";
 import Ideas from "@/pages/Ideas";
 import { useAppData } from "@/lib/store";
+import { getSession } from "@/lib/supabase";
+import { initSupabaseSync } from "@/lib/store";
+import LoginScreen from "@/components/LoginScreen";
 
 function ThemeApplier() {
   const { data } = useAppData();
@@ -21,7 +24,7 @@ function ThemeApplier() {
   return null;
 }
 
-export default function App() {
+function AppRoutes() {
   return (
     <HashRouter>
       <ThemeApplier />
@@ -41,4 +44,35 @@ export default function App() {
       </Routes>
     </HashRouter>
   );
+}
+
+export default function App() {
+  const [authReady, setAuthReady]   = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    getSession().then(async (session) => {
+      if (session) {
+        await initSupabaseSync();
+        setHasSession(true);
+      }
+      setAuthReady(true);
+    });
+  }, []);
+
+  // Brief invisible wait while we check session (avoids login flash for returning users)
+  if (!authReady) return null;
+
+  if (!hasSession) {
+    return (
+      <LoginScreen
+        onSignIn={async () => {
+          await initSupabaseSync();
+          setHasSession(true);
+        }}
+      />
+    );
+  }
+
+  return <AppRoutes />;
 }
