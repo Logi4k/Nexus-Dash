@@ -6,6 +6,7 @@ import { supabase, getSession } from "@/lib/supabase";
 // ── Supabase sync state ──────────────────────────────────────────────────────
 let _syncedAt: number | null = null;       // ms-since-epoch of last confirmed sync
 let _currentUserId: string | null = null;  // set after successful auth
+let _realtimeSubscribed = false;           // guard: Realtime channel created at most once
 
 const STORAGE_KEY = "nexus_data";
 
@@ -152,29 +153,32 @@ export async function initSupabaseSync(): Promise<void> {
   }
 
   // ── Subscribe to Realtime ──────────────────────────────────────────────────
-  supabase
-    .channel("user_data_sync")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",  // handles both INSERT and UPDATE
-        schema: "public",
-        table: "user_data",
-        filter: `user_id=eq.${_currentUserId}`,
-      },
-      (payload) => {
-        const newRow = payload.new as { payload: Partial<AppData>; updated_at: string };
-        if (!newRow?.updated_at) return;
-        const incomingTs = new Date(newRow.updated_at).getTime();
-        if (incomingTs > (_syncedAt ?? 0)) {
-          currentData = mergeWithSeed(newRow.payload);
-          localSave(currentData);
-          _syncedAt = incomingTs;
-          notify();
+  if (!_realtimeSubscribed) {
+    _realtimeSubscribed = true;
+    supabase
+      .channel("user_data_sync")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",  // handles both INSERT and UPDATE
+          schema: "public",
+          table: "user_data",
+          filter: `user_id=eq.${_currentUserId}`,
+        },
+        (payload) => {
+          const newRow = payload.new as { payload: Partial<AppData>; updated_at: string };
+          if (!newRow?.updated_at) return;
+          const incomingTs = new Date(newRow.updated_at).getTime();
+          if (incomingTs > (_syncedAt ?? 0)) {
+            currentData = mergeWithSeed(newRow.payload);
+            localSave(currentData);
+            _syncedAt = incomingTs;
+            notify();
+          }
         }
-      }
-    )
-    .subscribe();
+      )
+      .subscribe();
+  }
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
