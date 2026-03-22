@@ -1303,7 +1303,12 @@ function NewsFeed() {
     setError(null);
     const { url } = NEWS_SOURCES.find((s) => s.id === src)!;
     try {
-      const res = await tauriFetch(url);
+      const res = await tauriFetch(url, isTauri ? {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/rss+xml,application/xml,*/*",
+        },
+      } : undefined);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const xml = await res.text();
       const doc = new DOMParser().parseFromString(xml, "text/xml");
