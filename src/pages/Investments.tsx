@@ -416,7 +416,7 @@ function InvestmentSidebar({
                   <span className="text-[11px] font-black text-tx-1 tabular-nums leading-tight">
                     {fmtGBP(stats.totalValue)}
                   </span>
-                  <span className="text-[8px] text-tx-4 uppercase tracking-widest mt-0.5">portfolio</span>
+                  <span className="text-[10px] text-tx-3 uppercase tracking-widest mt-0.5">portfolio</span>
                 </div>
               </div>
               {/* Legend */}
@@ -425,7 +425,7 @@ function InvestmentSidebar({
                   <div key={seg.name} className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-sm shrink-0" style={{ background: seg.color }} />
                     <span className="text-[10px] text-tx-3 font-mono truncate">{seg.name}</span>
-                    <span className="text-[9px] text-tx-4 ml-auto tabular-nums">{seg.pct.toFixed(0)}%</span>
+                    <span className="text-[10px] text-tx-3 ml-auto tabular-nums">{seg.pct.toFixed(0)}%</span>
                   </div>
                 ))}
               </div>
@@ -482,7 +482,7 @@ function InvestmentSidebar({
                   style={{ background: "rgba(var(--surface-rgb),0.04)" }}
                 >
                   <span
-                    className="text-[9px] font-bold w-4 h-4 rounded flex items-center justify-center shrink-0"
+                    className="text-[10px] font-bold w-4 h-4 rounded flex items-center justify-center shrink-0"
                     style={{
                       background: i === 0 ? "rgba(245,158,11,0.15)" : "rgba(var(--surface-rgb),0.07)",
                       color: i === 0 ? "#f59e0b" : "var(--tx-3)",
@@ -601,12 +601,15 @@ export default function InvestmentsPage() {
   const wealthTargets: WealthTarget[] = data.wealthTargets ?? [];
   const subscriptions: Subscription[] = data.subscriptions ?? [];
 
-  const apiKey = import.meta.env.VITE_T212_API_KEY as string | undefined;
+  // API key from store (user sets it via UI, falls back to env for dev)
+  const apiKey = data.userSettings?.t212ApiKey || (import.meta.env.VITE_T212_API_KEY as string | undefined);
 
   // ── T212 sync state ───────────────────────────────────────────────────────
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [connected, setConnected] = useState<boolean>(!!apiKey);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -615,6 +618,75 @@ export default function InvestmentsPage() {
   const [deleteInvId, setDeleteInvId] = useState<string | null>(null);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [editTargetVal, setEditTargetVal] = useState("");
+
+  function saveApiKey() {
+    const key = apiKeyDraft.trim();
+    if (!key) return;
+    update((prev) => ({
+      ...prev,
+      userSettings: { ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }), t212ApiKey: key },
+    }));
+    setShowApiKeyInput(false);
+    setApiKeyDraft("");
+  }
+
+  function removeApiKey() {
+    update((prev) => ({
+      ...prev,
+      userSettings: { ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }), t212ApiKey: undefined },
+    }));
+    setConnected(false);
+  }
+
+  // ── Wealth target modal state ──────────────────────────────────────────────
+  const emptyTargetForm = { emoji: "TG", name: "", desc: "", target: "", saved: "", monthly: "" };
+  const [targetModalOpen, setTargetModalOpen] = useState(false);
+  const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
+  const [targetForm, setTargetForm] = useState(emptyTargetForm);
+
+  function openAddTarget() {
+    setEditingTargetId(null);
+    setTargetForm(emptyTargetForm);
+    setTargetModalOpen(true);
+  }
+  function openEditTarget(id: string) {
+    const t = wealthTargets.find((x) => x.id === id);
+    if (!t) return;
+    setEditingTargetId(id);
+    setTargetForm({ emoji: t.emoji, name: t.name, desc: t.desc ?? "", target: String(t.target), saved: String(t.saved), monthly: String(t.monthly) });
+    setTargetModalOpen(true);
+  }
+  function saveTarget() {
+    const payload = {
+      emoji: targetForm.emoji || "TG",
+      name: targetForm.name.trim(),
+      desc: targetForm.desc.trim(),
+      target: parseFloat(targetForm.target) || 0,
+      saved: parseFloat(targetForm.saved) || 0,
+      monthly: parseFloat(targetForm.monthly) || 0,
+    };
+    if (!payload.name) return;
+    if (editingTargetId) {
+      update((prev) => ({
+        ...prev,
+        wealthTargets: prev.wealthTargets.map((t) =>
+          t.id === editingTargetId ? { ...t, ...payload } : t
+        ),
+      }));
+    } else {
+      update((prev) => ({
+        ...prev,
+        wealthTargets: [...(prev.wealthTargets ?? []), { id: crypto.randomUUID(), ...payload }],
+      }));
+    }
+    setTargetModalOpen(false);
+  }
+  function deleteTarget(id: string) {
+    update((prev) => ({
+      ...prev,
+      wealthTargets: prev.wealthTargets.filter((t) => t.id !== id),
+    }));
+  }
   const [showAddSub, setShowAddSub] = useState(false);
   const [editSub, setEditSub] = useState<Subscription | null>(null);
   const [deleteSubId, setDeleteSubId] = useState<string | null>(null);
@@ -831,7 +903,7 @@ export default function InvestmentsPage() {
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Investments</div>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <h1 className="text-[22px] font-extrabold tracking-tight" style={{ color: "#f8fafc", letterSpacing: "-0.02em" }}>Investment Portfolio</h1>
+            <h1 className="page-title">Investment Portfolio</h1>
             {/* T212 status pill */}
             <div
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
@@ -860,16 +932,84 @@ export default function InvestmentsPage() {
       </div>
 
       {/* Sync error — compact banner */}
+      {/* ── T212 API Key Banner ── */}
+      {!apiKey && !showApiKeyInput && (
+        <div
+          className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-xs -mt-2"
+          style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)" }}
+        >
+          <div className="flex items-center gap-2.5">
+            <WifiOff size={13} className="text-tx-3 shrink-0" />
+            <span className="text-tx-2">Connect your Trading 212 account to sync positions automatically.</span>
+          </div>
+          <button
+            className="btn-ghost btn-sm shrink-0"
+            style={{ color: "#818cf8" }}
+            onClick={() => setShowApiKeyInput(true)}
+          >
+            Connect T212
+          </button>
+        </div>
+      )}
+
+      {/* ── API Key Input ── */}
+      {showApiKeyInput && (
+        <div
+          className="flex flex-col gap-3 px-4 py-3.5 rounded-xl -mt-2"
+          style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)" }}
+        >
+          <p className="text-[11px] font-semibold text-tx-2">
+            Enter your T212 API key — generate one at <span className="text-tx-1">app.trading212.com → Settings → API</span>
+          </p>
+          <div className="flex gap-2">
+            <input
+              className="nx-input flex-1 text-xs font-mono"
+              placeholder="Paste API key here..."
+              value={apiKeyDraft}
+              onChange={(e) => setApiKeyDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveApiKey()}
+            />
+            <button className="btn-primary btn-sm shrink-0" onClick={saveApiKey} disabled={!apiKeyDraft.trim()}>
+              Save
+            </button>
+            <button className="btn-ghost btn-sm shrink-0" onClick={() => { setShowApiKeyInput(false); setApiKeyDraft(""); }}>
+              <X size={13} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Connected status + disconnect ── */}
+      {apiKey && (
+        <div
+          className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-xs -mt-2"
+          style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.12)" }}
+        >
+          <div className="flex items-center gap-2">
+            <Wifi size={11} className="text-profit shrink-0" />
+            <span className="text-tx-3">T212 API key saved</span>
+          </div>
+          <button
+            className="text-[10px] text-tx-4 hover:text-loss transition-colors"
+            onClick={removeApiKey}
+          >
+            Disconnect
+          </button>
+        </div>
+      )}
+
       {syncError && (
         <div
-          className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl text-xs -mt-2"
+          className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl text-xs"
           style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}
         >
           <AlertCircle size={13} className="text-loss mt-0.5 flex-shrink-0" />
           <div className="min-w-0">
             <span className="font-semibold text-loss">T212 sync failed — </span>
             <span className="text-tx-3 leading-snug">
-              {syncError.includes("401") ? "API key invalid or missing. Add VITE_T212_API_KEY to your .env file." : syncError}
+              {syncError.includes("401")
+                ? "API key rejected. Disconnect and re-enter a valid key from app.trading212.com → Settings → API."
+                : syncError}
             </span>
           </div>
         </div>
@@ -911,7 +1051,7 @@ export default function InvestmentsPage() {
             style={{ background: `linear-gradient(135deg, ${bg} 0%, transparent 100%)`, borderColor: border }}
           >
             <div className="flex items-center justify-between">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-tx-4">{label}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-tx-4">{label}</p>
               {icon}
             </div>
             <p className="text-lg font-black tabular-nums leading-none" style={{ color }}>{value}</p>
@@ -971,7 +1111,7 @@ export default function InvestmentsPage() {
                         <div className="flex items-center gap-2">
                           {rank <= 3 && filteredInvestments.length >= 3 && (
                             <span
-                              className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[8px] font-black leading-none shrink-0"
+                              className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black leading-none shrink-0"
                               style={{ background: `${rankColors[rank - 1]}22`, color: rankColors[rank - 1], border: `1px solid ${rankColors[rank - 1]}44` }}
                             >
                               {rank}
@@ -1083,7 +1223,7 @@ export default function InvestmentsPage() {
                           style={{ borderLeft: `2.5px solid ${accentColor}50`, color: accentColor === "#22c55e" ? "#34d399" : "#f87171" }}>
                           <div className="flex items-center gap-1.5">
                             {rank <= 3 && filteredInvestments.length >= 3 && (
-                              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[8px] font-black leading-none flex-shrink-0"
+                              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[10px] font-black leading-none flex-shrink-0"
                                 style={{ background: `${rankColors[rank - 1]}22`, color: rankColors[rank - 1], border: `1px solid ${rankColors[rank - 1]}44` }}>
                                 {rank}
                               </span>
@@ -1140,110 +1280,112 @@ export default function InvestmentsPage() {
 
           {/* ── Wealth Targets ── */}
           <div className="card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Target size={16} className="text-accent" />
-              <h2 className="font-semibold text-tx-1">Wealth Targets</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Target size={16} className="text-accent" />
+                <h2 className="font-semibold text-tx-1">Wealth Targets</h2>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={openAddTarget}>
+                <Plus size={13} /> Add
+              </button>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {wealthTargets.map((wt) => {
-                const progressPct = Math.min(100, pct(wt.saved, wt.target));
-                const remaining = Math.max(0, wt.target - wt.saved);
-                const monthsToTarget = wt.monthly > 0 ? Math.ceil(remaining / wt.monthly) : null;
-                const isEditing = editTargetId === wt.id;
-                return (
-                  <div
-                    key={wt.id}
-                    className="rounded-xl p-4 flex flex-col gap-3"
-                    style={{ background: "rgba(14,184,154,0.03)", border: "1px solid rgba(14,184,154,0.08)" }}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{wt.emoji}</span>
-                        <div>
-                          <div className="text-sm font-semibold text-tx-1">{wt.name}</div>
-                          <div className="text-xs text-tx-3">{wt.desc}</div>
+            {wealthTargets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 gap-3">
+                <Target size={28} className="opacity-30 text-tx-3" />
+                <p className="text-[11px] text-tx-4 text-center">No targets yet. Click <strong className="text-tx-3">Add</strong> to create your first goal.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {wealthTargets.map((wt) => {
+                  const progressPct = Math.min(100, pct(wt.saved, wt.target));
+                  const remaining = Math.max(0, wt.target - wt.saved);
+                  const monthsToTarget = wt.monthly > 0 ? Math.ceil(remaining / wt.monthly) : null;
+                  const ringSize = 64, ringR = 26, ringCx = 32, ringCy = 32;
+                  const ringCirc = 2 * Math.PI * ringR;
+                  const ringDash = (Math.min(progressPct, 100) / 100) * ringCirc;
+                  const ringColor = progressPct >= 100 ? "#4ade80" : progressPct >= 66 ? "#f59e0b" : progressPct >= 33 ? "#14b8a6" : "#6366f1";
+                  const ringId = `wtGrad_${wt.id}`;
+                  return (
+                    <div
+                      key={wt.id}
+                      className="rounded-xl p-4 flex flex-col gap-3 group"
+                      style={{ background: "rgba(14,184,154,0.03)", border: "1px solid rgba(14,184,154,0.08)" }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{wt.emoji}</span>
+                          <div>
+                            <div className="text-sm font-semibold text-tx-1">{wt.name}</div>
+                            {wt.desc && <div className="text-xs text-tx-3">{wt.desc}</div>}
+                          </div>
+                        </div>
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            className="p-1.5 rounded-lg text-tx-4 hover:text-tx-1 hover:bg-white/[0.06] transition-colors"
+                            onClick={() => openEditTarget(wt.id)}
+                            aria-label="Edit target"
+                          >
+                            <Edit2 size={11} />
+                          </button>
+                          <button
+                            className="p-1.5 rounded-lg text-tx-4 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            onClick={() => deleteTarget(wt.id)}
+                            aria-label="Delete target"
+                          >
+                            <Trash2 size={11} />
+                          </button>
                         </div>
                       </div>
-                      <button
-                        className="p-1 text-tx-3 hover:text-tx-1 transition-colors"
-                        onClick={() => { setEditTargetId(wt.id); setEditTargetVal(String(wt.saved)); }}
-                      >
-                        <Edit2 size={12} />
-                      </button>
-                    </div>
-                    {/* Mini ring + amounts row */}
-                    {(() => {
-                      const ringSize = 64, ringR = 26, ringCx = 32, ringCy = 32;
-                      const ringCirc = 2 * Math.PI * ringR;
-                      const ringDash = (Math.min(progressPct, 100) / 100) * ringCirc;
-                      const ringColor = progressPct >= 100 ? "#4ade80" : progressPct >= 66 ? "#f59e0b" : progressPct >= 33 ? "#14b8a6" : "#6366f1";
-                      const ringId = `wtGrad_${wt.id}`;
-                      return (
-                        <div className="flex items-center gap-3">
-                          <div className="relative shrink-0">
-                            <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`} style={{ transform: "rotate(-90deg)" }}>
-                              <defs>
-                                <linearGradient id={ringId} x1="0%" y1="0%" x2="100%" y2="0%">
-                                  <stop offset="0%" stopColor={ringColor} stopOpacity="0.5" />
-                                  <stop offset="100%" stopColor={ringColor} />
-                                </linearGradient>
-                              </defs>
-                              <circle cx={ringCx} cy={ringCy} r={ringR} fill="none" stroke="rgba(var(--surface-rgb),0.09)" strokeWidth="6" />
-                              <circle cx={ringCx} cy={ringCy} r={ringR} fill="none" stroke={`url(#${ringId})`} strokeWidth="6"
-                                strokeDasharray={`${ringDash} ${ringCirc}`} strokeLinecap="round" />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                              {progressPct >= 100 ? (
-                                <span className="text-[16px] leading-none">🎉</span>
-                              ) : (
-                                <>
-                                  <span className="text-[12px] font-black leading-none tabular-nums" style={{ color: ringColor }}>{progressPct.toFixed(0)}%</span>
-                                  <span className="text-[7px] text-tx-4 uppercase mt-0.5">saved</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            {isEditing ? (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number" className="nx-input text-xs flex-1" value={editTargetVal}
-                                  onChange={(e) => setEditTargetVal(e.target.value)}
-                                  onKeyDown={(e) => { if (e.key === "Enter") saveTargetSaved(wt.id); if (e.key === "Escape") setEditTargetId(null); }}
-                                  autoFocus min="0" step="0.01"
-                                />
-                                <button className="p-1 text-profit hover:text-profit/80" onClick={() => saveTargetSaved(wt.id)}><Check size={13} /></button>
-                                <button className="p-1 text-tx-3 hover:text-tx-2" onClick={() => setEditTargetId(null)}><X size={13} /></button>
-                              </div>
+                      {/* Ring + amounts */}
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`} style={{ transform: "rotate(-90deg)" }}>
+                            <defs>
+                              <linearGradient id={ringId} x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor={ringColor} stopOpacity="0.5" />
+                                <stop offset="100%" stopColor={ringColor} />
+                              </linearGradient>
+                            </defs>
+                            <circle cx={ringCx} cy={ringCy} r={ringR} fill="none" stroke="rgba(var(--surface-rgb),0.09)" strokeWidth="6" />
+                            <circle cx={ringCx} cy={ringCy} r={ringR} fill="none" stroke={`url(#${ringId})`} strokeWidth="6"
+                              strokeDasharray={`${ringDash} ${ringCirc}`} strokeLinecap="round" />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            {progressPct >= 100 ? (
+                              <span className="text-[16px] leading-none">🎉</span>
                             ) : (
                               <>
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="text-base font-bold text-tx-1 tabular-nums">{fmtGBP(wt.saved)}</span>
-                                  <span className="text-[10px] text-tx-4">/ {fmtGBP(wt.target)}</span>
-                                </div>
-                                <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
-                                  <div className="h-full rounded-full transition-all duration-700"
-                                    style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${ringColor}99, ${ringColor})` }} />
-                                </div>
-                                <div className="flex justify-between mt-1 text-[10px]">
-                                  <span className="text-tx-4">
-                                    {wt.monthly > 0 && <><span className="text-tx-3">{fmtGBP(wt.monthly)}/mo</span></>}
-                                  </span>
-                                  {monthsToTarget !== null && progressPct < 100 && (
-                                    <span className="text-tx-3">ETA: <span className="text-tx-2 font-medium">{monthsToTarget < 12 ? `${monthsToTarget}mo` : `${Math.floor(monthsToTarget / 12)}y ${monthsToTarget % 12}mo`}</span></span>
-                                  )}
-                                  {progressPct >= 100 && <span className="font-bold text-[#4ade80]">Complete!</span>}
-                                </div>
+                                <span className="text-[12px] font-black leading-none tabular-nums" style={{ color: ringColor }}>{progressPct.toFixed(0)}%</span>
+                                <span className="text-[7px] text-tx-4 uppercase mt-0.5">saved</span>
                               </>
                             )}
                           </div>
                         </div>
-                      );
-                    })()}
-                  </div>
-                );
-              })}
-            </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-base font-bold text-tx-1 tabular-nums">{fmtGBP(wt.saved)}</span>
+                            <span className="text-[10px] text-tx-4">/ {fmtGBP(wt.target)}</span>
+                          </div>
+                          <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
+                            <div className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${ringColor}99, ${ringColor})` }} />
+                          </div>
+                          <div className="flex justify-between mt-1 text-[10px]">
+                            <span className="text-tx-4">
+                              {wt.monthly > 0 && <span className="text-tx-3">{fmtGBP(wt.monthly)}/mo</span>}
+                            </span>
+                            {monthsToTarget !== null && progressPct < 100 && (
+                              <span className="text-tx-3">ETA: <span className="text-tx-2 font-medium">{monthsToTarget < 12 ? `${monthsToTarget}mo` : `${Math.floor(monthsToTarget / 12)}y ${monthsToTarget % 12}mo`}</span></span>
+                            )}
+                            {progressPct >= 100 && <span className="font-bold text-profit">Complete!</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* ── Subscriptions ── */}
@@ -1288,13 +1430,13 @@ export default function InvestmentsPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-tx-1">{sub.name}</span>
                           {isUrgent && (
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wider"
+                            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wider"
                               style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
                               {days === 0 ? "Today" : `${days}d`}
                             </span>
                           )}
                           {isUpcoming && (
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wider"
+                            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wider"
                               style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>
                               {days}d
                             </span>
@@ -1471,6 +1613,76 @@ export default function InvestmentsPage() {
           </div>
         </Modal>
       )}
+
+      {/* Add / Edit wealth target */}
+      <Modal
+        open={targetModalOpen}
+        onClose={() => setTargetModalOpen(false)}
+        title={editingTargetId ? "Edit Target" : "Add Wealth Target"}
+        size="sm"
+      >
+        <div className="flex flex-col gap-4">
+          {/* Emoji + Name */}
+          <div className="flex gap-2">
+            <input
+              className="nx-input w-16 text-center text-xl px-2"
+              value={targetForm.emoji}
+              onChange={(e) => setTargetForm((f) => ({ ...f, emoji: e.target.value }))}
+              placeholder="e.g. HM"
+            />
+            <input
+              className="nx-input flex-1"
+              placeholder="Goal name"
+              value={targetForm.name}
+              onChange={(e) => setTargetForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+          {/* Description */}
+          <input
+            className="nx-input"
+            placeholder="Description (optional)"
+            value={targetForm.desc}
+            onChange={(e) => setTargetForm((f) => ({ ...f, desc: e.target.value }))}
+          />
+          {/* Target + Saved */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] text-tx-4 mb-1.5 block">Target (£)</label>
+              <input
+                type="number" min="0" step="0.01" className="nx-input"
+                placeholder="10000"
+                value={targetForm.target}
+                onChange={(e) => setTargetForm((f) => ({ ...f, target: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-tx-4 mb-1.5 block">Saved so far (£)</label>
+              <input
+                type="number" min="0" step="0.01" className="nx-input"
+                placeholder="0"
+                value={targetForm.saved}
+                onChange={(e) => setTargetForm((f) => ({ ...f, saved: e.target.value }))}
+              />
+            </div>
+          </div>
+          {/* Monthly contribution */}
+          <div>
+            <label className="text-[11px] text-tx-4 mb-1.5 block">Monthly contribution (£)</label>
+            <input
+              type="number" min="0" step="0.01" className="nx-input"
+              placeholder="0"
+              value={targetForm.monthly}
+              onChange={(e) => setTargetForm((f) => ({ ...f, monthly: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button className="btn btn-ghost flex-1" onClick={() => setTargetModalOpen(false)}>Cancel</button>
+            <button className="btn btn-primary flex-1" onClick={saveTarget} disabled={!targetForm.name.trim()}>
+              {editingTargetId ? "Save" : "Add Target"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

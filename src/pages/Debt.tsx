@@ -425,20 +425,20 @@ function StrategyPanel({ debts }: { debts: Debt[] }) {
       </div>
 
       {/* Extra monthly input */}
-      <div className="flex flex-col gap-2 p-3 rounded-xl bg-white/[0.04] border border-white/[0.07] sm:flex-row sm:items-center sm:gap-3">
-        <span className="text-xs text-tx-3">Extra monthly budget:</span>
-        <div className="flex items-center gap-1 flex-1 min-w-0">
-          <span className="text-xs text-tx-3">£</span>
+      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/[0.04] border border-white/[0.07]">
+        <span className="text-xs text-tx-3">Extra monthly budget <span className="text-tx-4">(on top of minimums)</span></span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-tx-3 shrink-0">£</span>
           <input
             type="number"
-            className="nx-input text-sm py-1 w-full"
+            className="nx-input text-sm py-1"
+            style={{ flex: 1, minWidth: 0 }}
             value={extraMonthly}
             onChange={(e) => setExtraMonthly(parseFloat(e.target.value) || 0)}
             min="0"
             step="10"
           />
         </div>
-        <span className="text-[10px] text-tx-4 sm:shrink-0">on top of minimums</span>
       </div>
 
       {/* Strategy cards */}
@@ -510,7 +510,7 @@ function StrategyPanel({ debts }: { debts: Debt[] }) {
               <div key={d.id} className="flex items-center gap-2 py-1.5 border-b border-white/[0.04] last:border-0">
                 <span className="text-[10px] text-tx-4 w-4 shrink-0">{i + 1}.</span>
                 <div
-                  className="w-8 h-5 rounded text-[9px] font-bold flex items-center justify-center shrink-0"
+                  className="w-8 h-5 rounded text-[10px] font-bold flex items-center justify-center shrink-0"
                   style={{ background: accent.bg, color: accent.color }}
                 >
                   {d.network || accent.network}
@@ -603,7 +603,7 @@ export default function DebtPage() {
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Debt</div>
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-[22px] font-extrabold tracking-tight" style={{ color: "#f8fafc", letterSpacing: "-0.02em" }}>Debt Tracker</h1>
+          <h1 className="page-title">Debt Tracker</h1>
           <button className="btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
             <Plus size={14} />
             Add Card
@@ -688,7 +688,7 @@ export default function DebtPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2 min-w-0">
                           <div
-                            className="w-8 h-5 rounded text-[9px] font-bold flex items-center justify-center shrink-0"
+                            className="w-8 h-5 rounded text-[10px] font-bold flex items-center justify-center shrink-0"
                             style={{ background: acc.bg, color: acc.color }}
                           >
                             {d.network || acc.network}
@@ -756,7 +756,7 @@ export default function DebtPage() {
                         <tr key={d.id} className="group hover:bg-white/[0.02] transition-colors">
                           <td className="py-2.5 pr-4">
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-5 rounded text-[9px] font-bold flex items-center justify-center shrink-0"
+                              <div className="w-8 h-5 rounded text-[10px] font-bold flex items-center justify-center shrink-0"
                                 style={{ background: acc.bg, color: acc.color }}>
                                 {d.network || acc.network}
                               </div>
@@ -823,7 +823,7 @@ export default function DebtPage() {
                                 className="h-full rounded-lg transition-all duration-700 flex items-center justify-end pr-2"
                                 style={{ width: `${widthPct}%`, background: `linear-gradient(90deg, ${d.accent.color}55, ${d.accent.color})` }}
                               >
-                                <span className="text-[9px] text-white/70 font-bold tabular-nums shrink-0">{fmtGBP(d.currentBalance)}</span>
+                                <span className="text-[10px] text-tx-2 font-bold tabular-nums shrink-0">{fmtGBP(d.currentBalance)}</span>
                               </div>
                             </div>
                           </div>
@@ -883,8 +883,8 @@ export default function DebtPage() {
                       />
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-tx-4">{fmtGBP(stats.totalPaid)} paid</span>
-                      <span className="text-[9px] text-tx-4">{fmtGBP(stats.totalDebt)} left</span>
+                      <span className="text-[10px] text-tx-3">{fmtGBP(stats.totalPaid)} paid</span>
+                      <span className="text-[10px] text-tx-3">{fmtGBP(stats.totalDebt)} left</span>
                     </div>
                   </div>
                 </div>
@@ -989,7 +989,7 @@ export default function DebtPage() {
                         isSoon ? "bg-warn/[0.05] border-warn/15" :
                         "bg-white/[0.03] border-white/[0.07]"
                       )}>
-                        <div className="w-9 h-6 rounded text-[9px] font-bold flex items-center justify-center shrink-0"
+                        <div className="w-9 h-6 rounded text-[10px] font-bold flex items-center justify-center shrink-0"
                           style={{ background: acc.bg, color: acc.color }}>
                           {d.network || acc.network}
                         </div>

@@ -188,11 +188,11 @@ function TradeImageGallery({
               onClick={() => onLightbox(images[id])}
             />
             <div className="absolute inset-0 rounded-lg flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
-              <ZoomIn size={14} className="text-white drop-shadow" />
+              <ZoomIn size={14} className="text-tx-1 drop-shadow" />
             </div>
             <button
               onClick={() => onDelete(id)}
-              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-loss text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
+              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-loss text-tx-1 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
             >
               <X size={9} />
             </button>
@@ -227,7 +227,7 @@ function PendingImageList({
           />
           <button
             onClick={() => onRemove(img.id)}
-            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-loss text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
+            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-loss text-tx-1 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
           >
             <X size={9} />
           </button>
@@ -255,7 +255,7 @@ function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
     >
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+        className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-tx-1 flex items-center justify-center transition-colors"
       >
         <X size={16} />
       </button>

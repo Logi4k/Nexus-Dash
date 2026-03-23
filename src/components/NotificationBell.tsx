@@ -84,8 +84,8 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
         left: panelPos.left,
         width: 288,
         zIndex: 9999,
-        background: "#0d111c",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "var(--bg-base)",
+        border: "1px solid rgba(var(--border-rgb),0.1)",
         borderRadius: 12,
         overflow: "hidden",
         boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
@@ -98,12 +98,12 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
           alignItems: "center",
           justifyContent: "space-between",
           padding: "10px 16px",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          borderBottom: "1px solid rgba(var(--border-rgb),0.08)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Bell size={12} style={{ color: "#fbbf24" }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Notifications</span>
+          <Bell size={12} style={{ color: "var(--color-warn)" }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tx-1)" }}>Notifications</span>
           {count > 0 && (
             <span
               style={{
@@ -112,7 +112,7 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
                 padding: "2px 6px",
                 borderRadius: 999,
                 background: "rgba(245,158,11,0.15)",
-                color: "#fbbf24",
+                color: "var(--color-warn)",
                 border: "1px solid rgba(245,158,11,0.25)",
               }}
             >
@@ -129,13 +129,13 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
             alignItems: "center",
             justifyContent: "center",
             borderRadius: 4,
-            color: "#4b5563",
+            color: "var(--tx-4)",
             background: "none",
             border: "none",
             cursor: "pointer",
           }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#fff")}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#4b5563")}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--tx-1)")}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--tx-4)")}
         >
           <X size={11} />
         </button>
@@ -165,10 +165,10 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
                 border: "1px solid rgba(34,197,94,0.2)",
               }}
             >
-              <Check size={14} style={{ color: "#22c55e" }} />
+              <Check size={14} style={{ color: "var(--color-profit)" }} />
             </div>
-            <p style={{ fontSize: 12, fontWeight: 500, color: "#4b5563", margin: 0 }}>All clear</p>
-            <p style={{ fontSize: 10, color: "#374151", textAlign: "center", margin: 0 }}>
+            <p style={{ fontSize: 12, fontWeight: 500, color: "var(--tx-3)", margin: 0 }}>All clear</p>
+            <p style={{ fontSize: 10, color: "var(--tx-4)", textAlign: "center", margin: 0 }}>
               No renewals in the next {leadDays} day{leadDays !== 1 ? "s" : ""}
             </p>
           </div>
@@ -177,7 +177,7 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
             {upcoming.map((sub) => {
               const isUrgent  = sub.daysLeft <= 2;
               const isWarning = sub.daysLeft <= 5;
-              const dotColor  = isUrgent ? "#ef4444" : isWarning ? "#f59e0b" : "#3b82f6";
+              const dotColor  = isUrgent ? "var(--color-loss)" : isWarning ? "var(--color-warn)" : "var(--color-blue)";
               const amount    = typeof sub.amount === "number" ? sub.amount : parseFloat(String(sub.amount)) || 0;
 
               return (
@@ -190,7 +190,7 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
                     padding: "10px 16px",
                     transition: "background 0.15s",
                   }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)")}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(var(--surface-rgb),0.03)")}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
                 >
                   <div
@@ -213,10 +213,10 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
                     }
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--tx-1)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {sub.name}
                     </p>
-                    <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>
+                    <p style={{ fontSize: 10, color: "var(--tx-4)", margin: 0 }}>
                       {fmtGBP(amount)}/{sub.frequency === "monthly" ? "mo" : sub.frequency === "yearly" ? "yr" : "wk"}
                       {" · "}
                       {fmtRenewalDate(sub.nextRenewal)}
@@ -238,14 +238,14 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
       <div
         style={{
           padding: "8px 16px",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderTop: "1px solid rgba(var(--border-rgb),0.06)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
-        <span style={{ fontSize: 9, color: "#374151" }}>Alerting {leadDays}d ahead</span>
-        <span style={{ fontSize: 9, color: "#374151" }}>Change in Settings ⚙</span>
+        <span style={{ fontSize: 9, color: "var(--tx-4)" }}>Alerting {leadDays}d ahead</span>
+        <span style={{ fontSize: 9, color: "var(--tx-4)" }}>Change in Settings ⚙</span>
       </div>
     </div>
   ) : null;
@@ -258,26 +258,26 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
         title="Notifications"
         className="relative flex items-center justify-center w-7 h-7 rounded-lg transition-all"
         style={{
-          color: count > 0 ? "#fbbf24" : "#4b5563",
-          background: open ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-          border: `1px solid ${open ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)"}`,
+          color: count > 0 ? "var(--color-warn)" : "var(--tx-4)",
+          background: open ? "rgba(var(--surface-rgb),0.08)" : "rgba(var(--surface-rgb),0.03)",
+          border: `1px solid ${open ? "rgba(var(--border-rgb),0.12)" : "rgba(var(--border-rgb),0.07)"}`,
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)";
-          (e.currentTarget as HTMLElement).style.color = count > 0 ? "#fbbf24" : "#e2e8f0";
+          (e.currentTarget as HTMLElement).style.background = "rgba(var(--surface-rgb),0.08)";
+          (e.currentTarget as HTMLElement).style.color = count > 0 ? "var(--color-warn)" : "var(--tx-2)";
         }}
         onMouseLeave={(e) => {
           if (!open) {
-            (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)";
-            (e.currentTarget as HTMLElement).style.color = count > 0 ? "#fbbf24" : "#4b5563";
+            (e.currentTarget as HTMLElement).style.background = "rgba(var(--surface-rgb),0.03)";
+            (e.currentTarget as HTMLElement).style.color = count > 0 ? "var(--color-warn)" : "var(--tx-4)";
           }
         }}
       >
         <Bell size={13} />
         {count > 0 && (
           <span
-            className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full text-[8px] font-black text-white flex items-center justify-center px-0.5"
-            style={{ background: "#f59e0b", boxShadow: "0 0 6px rgba(245,158,11,0.5)" }}
+            className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full text-[9px] font-black flex items-center justify-center px-0.5"
+            style={{ background: "var(--color-warn)", color: "#000", boxShadow: "0 0 6px rgba(245,158,11,0.5)" }}
           >
             {count > 9 ? "9+" : count}
           </span>

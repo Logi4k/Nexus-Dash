@@ -203,17 +203,16 @@ function LiveSessionTracker() {
           {worldTimes.map(({ city, time }) => (
             <div
               key={city}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06]"
             >
-              <span className="text-[9px] text-tx-4 uppercase tracking-wider font-medium">{city}</span>
+              <span className="text-[10px] text-tx-3 uppercase tracking-wider font-medium">{city}</span>
               <span className="text-[11px] font-mono tabular-nums text-tx-2">{time}</span>
             </div>
           ))}
           {/* ET clock */}
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-            style={{ background: "rgba(14,184,154,0.04)", border: "1px solid rgba(14,184,154,0.1)" }}
+            style={{ background: `${PAGE_THEMES.market.dim}`, border: `1px solid ${PAGE_THEMES.market.border}` }}
           >
             <Clock size={11} className="text-accent" />
             <span className="text-tx-2 text-xs font-mono tabular-nums">{etTime} {easternTz}</span>
@@ -291,7 +290,7 @@ function LiveSessionTracker() {
                 <div className="flex items-center gap-1.5">
                   {isActive && (
                     <span
-                      className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
+                      className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
                       style={{
                         background: `${session.color}18`,
                         color: session.color,
@@ -303,7 +302,7 @@ function LiveSessionTracker() {
                   )}
                   {isNext && (
                     <span
-                      className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
+                      className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
                       style={{
                         background: `${session.color}12`,
                         color: `${session.color}cc`,
@@ -327,7 +326,7 @@ function LiveSessionTracker() {
                 <div className="mb-3">
                   <span
                     className="text-[10px] font-mono tabular-nums"
-                    style={{ color: isNext ? `${session.color}99` : "rgba(255,255,255,0.2)" }}
+                    style={{ color: isNext ? `${session.color}99` : "var(--tx-4)" }}
                   >
                     {isNext ? `Opens in ${openLabel}` : `Opens in ${openLabel}`}
                   </span>
@@ -426,7 +425,7 @@ function RolloverCountdown() {
               <div className="flex flex-col items-center">
                 <span
                   className="text-2xl font-bold font-mono tabular-nums text-tx-1"
-                  style={{ textShadow: "0 0 20px rgba(14,184,154,0.2)" }}
+                  style={{ textShadow: `0 0 20px ${PAGE_THEMES.market.glow}` }}
                 >
                   {val}
                 </span>
@@ -441,7 +440,7 @@ function RolloverCountdown() {
         {/* Divider */}
         <div
           className="hidden md:block w-px self-stretch"
-          style={{ background: "rgba(14,184,154,0.08)" }}
+          style={{ background: PAGE_THEMES.market.dim }}
         />
 
         {/* Details */}
@@ -454,9 +453,9 @@ function RolloverCountdown() {
                 key={sym}
                 className="px-2 py-0.5 rounded text-xs font-mono"
                 style={{
-                  background: "rgba(14,184,154,0.06)",
-                  border: "1px solid rgba(14,184,154,0.12)",
-                  color: "#1dd4b4",
+                  background: PAGE_THEMES.market.dim,
+                  border: `1px solid ${PAGE_THEMES.market.border}`,
+                  color: PAGE_THEMES.market.accent,
                 }}
               >
                 {sym}
@@ -599,7 +598,7 @@ function ContractTable() {
                         {c.symbol}
                       </span>
                       {isMicro && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-white/[0.04] text-tx-4 border border-white/[0.06]">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/[0.04] text-tx-4 border border-white/[0.06]">
                           Micro
                         </span>
                       )}
@@ -764,8 +763,8 @@ function ForexCalendar() {
           <Calendar size={14} className="text-accent" />
           <h2 className="text-sm font-semibold text-tx-1">Economic Calendar</h2>
           <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: "rgba(14,184,154,0.1)", color: "#1dd4b4", border: "1px solid rgba(14,184,154,0.2)" }}
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+            style={{ background: PAGE_THEMES.market.dim, color: PAGE_THEMES.market.accent, border: `1px solid ${PAGE_THEMES.market.border}` }}
           >
             LIVE
           </span>
@@ -873,13 +872,13 @@ function ForexCalendar() {
                     </span>
                     {today && (
                       <span
-                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                        style={{ background: "rgba(14,184,154,0.12)", color: "#1dd4b4", border: "1px solid rgba(14,184,154,0.2)" }}
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: PAGE_THEMES.market.dim, color: PAGE_THEMES.market.accent, border: `1px solid ${PAGE_THEMES.market.border}` }}
                       >
                         TODAY
                       </span>
                     )}
-                    <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+                    <div className="flex-1 h-px bg-white/[0.05]" />
                     <span className="text-[10px] text-tx-4">{dayEvs.length} events</span>
                   </div>
 
@@ -901,7 +900,7 @@ function ForexCalendar() {
                           {/* Impact badge */}
                           {cfg ? (
                             <div
-                              className="w-4 h-4 rounded flex items-center justify-center text-[8px] font-black flex-shrink-0"
+                              className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-black flex-shrink-0"
                               style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
                             >
                               {cfg.label}
@@ -911,8 +910,7 @@ function ForexCalendar() {
                           )}
                           {/* Currency chip */}
                           <span
-                            className="text-[9px] font-bold font-mono px-1 py-0.5 rounded flex-shrink-0"
-                            style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8" }}
+                            className="text-[10px] font-bold font-mono px-1 py-0.5 rounded flex-shrink-0 bg-white/[0.06] text-tx-3"
                           >
                             {ev.country}
                           </span>
@@ -928,7 +926,7 @@ function ForexCalendar() {
                               </span>
                             )}
                             {hasActual ? (
-                              <span className="font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(16,245,164,0.1)", color: "#10f5a4" }}>
+                              <span className="font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(34,197,94,0.1)", color: "var(--color-profit)" }}>
                                 {ev.actual}
                               </span>
                             ) : (
@@ -1045,14 +1043,14 @@ function EconomicCalendar() {
           <div className="flex items-center gap-2">
             <StickyNote size={14} className="text-tx-3" />
             <h2 className="text-sm font-semibold text-tx-1">Custom Events</h2>
-            <span className="text-[9px] text-tx-4 font-medium">Your personal notes &amp; reminders</span>
+            <span className="text-[10px] text-tx-3 font-medium">Your personal notes &amp; reminders</span>
             {events.length > 0 && (
               <span
                 className="px-1.5 py-0.5 rounded-full text-[10px] font-medium tabular-nums"
                 style={{
-                  background: "rgba(14,184,154,0.08)",
-                  color: "#1dd4b4",
-                  border: "1px solid rgba(14,184,154,0.15)",
+                  background: PAGE_THEMES.market.dim,
+                  color: PAGE_THEMES.market.accent,
+                  border: `1px solid ${PAGE_THEMES.market.border}`,
                 }}
               >
                 {events.length}
@@ -1074,8 +1072,8 @@ function EconomicCalendar() {
             <div
               className="flex flex-col items-center justify-center py-10 gap-3 rounded-xl"
               style={{
-                background: "rgba(14,184,154,0.02)",
-                border: "1px dashed rgba(14,184,154,0.1)",
+                background: `${PAGE_THEMES.market.accent}05`,
+                border: `1px dashed ${PAGE_THEMES.market.accent}1a`,
               }}
             >
               <Calendar size={24} className="text-tx-4" />
@@ -1339,8 +1337,8 @@ function NewsFeed() {
           <Newspaper size={14} className="text-accent" />
           <h2 className="text-sm font-semibold text-tx-1">Market News</h2>
           <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: "rgba(14,184,154,0.1)", color: "#1dd4b4", border: "1px solid rgba(14,184,154,0.2)" }}
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+            style={{ background: PAGE_THEMES.market.dim, color: PAGE_THEMES.market.accent, border: `1px solid ${PAGE_THEMES.market.border}` }}
           >
             LIVE
           </span>
@@ -1505,7 +1503,7 @@ function PositionSizer() {
           <div className="flex flex-col gap-1.5">
             {/* Main result */}
             <div className="flex items-center justify-between p-3 rounded-xl"
-              style={{ background: "rgba(14,184,154,0.07)", border: "1px solid rgba(14,184,154,0.15)" }}>
+              style={{ background: PAGE_THEMES.market.dim, border: `1px solid ${PAGE_THEMES.market.border}` }}>
               <div>
                 <p className="text-[10px] text-tx-4 uppercase tracking-wider">Max Contracts</p>
                 <p className="text-2xl font-black text-accent-bright tabular-nums">{result.maxContracts}</p>
@@ -1522,23 +1520,21 @@ function PositionSizer() {
                 { label: "Ticks at risk", value: result.ticksAtRisk.toFixed(1) },
                 { label: "Loss/contract", value: `$${result.lossPerContract.toFixed(2)}` },
               ].map((s) => (
-                <div key={s.label} className="rounded-lg px-2.5 py-1.5 text-center"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <p className="text-[9px] text-tx-4 uppercase tracking-wider">{s.label}</p>
+                <div key={s.label} className="rounded-lg px-2.5 py-1.5 text-center bg-white/[0.03] border border-white/[0.07]">
+                  <p className="text-[10px] text-tx-3 uppercase tracking-wider">{s.label}</p>
                   <p className="text-xs font-bold text-tx-2 tabular-nums font-mono">{s.value}</p>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div className="p-3 rounded-xl text-center text-[11px] text-loss"
-            style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.15)" }}>
+          <div className="p-3 rounded-xl text-center text-[11px] text-loss bg-loss-subtle"
+            style={{ border: "1px solid rgba(239,68,68,0.15)" }}>
             Stop too close — risk below 1 contract minimum
           </div>
         )
       ) : (
-        <div className="p-3 rounded-xl text-center text-[11px] text-tx-4"
-          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="p-3 rounded-xl text-center text-[11px] text-tx-4 bg-white/[0.03] border border-white/[0.07]">
           Enter entry &amp; stop prices above
         </div>
       )}
@@ -1594,18 +1590,18 @@ function MarketSidebar() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] text-tx-2 font-semibold truncate leading-tight">{c.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] text-tx-4 font-mono">
+                    <span className="text-[10px] text-tx-3 font-mono">
                       tick <span className="text-tx-2 font-semibold">${c.tickValue}</span>
                     </span>
-                    <span className="text-tx-4 text-[9px]">·</span>
-                    <span className="text-[9px] text-tx-4 font-mono">
+                    <span className="text-tx-3 text-[10px]">·</span>
+                    <span className="text-[10px] text-tx-3 font-mono">
                       pt <span className="text-tx-2 font-semibold">${c.pointValue}</span>
                     </span>
                   </div>
                 </div>
                 {/* Exchange badge */}
                 <span
-                  className="text-[9px] font-bold font-mono shrink-0 px-1.5 py-0.5 rounded-md"
+                  className="text-[10px] font-bold font-mono shrink-0 px-1.5 py-0.5 rounded-md"
                   style={{ background: `${exColor}15`, color: exColor }}
                 >
                   {c.exchange}
@@ -1613,7 +1609,7 @@ function MarketSidebar() {
               </div>
             );
           })}
-          <p className="text-[9px] text-tx-4 text-center mt-0.5">
+          <p className="text-[10px] text-tx-3 text-center mt-0.5">
             Micro contracts = 1/10th tick & point values
           </p>
         </div>
@@ -1627,7 +1623,7 @@ function MarketSidebar() {
         className="card p-4 flex items-center gap-3 transition-all duration-150 hover:border-accent/30 group cursor-pointer"
         style={{ textDecoration: "none" }}
       >
-        <div className="p-2 rounded-lg flex-shrink-0" style={{ background: "rgba(14,184,154,0.1)" }}>
+        <div className="p-2 rounded-lg flex-shrink-0" style={{ background: PAGE_THEMES.market.glow }}>
           <StickyNote size={14} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
@@ -1652,16 +1648,15 @@ export default function Market() {
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Market</div>
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-[22px] font-extrabold tracking-tight" style={{ color: "#f8fafc", letterSpacing: "-0.02em" }}>Market Overview</h1>
+          <h1 className="page-title">Market Overview</h1>
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ background: "rgba(14,184,154,0.07)", border: "1px solid rgba(14,184,154,0.15)", color: "#1dd4b4" }}
+              style={{ background: PAGE_THEMES.market.dim, border: `1px solid ${PAGE_THEMES.market.border}`, color: PAGE_THEMES.market.accent }}
             >
               <Globe size={11} />
               Live · ET
             </span>
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8" }}
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] border border-white/[0.08] text-tx-3"
             >
               <FileText size={11} />
               {FUTURES_CONTRACTS.length} Contracts

@@ -69,10 +69,10 @@ export default function CreditCardDisplay({ debt, onClick }: Props) {
           {/* Top row */}
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-white/50 text-[10px] uppercase tracking-widest">
+              <div className="text-tx-4 text-[10px] uppercase tracking-widest">
                 Balance Due
               </div>
-              <div className="text-white font-bold text-xl tabular-nums mt-0.5">
+              <div className="text-tx-1 font-bold text-xl tabular-nums mt-0.5">
                 {fmtGBP(debt.currentBalance)}
               </div>
             </div>
@@ -80,23 +80,23 @@ export default function CreditCardDisplay({ debt, onClick }: Props) {
           </div>
 
           {/* Card number placeholder */}
-          <div className="text-white/30 font-mono text-sm tracking-widest">
+          <div className="text-tx-4 font-mono text-sm tracking-widest">
             •••• •••• •••• ••••
           </div>
 
           {/* Bottom row */}
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-white/40 text-[10px] uppercase">Card</div>
-              <div className="text-white text-sm font-semibold">{debt.name}</div>
+              <div className="text-tx-4 text-[10px] uppercase">Card</div>
+              <div className="text-tx-1 text-sm font-semibold">{debt.name}</div>
             </div>
             <div className="text-right">
-              <div className="text-white/40 text-[10px] uppercase">APR</div>
-              <div className="text-white/80 text-sm font-mono">
+              <div className="text-tx-4 text-[10px] uppercase">APR</div>
+              <div className="text-tx-2 text-sm font-mono">
                 {debt.rate}%
               </div>
             </div>
-            <div className="text-white/60 font-bold text-sm">{theme.network}</div>
+            <div className="text-tx-3 font-bold text-sm">{theme.network}</div>
           </div>
         </div>
       </div>

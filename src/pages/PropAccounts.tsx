@@ -24,8 +24,9 @@ import { useAppData } from "@/lib/store";
 import { fmtGBP, fmtUSD, fmtDate, toNum, pct, cn, getStatusBg, generateId } from "@/lib/utils";
 import Modal from "@/components/Modal";
 import StatCard from "@/components/StatCard";
-import type { Account, AccountStatus, Withdrawal } from "@/types";
+import type { Account, AccountStatus, Withdrawal, PassedChallenge } from "@/types";
 import type { Expense } from "@/types";
+
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                           */
@@ -34,11 +35,6 @@ import type { Expense } from "@/types";
 const FIRMS = [
   "Lucid Trading",
   "Tradeify",
-  "Topstep",
-  "FundingTicks",
-  "MyFundedFX",
-  "Take Profit Trader",
-  "Maven Trading",
 ] as const;
 
 type FilterTab = "all" | "funded" | "Challenge" | "Breached";
@@ -262,6 +258,7 @@ const emptyAccountForm = () => {
     sodBalance:     "",
     mll:            rules ? String(rules.mll) : "",
     notes:          "",
+    customFirm:     "",
   };
 };
 
@@ -408,7 +405,7 @@ function FirmAnalyticsChart({
               {/* Dual progress bars */}
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] text-tx-4 w-10 text-right shrink-0">spent</span>
+                  <span className="text-[10px] text-tx-3 w-10 text-right shrink-0">spent</span>
                   <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${spentPct}%`, background: "#ef4444aa" }} />
@@ -416,7 +413,7 @@ function FirmAnalyticsChart({
                   <span className="text-[10px] text-tx-3 tabular-nums font-mono w-16 text-right shrink-0">{fmtGBP(f.spent)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] text-tx-4 w-10 text-right shrink-0">earned</span>
+                  <span className="text-[10px] text-tx-3 w-10 text-right shrink-0">earned</span>
                   <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${earnPct}%`, background: `${firmCol}cc` }} />
@@ -440,11 +437,14 @@ function TradingInsightsSidebar({
   expenses,
   withdrawals,
   accounts,
+  passedChallenges,
 }: {
   expenses: Expense[];
   withdrawals: Withdrawal[];
   accounts: Account[];
+  passedChallenges: PassedChallenge[];
 }) {
+  const [taxRate, setTaxRate] = useState(20);
   const firmData = useMemo(() => FIRMS.map((firm) => {
     const spent  = expenses.filter((e) => e.description === firm).reduce((s, e) => s + toNum(e.amount), 0);
     const earned = withdrawals.filter((w) => w.firm === firm).reduce((s, w) => s + toNum(w.gross), 0);
@@ -529,11 +529,11 @@ function TradingInsightsSidebar({
             {/* Spent vs Earned row */}
             <div className="flex items-center justify-between text-xs mb-2">
               <div>
-                <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-0.5">Invested</p>
+                <p className="text-[10px] text-tx-3 uppercase tracking-wider mb-0.5">Invested</p>
                 <p className="text-loss font-bold tabular-nums">{fmtGBP(totalSpent)}</p>
               </div>
               <div className="text-right">
-                <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-0.5">Earned</p>
+                <p className="text-[10px] text-tx-3 uppercase tracking-wider mb-0.5">Earned</p>
                 <p className="text-profit font-bold tabular-nums">{fmtGBP(totalEarned)}</p>
               </div>
             </div>
@@ -563,7 +563,7 @@ function TradingInsightsSidebar({
               const area = `${line} L ${W} ${H} L 0 ${H} Z`;
               return (
                 <div className="mt-3">
-                  <div className="text-[9px] text-tx-4 uppercase tracking-wider mb-1">Monthly Payouts</div>
+                  <div className="text-[10px] text-tx-3 uppercase tracking-wider mb-1">Monthly Payouts</div>
                   <div className="relative" style={{ height: H }}>
                     <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
                       <defs>
@@ -580,6 +580,144 @@ function TradingInsightsSidebar({
                 </div>
               );
             })()}
+          </div>
+        );
+      })()}
+
+      {/* Challenge Record */}
+      {(() => {
+        const passes = passedChallenges.length;
+        const fails  = accounts.filter((a) => isBreachedStatus(a.status)).length;
+        const total  = passes + fails;
+        const rate   = total > 0 ? (passes / total) * 100 : null;
+
+        const firmRows = FIRMS.map((firm) => {
+          const p = passedChallenges.filter((c) => c.firm === firm).length;
+          const f = accounts.filter((a) => a.firm === firm && isBreachedStatus(a.status)).length;
+          return { firm, p, f, t: p + f };
+        }).filter((r) => r.t > 0).sort((a, b) => b.t - a.t);
+
+        return (
+          <div className="card p-4 overflow-hidden relative"
+            style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.05) 0%, transparent 60%)" }}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <Trophy size={13} className="text-amber-400 shrink-0" />
+              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium">Challenge Record</p>
+            </div>
+
+            {/* Overall */}
+            <div className="flex items-end justify-between mb-1">
+              <div>
+                <span className="text-[22px] font-black tabular-nums leading-none"
+                  style={{ color: rate !== null && rate >= 50 ? "#fbbf24" : rate !== null ? "#f87171" : undefined }}>
+                  {rate !== null ? `${rate.toFixed(0)}%` : "No data"}
+                </span>
+                {total > 0 && (
+                  <p className="text-[10px] text-tx-4 mt-0.5">{passes} passed · {fails} failed</p>
+                )}
+              </div>
+              {rate !== null && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full mb-1"
+                  style={{
+                    background: rate >= 50 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.1)",
+                    color: rate >= 50 ? "#fbbf24" : "#f87171",
+                    border: `1px solid ${rate >= 50 ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.2)"}`,
+                  }}>
+                  {passes}/{total}
+                </span>
+              )}
+            </div>
+
+            {rate !== null && (
+              <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: "rgba(255,255,255,0.06)" }}>
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${rate}%`, background: rate >= 50 ? "#f59e0b" : "#ef4444" }} />
+              </div>
+            )}
+
+            {/* Per-firm breakdown */}
+            {firmRows.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-tx-3 uppercase tracking-wider mb-1">By Firm</p>
+                {firmRows.map((r) => {
+                  const firmRate = r.t > 0 ? (r.p / r.t) * 100 : 0;
+                  return (
+                    <div key={r.firm} className="flex items-center gap-2 text-[11px]">
+                      <span className="text-tx-2 truncate flex-1 min-w-0">{r.firm}</span>
+                      <span className="text-profit tabular-nums font-mono shrink-0">{r.p}✓</span>
+                      <span className="text-loss tabular-nums font-mono shrink-0">{r.f}✗</span>
+                      <span className="tabular-nums font-mono shrink-0 w-9 text-right"
+                        style={{ color: firmRate >= 50 ? "#fbbf24" : "#f87171" }}>
+                        {firmRate.toFixed(0)}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {total === 0 && (
+              <p className="text-[10px] text-tx-4">No challenge history yet.</p>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Payout Tax Estimator */}
+      {withdrawals.length > 0 && (() => {
+        const totalGross   = withdrawals.reduce((s, w) => s + toNum(w.gross), 0);
+        const estimatedTax = totalGross * (taxRate / 100);
+        const netAfterTax  = totalGross - estimatedTax;
+        return (
+          <div className="card p-4"
+            style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.05) 0%, transparent 60%)" }}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <PoundSterling size={13} className="text-purple-400 shrink-0" />
+              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium">Tax Estimate</p>
+            </div>
+
+            {/* Total gross */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-tx-3">Total Gross</span>
+              <span className="text-sm font-bold tabular-nums font-mono text-tx-1">{fmtGBP(totalGross)}</span>
+            </div>
+
+            {/* Tax rate input */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[11px] text-tx-3 flex-1">Tax Rate</span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  step={1}
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(Math.min(60, Math.max(0, Number(e.target.value))))}
+                  className="nx-input w-14 text-right text-sm py-0.5 px-2 [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                />
+                <span className="text-[11px] text-tx-3">%</span>
+              </div>
+            </div>
+
+            <div className="h-px mb-3" style={{ background: "rgba(255,255,255,0.06)" }} />
+
+            {/* Estimated tax */}
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] text-tx-3">Estimated Tax</span>
+              <span className="text-sm font-bold tabular-nums font-mono text-loss">−{fmtGBP(estimatedTax)}</span>
+            </div>
+
+            {/* Net after tax */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] text-tx-3">Net After Tax</span>
+              <span className="text-sm font-bold tabular-nums font-mono text-profit">{fmtGBP(netAfterTax)}</span>
+            </div>
+
+            <p className="text-[10px] text-tx-3">Estimate only. Consult a tax advisor.</p>
           </div>
         );
       })()}
@@ -626,7 +764,7 @@ function TradingInsightsSidebar({
             <div className="h-full rounded-full transition-all duration-700"
               style={{ width: `${passRate}%`, background: passRate >= 50 ? "#22c55e" : "#f59e0b" }} />
           </div>
-          <p className="text-[9px] text-tx-4 mt-1">{funded} funded · {breached} breached</p>
+          <p className="text-[10px] text-tx-3 mt-1">{funded} funded · {breached} breached</p>
         </div>
       )}
 
@@ -916,7 +1054,7 @@ function DrawdownMeter({ ratio, label, sublabel }: { ratio: number; label: strin
   return (
     <div>
       <div className="flex justify-between items-center mb-1.5">
-        <span className="text-[10px] text-tx-4 uppercase tracking-wider font-medium">{label}</span>
+        <span className="text-[10px] text-tx-3 uppercase tracking-wider font-medium">{label}</span>
         <span className="text-[10px] font-bold tabular-nums" style={{ color }}>{sublabel}</span>
       </div>
       <div className="flex gap-0.5">
@@ -935,8 +1073,8 @@ function DrawdownMeter({ ratio, label, sublabel }: { ratio: number; label: strin
         ))}
       </div>
       <div className="flex justify-between mt-0.5">
-        <span className="text-[8px] text-tx-4">Danger</span>
-        <span className="text-[8px] text-tx-4">Safe</span>
+        <span className="text-[10px] text-tx-3">Danger</span>
+        <span className="text-[10px] text-tx-3">Safe</span>
       </div>
     </div>
   );
@@ -1012,8 +1150,8 @@ function AccountCard({
       <div className="pl-4 pr-3 pt-3.5 pb-2.5 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-            <span className={cn("badge text-[9px]", getStatusBg(account.status))}>{account.status}</span>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+            <span className={cn("badge text-[10px]", getStatusBg(account.status))}>{account.status}</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
               style={{ background: `${firmColor}15`, color: firmColor, border: `1px solid ${firmColor}30` }}>
               {FIRM_SHORT[account.firm] ?? account.firm.split(" ")[0]}
             </span>
@@ -1080,20 +1218,20 @@ function AccountCard({
               return (
                 <>
                   <div>
-                    <p className="text-[9px] text-tx-4 uppercase tracking-wider">P&L</p>
+                    <p className="text-[10px] text-tx-3 uppercase tracking-wider">P&L</p>
                     <p className="text-[11px] font-bold tabular-nums" style={{ color: equity >= 0 ? "#22c55e" : "#ef4444" }}>
                       {equity >= 0 ? "+" : ""}{fmtUSD(equity)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[9px] text-tx-4 uppercase tracking-wider">% Change</p>
+                    <p className="text-[10px] text-tx-3 uppercase tracking-wider">% Change</p>
                     <p className="text-[11px] font-bold tabular-nums" style={{ color: equity >= 0 ? "#22c55e" : "#ef4444" }}>
                       {epct >= 0 ? "+" : ""}{epct.toFixed(1)}%
                     </p>
                   </div>
                   {account.mll && (
                     <div>
-                      <p className="text-[9px] text-tx-4 uppercase tracking-wider">MLL</p>
+                      <p className="text-[10px] text-tx-3 uppercase tracking-wider">MLL</p>
                       <p className="text-[11px] font-bold tabular-nums text-tx-3">{fmtUSD(account.mll)}</p>
                     </div>
                   )}
@@ -1134,8 +1272,8 @@ function AccountCard({
               <div className="absolute right-0 top-0 bottom-0 w-0.5" style={{ background: "rgba(var(--border-rgb,255,255,255),0.25)" }} />
             </div>
             <div className="flex justify-between mt-0.5">
-              <span className="text-[8px] text-tx-4">Start</span>
-              <span className="text-[8px] text-tx-4">{challengeProgress.progress.toFixed(0)}% complete</span>
+              <span className="text-[10px] text-tx-3">Start</span>
+              <span className="text-[10px] text-tx-3">{challengeProgress.progress.toFixed(0)}% complete</span>
             </div>
           </div>
         )}
@@ -1155,8 +1293,8 @@ function AccountCard({
           </div>
         )}
 
-        {/* Rules mini-panel */}
-        {hasRules && !breached && (
+        {/* Rules mini-panel — funded accounts only */}
+        {hasRules && funded && !breached && (
           <AccountRulesPanel firm={account.firm} type={account.type} status={account.status} />
         )}
       </div>
@@ -1175,6 +1313,7 @@ export default function PropAccounts() {
 
   const [tab, setTab] = useState<FilterTab>("Challenge");
   const [addOpen, setAddOpen] = useState(false);
+  const [addQty, setAddQty] = useState(1);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [payoutOpen, setPayoutOpen] = useState(false);
 
@@ -1249,6 +1388,7 @@ export default function PropAccounts() {
     setForm((p) => ({
       ...p,
       firm,
+      customFirm:     "",
       planKey:        firstPlan,
       planSize:       firstSz ? String(firstSz) : "",
       type:           firstPlan && firstSz ? `${label} ${firstSz / 1000}K` : "",
@@ -1311,6 +1451,8 @@ export default function PropAccounts() {
   /* ---- Save account ---- */
   const handleSaveAccount = () => {
     if (!form.balance) return;
+    const firmName = form.firm === "__other__" ? form.customFirm.trim() : form.firm;
+    if (!firmName) return;
     const bal     = parseFloat(form.balance);
     const initBal = form.initialBalance ? parseFloat(form.initialBalance) : bal;
     const sodBal  = form.sodBalance ? parseFloat(form.sodBalance) : bal;
@@ -1322,14 +1464,14 @@ export default function PropAccounts() {
     let passRecord: import("@/types").PassedChallenge | null = null;
 
     if (isChallengeStatus(form.status)) {
-      const planRules = getRules(form.firm, form.type);
+      const planRules = getRules(firmName, form.type);
       const target = planRules?.profitTarget ?? (initBal * 0.10);
       const equity = bal - initBal;
       if (equity >= target) {
         finalStatus = "Funded";
         passRecord = {
           id:             generateId(),
-          firm:           form.firm,
+          firm:           firmName,
           type:           form.type,
           name:           form.name || undefined,
           passedDate:     new Date().toISOString().slice(0, 10),
@@ -1344,7 +1486,7 @@ export default function PropAccounts() {
       update((prev) => {
         const updatedAccounts = prev.accounts.map((a) =>
           a.id === editAccount.id
-            ? { ...a, firm: form.firm, type: form.type, name: form.name || undefined, status: finalStatus, balance: bal, initialBalance: initBal, sodBalance: sodBal, mll, notes: form.notes || undefined }
+            ? { ...a, firm: firmName, type: form.type, name: form.name || undefined, status: finalStatus, balance: bal, initialBalance: initBal, sodBalance: sodBal, mll, notes: form.notes || undefined }
             : a
         );
         return passRecord
@@ -1352,9 +1494,10 @@ export default function PropAccounts() {
           : { ...prev, accounts: updatedAccounts };
       });
     } else {
-      const newAcc: Account = {
+      const qty = Math.max(1, Math.min(addQty, 50));
+      const newAccounts: Account[] = Array.from({ length: qty }, () => ({
         id:             generateId(),
-        firm:           form.firm,
+        firm:           firmName,
         type:           form.type,
         name:           form.name || undefined,
         status:         form.status,
@@ -1364,14 +1507,16 @@ export default function PropAccounts() {
         mll,
         notes:          form.notes || undefined,
         pnlHistory:     [],
-      };
-      update((prev) => ({ ...prev, accounts: [newAcc, ...prev.accounts] }));
+      }));
+      update((prev) => ({ ...prev, accounts: [...newAccounts, ...prev.accounts] }));
     }
 
     setAddOpen(false);
+    setAddQty(1);
     setEditAccount(null);
     setForm(emptyAccountForm());
   };
+
 
   /* ---- Open edit ---- */
   const handleOpenEdit = (account: Account) => {
@@ -1389,6 +1534,7 @@ export default function PropAccounts() {
       sodBalance:     account.sodBalance ? String(account.sodBalance) : "",
       mll:            account.mll ? String(account.mll) : "",
       notes:          account.notes ?? "",
+      customFirm:     "",
     });
     setAddOpen(true);
   };
@@ -1506,7 +1652,7 @@ export default function PropAccounts() {
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Prop</div>
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-[22px] font-extrabold tracking-tight" style={{ color: "#f8fafc", letterSpacing: "-0.02em" }}>Prop Accounts</h1>
+          <h1 className="page-title">Prop Accounts</h1>
           <div className="flex items-center gap-2">
             <button className="btn-success btn" onClick={() => openPayout()}>
               <Banknote size={14} />
@@ -1581,7 +1727,7 @@ export default function PropAccounts() {
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-150",
                       sortBy === key
-                        ? "bg-white/90 text-[#0b0d14] shadow-sm"
+                        ? "bg-white/90 text-bg-base shadow-sm"
                         : "text-tx-3 hover:text-tx-1"
                     )}
                   >
@@ -1594,7 +1740,12 @@ export default function PropAccounts() {
           </div>
 
           {/* Account cards grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className={cn(
+            "grid gap-3",
+            tab === "Challenge"
+              ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+              : "grid-cols-1 md:grid-cols-2"
+          )}>
             {filtered.map((account, i) => (
               <div key={account.id} className="animate-fade-up" style={{ animationDelay: `${Math.min(i * 30, 180)}ms`, animationFillMode: "both" }}>
                 <AccountCard
@@ -1647,8 +1798,8 @@ export default function PropAccounts() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 text-xs text-tx-2">
-                              {isTop && <span className="text-[8px]">Top</span>}
-                              {isFirst && !isTop && <span className="text-[8px]">First</span>}
+                              {isTop && <span className="text-[10px]">Top</span>}
+                              {isFirst && !isTop && <span className="text-[10px]">First</span>}
                               <span className="font-mono tabular-nums">{fmtDate(w.date)}</span>
                             </div>
                             <div className="mt-1 flex items-center gap-1.5">
@@ -1748,8 +1899,8 @@ export default function PropAccounts() {
                             style={{ background: isTop ? "rgba(34,197,94,0.04)" : undefined }}>
                             <td className="py-2.5 pr-4 text-tx-2 font-mono tabular-nums text-xs">
                               <div className="flex items-center gap-1.5">
-                                {isTop && <span className="text-[8px]">🏆</span>}
-                                {isFirst && !isTop && <span className="text-[8px]">🥇</span>}
+                                {isTop && <span className="text-[10px]">🏆</span>}
+                                {isFirst && !isTop && <span className="text-[10px]">🥇</span>}
                                 {fmtDate(w.date)}
                               </div>
                             </td>
@@ -1838,19 +1989,19 @@ export default function PropAccounts() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[11px] font-semibold text-tx-1">{c.firm}</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
                             style={{ background: `${firmCol}15`, color: firmCol, border: `1px solid ${firmCol}28` }}>
                             {c.type}
                           </span>
-                          {c.name && <span className="text-[9px] text-tx-4">{c.name}</span>}
+                          {c.name && <span className="text-[10px] text-tx-3">{c.name}</span>}
                         </div>
-                        <div className="text-[9px] text-tx-4 mt-0.5">Passed {fmtDate(c.passedDate)}</div>
+                        <div className="text-[10px] text-tx-3 mt-0.5">Passed {fmtDate(c.passedDate)}</div>
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-[12px] font-bold font-mono tabular-nums text-profit">
                           +{fmtUSD(profit)}
                         </div>
-                        <div className="text-[9px] text-tx-4 font-mono">of {fmtUSD(c.profitTarget)} target</div>
+                        <div className="text-[10px] text-tx-3 font-mono">of {fmtUSD(c.profitTarget)} target</div>
                       </div>
                       {/* Actions */}
                       {isDeleting ? (
@@ -1895,6 +2046,7 @@ export default function PropAccounts() {
             expenses={data.expenses}
             withdrawals={data.withdrawals}
             accounts={data.accounts}
+            passedChallenges={data.passedChallenges ?? []}
           />
         </div>
 
@@ -1903,182 +2055,104 @@ export default function PropAccounts() {
       {/* ── Add / Edit Account Modal ─────────────────────────────────── */}
       <Modal
         open={addOpen}
-        onClose={() => { setAddOpen(false); setEditAccount(null); }}
+        onClose={() => { setAddOpen(false); setEditAccount(null); setAddQty(1); }}
         title={editAccount ? "Edit Account" : "Add Account"}
         size="md"
       >
         <div className="space-y-3">
-          {/* Firm + Status */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-tx-3 text-xs block mb-1">Firm</label>
-              <select className="nx-select" value={form.firm} onChange={(e) => handleFirmChange(e.target.value)}>
-                {FIRMS.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-tx-3 text-xs block mb-1">Status</label>
-              <select className="nx-select" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as AccountStatus }))}>
-                <option value="Challenge">Challenge</option>
-                <option value="Funded">Funded</option>
-                <option value="Breached">Breached</option>
-              </select>
-            </div>
-          </div>
+          {(
+            <div className="space-y-3">
+              {/* Firm + Status */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Firm</label>
+                  <select className="nx-select" value={form.firm} onChange={(e) => handleFirmChange(e.target.value)}>
+                    {FIRMS.map((f) => <option key={f} value={f}>{f}</option>)}
+                    <option value="__other__">Other…</option>
+                  </select>
+                  {form.firm === "__other__" && (
+                    <input
+                      className="nx-input mt-1.5"
+                      placeholder="Enter firm name…"
+                      value={form.customFirm}
+                      onChange={(e) => setForm((p) => ({ ...p, customFirm: e.target.value }))}
+                      autoFocus
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Status</label>
+                  <select className="nx-select" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as AccountStatus }))}>
+                    <option value="Challenge">Challenge</option>
+                    <option value="Funded">Funded</option>
+                    <option value="Breached">Breached</option>
+                  </select>
+                </div>
+              </div>
 
-          {/* Plan selects (Lucid / Tradeify only) */}
-          {firmHasPlans ? (
-            <div className="grid grid-cols-2 gap-3">
+              {/* Plan selects (Lucid / Tradeify only) */}
+              {firmHasPlans ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-tx-3 text-xs block mb-1">Plan</label>
+                    <select
+                      className="nx-select"
+                      value={activePlanKey}
+                      onChange={(e) => handlePlanKeyChange(e.target.value)}
+                    >
+                      {availablePlans.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-tx-3 text-xs block mb-1">Account Size</label>
+                    <select
+                      className="nx-select"
+                      value={form.planSize}
+                      onChange={(e) => handlePlanSizeChange(e.target.value)}
+                    >
+                      {availablePlanSizes.map((sz) => (
+                        <option key={sz} value={sz}>${(sz / 1000).toFixed(0)}K</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Account Type</label>
+                  <input className="nx-input" placeholder="e.g. 50K Flex" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))} />
+                </div>
+              )}
+
+              {/* Balance */}
               <div>
-                <label className="text-tx-3 text-xs block mb-1">Plan</label>
-                <select
-                  className="nx-select"
-                  value={activePlanKey}
-                  onChange={(e) => handlePlanKeyChange(e.target.value)}
-                >
-                  {availablePlans.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+                <label className="text-tx-3 text-xs block mb-1">Current Balance ($)</label>
+                <input className="nx-input" type="number" placeholder="50000" value={form.balance} onChange={(e) => setForm((p) => ({ ...p, balance: e.target.value }))} />
               </div>
-              <div>
-                <label className="text-tx-3 text-xs block mb-1">Account Size</label>
-                <select
-                  className="nx-select"
-                  value={form.planSize}
-                  onChange={(e) => handlePlanSizeChange(e.target.value)}
-                >
-                  {availablePlanSizes.map((sz) => (
-                    <option key={sz} value={sz}>${(sz / 1000).toFixed(0)}K</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-tx-3 text-xs block mb-1">Account Type</label>
-                <input className="nx-input" placeholder="e.g. 50K Flex" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-tx-3 text-xs block mb-1">Name <span className="opacity-50">(optional)</span></label>
-                <input className="nx-input" placeholder="Display name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+
+              {!editAccount && (
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Quantity <span className="opacity-50 text-[10px]">(add multiple at once)</span></label>
+                  <input
+                    className="nx-input"
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={addQty}
+                    onChange={(e) => setAddQty(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button className="btn-primary btn flex-1" onClick={handleSaveAccount}>
+                  {editAccount ? "Update Account" : addQty > 1 ? `Add ${addQty} Accounts` : "Add Account"}
+                </button>
+                <button className="btn-ghost btn" onClick={() => { setAddOpen(false); setEditAccount(null); setAddQty(1); }}>
+                  Cancel
+                </button>
               </div>
             </div>
           )}
-          {firmHasPlans && (
-            <div>
-              <label className="text-tx-3 text-xs block mb-1">Name <span className="opacity-50">(optional)</span></label>
-              <input className="nx-input" placeholder="Display name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-            </div>
-          )}
-
-          {/* Rules preview strip */}
-          {modalRules && (
-            <div className="rounded-xl px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-2" style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.1)" }}>
-              <div>
-                <div className="text-tx-3 text-[9px] uppercase tracking-wider mb-0.5">Drawdown</div>
-                <div className="text-tx-1 text-xs font-mono font-semibold">${modalRules.drawdown.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-tx-3 text-[9px] uppercase tracking-wider mb-0.5">Initial MLL</div>
-                <div className="text-accent text-xs font-mono font-semibold">${modalRules.mll.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-tx-3 text-[9px] uppercase tracking-wider mb-0.5">Daily Limit</div>
-                <div className={cn("text-xs font-mono font-semibold", modalRules.dll ? "text-warn" : "text-profit")}>
-                  {modalRules.dll ? `$${modalRules.dll.toLocaleString()}` : "None"}
-                </div>
-              </div>
-              <div>
-                <div className="text-tx-3 text-[9px] uppercase tracking-wider mb-0.5">Profit Target</div>
-                <div className="text-tx-1 text-xs font-mono font-semibold">${modalRules.profitTarget.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-tx-3 text-[9px] uppercase tracking-wider mb-0.5">Contracts</div>
-                <div className="text-tx-2 text-xs font-semibold">{modalRules.maxContracts}</div>
-              </div>
-              <div>
-                <div className="text-tx-3 text-[9px] uppercase tracking-wider mb-0.5">Split</div>
-                <div className="text-tx-2 text-xs font-semibold">{modalRules.split}</div>
-              </div>
-              <div>
-                <div className="text-tx-3 text-[9px] uppercase tracking-wider mb-0.5">Weekend</div>
-                <div className={cn("text-xs font-semibold flex items-center gap-1", modalRules.weekend ? "text-profit" : "text-warn")}>
-                  {modalRules.weekend ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-                  {modalRules.weekend ? "Allowed" : "Restricted"}
-                </div>
-              </div>
-              <div>
-                <div className="text-tx-3 text-[9px] uppercase tracking-wider mb-0.5">Scalping</div>
-                <div className={cn("text-xs font-semibold flex items-center gap-1", modalRules.scalping ? "text-warn" : "text-profit")}>
-                  {modalRules.scalping ? <XCircle size={10} /> : <CheckCircle2 size={10} />}
-                  {modalRules.scalping ?? "None"}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Balances */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-tx-3 text-xs block mb-1">Current Balance ($)</label>
-              <input className="nx-input" type="number" placeholder="50000" value={form.balance} onChange={(e) => setForm((p) => ({ ...p, balance: e.target.value }))} />
-            </div>
-            <div>
-              <label className="text-tx-3 text-xs block mb-1 flex items-center gap-1">
-                Initial Balance ($)
-                {firmHasPlans
-                  ? <span className="text-[9px] ml-1 text-warn opacity-80">🔒 locked to plan size</span>
-                  : <span className="opacity-50 text-[9px]">(optional)</span>
-                }
-              </label>
-              <input
-                className={cn("nx-input", firmHasPlans && "opacity-60 cursor-not-allowed")}
-                type="number"
-                placeholder="50000"
-                value={form.initialBalance}
-                readOnly={firmHasPlans}
-                onChange={(e) => !firmHasPlans && setForm((p) => ({ ...p, initialBalance: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-tx-3 text-xs block mb-1">SOD Balance ($) <span className="opacity-50 text-[9px]">(optional)</span></label>
-              <input className="nx-input" type="number" placeholder="50000" value={form.sodBalance} onChange={(e) => setForm((p) => ({ ...p, sodBalance: e.target.value }))} />
-            </div>
-            <div>
-              <label className="text-tx-3 text-xs block mb-1 flex items-center gap-1">
-                MLL ($)
-                {firmHasPlans && modalRules
-                  ? <span className="text-warn opacity-80 text-[9px]">🔒 locked</span>
-                  : <span className="opacity-50 text-[9px]">(optional)</span>
-                }
-              </label>
-              <input
-                className={cn("nx-input", firmHasPlans && modalRules && "opacity-60 cursor-not-allowed")}
-                type="number"
-                placeholder="e.g. 48000"
-                value={form.mll}
-                readOnly={firmHasPlans && !!modalRules}
-                onChange={(e) => !(firmHasPlans && modalRules) && setForm((p) => ({ ...p, mll: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-tx-3 text-xs block mb-1">Notes <span className="opacity-50">(optional)</span></label>
-            <input className="nx-input" placeholder="Any notes..." value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button className="btn-primary btn flex-1" onClick={handleSaveAccount}>
-              {editAccount ? "Update Account" : "Add Account"}
-            </button>
-            <button className="btn-ghost btn" onClick={() => { setAddOpen(false); setEditAccount(null); }}>
-              Cancel
-            </button>
-          </div>
         </div>
       </Modal>
 
@@ -2122,13 +2196,9 @@ export default function PropAccounts() {
           <div>
             <label className="text-tx-3 text-xs block mb-1">
               Gross Amount (£)
-              {payoutForm.accountId && <span className="text-[9px] text-tx-4 ml-1.5">— will deduct from account balance</span>}
+              {payoutForm.accountId && <span className="text-[10px] text-tx-3 ml-1.5">— will deduct from account balance</span>}
             </label>
             <input className="nx-input" type="number" placeholder="0.00" value={payoutForm.gross} onChange={(e) => setPayoutForm((p) => ({ ...p, gross: e.target.value }))} />
-          </div>
-          <div>
-            <label className="text-tx-3 text-xs block mb-1">Notes <span className="opacity-50">(optional)</span></label>
-            <input className="nx-input" placeholder="Optional notes..." value={payoutForm.notes} onChange={(e) => setPayoutForm((p) => ({ ...p, notes: e.target.value }))} />
           </div>
           <div className="flex gap-2 pt-2">
             <button className="btn-success btn flex-1" onClick={handleSavePayout}>
