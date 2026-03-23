@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import { Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface CommandPaletteItem {
   id: string;
@@ -64,17 +65,12 @@ export default function CommandPalette({ open, onClose, items }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[80] px-4 py-10 md:px-6"
-      style={{ background: "rgba(5,7,12,0.72)", backdropFilter: "blur(16px)" }}
+      className="fixed inset-0 z-[80] px-4 py-10 md:px-6 backdrop-blur-[16px]"
+      style={{ background: "rgba(var(--bg-base-rgb),0.72)" }}
       onClick={onClose}
     >
       <div
-        className="mx-auto w-full max-w-2xl overflow-hidden rounded-[28px]"
-        style={{
-          background: "rgba(10,12,20,0.98)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 32px 90px rgba(0,0,0,0.5)",
-        }}
+        className="mx-auto w-full max-w-2xl overflow-hidden rounded-[28px] bg-bg-base border border-border shadow-modal"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
@@ -99,9 +95,9 @@ export default function CommandPalette({ open, onClose, items }: Props) {
           }
         }}
       >
-        <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.04)" }}>
-            <Search size={16} style={{ color: "rgba(255,255,255,0.55)" }} />
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border-subtle">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-accent-muted">
+            <Search size={16} className="text-tx-3" />
           </div>
           <input
             ref={inputRef}
@@ -111,20 +107,19 @@ export default function CommandPalette({ open, onClose, items }: Props) {
               setSelectedIndex(0);
             }}
             placeholder="Jump to a page or run a quick action..."
-            className="flex-1 bg-transparent outline-none text-[15px]"
-            style={{ color: "#f8fafc" }}
+            className="flex-1 bg-transparent outline-none text-[15px] text-tx-1"
           />
-          <div className="hidden md:flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.35)" }}>
-            <span className="px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)" }}>Ctrl</span>
-            <span className="px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)" }}>K</span>
+          <div className="hidden md:flex items-center gap-1 text-[10px] font-semibold text-tx-4">
+            <span className="px-2 py-1 rounded-lg bg-accent-muted">Ctrl</span>
+            <span className="px-2 py-1 rounded-lg bg-accent-muted">K</span>
           </div>
         </div>
 
         <div className="max-h-[70vh] overflow-y-auto px-3 py-3">
           {filteredItems.length === 0 ? (
             <div className="px-3 py-10 text-center">
-              <div className="text-sm font-semibold text-white">No matches found</div>
-              <div className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <div className="text-sm font-semibold text-tx-1">No matches found</div>
+              <div className="mt-1 text-xs text-tx-4">
                 Try a page name, feature, or action like new note.
               </div>
             </div>
@@ -133,7 +128,7 @@ export default function CommandPalette({ open, onClose, items }: Props) {
               const firstIndex = filteredItems.findIndex((item) => item.id === groupItems[0]?.id);
               return (
                 <div key={group} className="mb-4 last:mb-0">
-                  <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(255,255,255,0.28)" }}>
+                  <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-tx-4">
                     {group}
                   </div>
                   <div className="space-y-1">
@@ -151,25 +146,25 @@ export default function CommandPalette({ open, onClose, items }: Props) {
                             item.run();
                             onClose();
                           }}
-                          className="w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition-all"
-                          style={
-                            isSelected
-                              ? { background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)" }
-                              : { background: "transparent", border: "1px solid transparent" }
-                          }
+                          className={cn(
+                            "w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition-all border",
+                            isSelected ? "bg-accent-muted border-border" : "bg-transparent border-transparent"
+                          )}
                         >
                           <div
-                            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-                            style={{ background: isSelected ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)" }}
+                            className={cn(
+                              "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0",
+                              isSelected ? "bg-accent-glow" : "bg-accent-muted"
+                            )}
                           >
-                            <Icon size={16} style={{ color: isSelected ? "#f8fafc" : "rgba(255,255,255,0.6)" }} />
+                            <Icon size={16} className={isSelected ? "text-tx-1" : "text-tx-3"} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-[13px] font-semibold truncate" style={{ color: "#f8fafc" }}>
+                            <div className="text-[13px] font-semibold truncate text-tx-1">
                               {item.label}
                             </div>
                             {item.description && (
-                              <div className="mt-0.5 text-[11px] truncate" style={{ color: "rgba(255,255,255,0.42)" }}>
+                              <div className="mt-0.5 text-[11px] truncate text-tx-4">
                                 {item.description}
                               </div>
                             )}

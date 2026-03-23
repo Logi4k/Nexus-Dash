@@ -203,11 +203,10 @@ export default function SettingsModal({ open, onClose }: Props) {
               </div>
               {/* Camera overlay */}
               <div
-                className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                style={{ background: "rgba(0,0,0,0.55)" }}
+                className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer bg-black/55"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Camera size={16} style={{ color: "#fff" }} />
+                <Camera size={16} className="text-tx-1" />
               </div>
               <input
                 ref={fileInputRef}
@@ -232,24 +231,14 @@ export default function SettingsModal({ open, onClose }: Props) {
               <div className="flex gap-2 mt-1.5">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-[9px] font-semibold px-2 py-0.5 rounded-md transition-all"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    color: "#6b7280",
-                  }}
+                  className="text-[9px] font-semibold px-2 py-0.5 rounded-md transition-all bg-accent-muted border border-border text-tx-3"
                 >
                   {avatarUrl ? "Change photo" : "Upload photo"}
                 </button>
                 {avatarUrl && (
                   <button
                     onClick={handleRemovePhoto}
-                    className="text-[9px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
-                    style={{
-                      background: "rgba(239,68,68,0.08)",
-                      border: "1px solid rgba(239,68,68,0.2)",
-                      color: "#f87171",
-                    }}
+                    className="text-[9px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all bg-loss/10 border border-loss/20 text-loss"
                   >
                     <X size={8} />Remove
                   </button>
@@ -302,15 +291,11 @@ export default function SettingsModal({ open, onClose }: Props) {
                   key={value}
                   onClick={() => setRenewalDays(value)}
                   className={cn(
-                    "py-1.5 px-2 rounded-lg text-[10px] font-semibold transition-all text-center",
+                    "py-1.5 px-2 rounded-lg text-[10px] font-semibold transition-all text-center border",
+                    renewalDays === value
+                      ? "bg-profit/10 border-profit/30 text-profit"
+                      : "bg-accent-muted border-border-subtle text-tx-3"
                   )}
-                  style={{
-                    background: renewalDays === value
-                      ? "rgba(14,184,154,0.12)"
-                      : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${renewalDays === value ? "rgba(14,184,154,0.35)" : "rgba(255,255,255,0.07)"}`,
-                    color: renewalDays === value ? "#1dd4b4" : "#4b5563",
-                  }}
                 >
                   {label}
                 </button>
@@ -337,11 +322,12 @@ export default function SettingsModal({ open, onClose }: Props) {
               <button
                 key={value}
                 onClick={() => setTheme(value)}
-                className="relative flex flex-col items-center gap-2 py-3 px-2 rounded-xl transition-all"
-                style={{
-                  background: theme === value ? "rgba(var(--surface-rgb, 255,255,255),0.08)" : "rgba(var(--surface-rgb, 255,255,255),0.03)",
-                  border: `1px solid ${theme === value ? "rgba(var(--border-rgb, 255,255,255),0.2)" : "rgba(var(--border-rgb, 255,255,255),0.07)"}`,
-                }}
+                className={cn(
+                  "relative flex flex-col items-center gap-2 py-3 px-2 rounded-xl transition-all border",
+                  theme === value
+                    ? "bg-accent-glow border-border-accent"
+                    : "bg-accent-muted border-border-subtle"
+                )}
               >
                 {/* Mini preview swatch */}
                 <div
@@ -358,14 +344,11 @@ export default function SettingsModal({ open, onClose }: Props) {
                   </div>
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] font-bold" style={{ color: theme === value ? "var(--tx-1)" : "var(--tx-4)" }}>{label}</p>
-                  <p className="text-[9px]" style={{ color: "var(--tx-4)" }}>{desc}</p>
+                  <p className={cn("text-[10px] font-bold", theme === value ? "text-tx-1" : "text-tx-4")}>{label}</p>
+                  <p className="text-[9px] text-tx-4">{desc}</p>
                 </div>
                 {theme === value && (
-                  <div
-                    className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
-                    style={{ background: "#22c55e" }}
-                  >
+                  <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center bg-profit">
                     <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
                       <path d="M1.5 4l2 2 3-3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -384,10 +367,7 @@ export default function SettingsModal({ open, onClose }: Props) {
             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-tx-3">Mobile Nav</span>
           </div>
 
-          <div
-            className="rounded-xl p-3 mb-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
+          <div className="rounded-xl p-3 mb-3 bg-accent-muted border border-border-subtle">
             <p className="text-[10px] font-semibold text-tx-2">Pinned sections</p>
             <p className="text-[9px] text-tx-4 mt-1">
               Search stays fixed in the middle. Choose up to 4 sections for the mobile bar.
@@ -402,8 +382,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                   return (
                     <span
                       key={id}
-                      className="px-2.5 py-1 rounded-full text-[10px] font-semibold"
-                      style={{ background: "rgba(14,184,154,0.12)", border: "1px solid rgba(14,184,154,0.26)", color: "#1dd4b4" }}
+                      className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-profit/10 border border-profit/25 text-profit"
                     >
                       {index + 1}. {item.label}
                     </span>
@@ -423,15 +402,15 @@ export default function SettingsModal({ open, onClose }: Props) {
                   type="button"
                   onClick={() => toggleMobileNavItem(item.id)}
                   disabled={disabled}
-                  className="px-3 py-2.5 rounded-xl text-left transition-all disabled:opacity-45"
-                  style={{
-                    background: selected ? "rgba(14,184,154,0.12)" : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${selected ? "rgba(14,184,154,0.28)" : "rgba(255,255,255,0.07)"}`,
-                    color: selected ? "#1dd4b4" : "#94a3b8",
-                  }}
+                  className={cn(
+                    "px-3 py-2.5 rounded-xl text-left transition-all disabled:opacity-45 border",
+                    selected
+                      ? "bg-profit/10 border-profit/25 text-profit"
+                      : "bg-accent-muted border-border-subtle text-tx-3"
+                  )}
                 >
                   <div className="text-[10px] font-semibold">{item.label}</div>
-                  <div className="text-[9px] mt-0.5" style={{ color: selected ? "#7dd3c7" : "rgba(255,255,255,0.34)" }}>
+                  <div className={cn("text-[9px] mt-0.5", selected ? "text-profit/70" : "text-tx-4")}>
                     {selected ? "Pinned" : disabled ? "Remove one first" : "Tap to pin"}
                   </div>
                 </button>
@@ -447,10 +426,7 @@ export default function SettingsModal({ open, onClose }: Props) {
             <RefreshCw size={11} className="text-accent" />
             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-tx-3">Data Sync</span>
           </div>
-          <div
-            className="rounded-xl p-3 mb-2.5"
-            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
+          <div className="rounded-xl p-3 mb-2.5 bg-accent-muted border border-border-subtle">
             <p className="text-[10px] font-semibold text-tx-2 mb-0.5">Sync with cloud</p>
             <p className="text-[9px] text-tx-4">
               Data syncs automatically when you save. Use these if your devices are out of sync.
@@ -465,12 +441,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                 setTimeout(() => setSyncStatus("idle"), 3000);
               }}
               disabled={syncStatus === "loading"}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[11px] font-semibold transition-all disabled:opacity-50"
-              style={{
-                background: "rgba(59,130,246,0.10)",
-                border: "1px solid rgba(59,130,246,0.25)",
-                color: "#60a5fa",
-              }}
+              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[11px] font-semibold transition-all disabled:opacity-50 bg-info/10 border border-info/25 text-info"
             >
               <CloudDownload size={13} />
               Pull from cloud
@@ -483,40 +454,29 @@ export default function SettingsModal({ open, onClose }: Props) {
                 setTimeout(() => setSyncStatus("idle"), 3000);
               }}
               disabled={syncStatus === "loading"}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[11px] font-semibold transition-all disabled:opacity-50"
-              style={{
-                background: "rgba(34,197,94,0.10)",
-                border: "1px solid rgba(34,197,94,0.25)",
-                color: "#4ade80",
-              }}
+              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[11px] font-semibold transition-all disabled:opacity-50 bg-profit/10 border border-profit/25 text-profit"
             >
               <CloudUpload size={13} />
               Push to cloud
             </button>
           </div>
           {syncStatus === "ok" && (
-            <p className="text-[9px] mt-2 text-center" style={{ color: "#4ade80" }}>Sync successful</p>
+            <p className="text-[9px] mt-2 text-center text-profit">Sync successful</p>
           )}
           {syncStatus === "err" && (
-            <p className="text-[9px] mt-2 text-center" style={{ color: "#f87171" }}>Sync failed — check your connection</p>
+            <p className="text-[9px] mt-2 text-center text-loss">Sync failed — check your connection</p>
           )}
           {syncStatus === "loading" && (
             <p className="text-[9px] mt-2 text-center text-tx-4">Syncing…</p>
           )}
         </div>
 
-        <div
-          className="rounded-xl p-3 flex items-center justify-between"
-          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
-        >
+        <div className="rounded-xl p-3 flex items-center justify-between bg-accent-muted border border-border-subtle">
           <div>
             <p className="text-[10px] font-bold text-tx-3">Nexus</p>
             <p className="text-[9px] text-tx-4">Synced across devices via Supabase</p>
           </div>
-          <span
-            className="text-[9px] font-bold px-2 py-1 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.05)", color: "#4b5563" }}
-          >
+          <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-accent-muted text-tx-3">
             v{appVersion}
           </span>
         </div>
