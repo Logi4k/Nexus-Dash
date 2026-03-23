@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Calculator,
   Calendar,
@@ -148,7 +148,7 @@ function BandBar({ salary, tradingProfit }: { salary: number; tradingProfit: num
       <div className="relative" style={{ height: "12px" }}>
         {zones.filter(z => z.to > z.from + 1).map((z) => (
           <span key={z.label}
-            className="absolute text-[8px] font-semibold uppercase tracking-wider"
+            className="absolute text-[10px] font-semibold uppercase tracking-wider"
             style={{ left: `${z.from + (z.to - z.from) / 2}%`, transform: "translateX(-50%)", color: "rgba(255,255,255,0.3)" }}
           >
             {z.label}
@@ -265,7 +265,7 @@ function BRow({
 
 export default function TaxPage() {
   const theme = PAGE_THEMES.tax;
-  const { data } = useAppData();
+  const { data, update } = useAppData();
   const taxYear = useMemo(() => getCurrentTaxYear(), []);
 
   // ── Income sources ──
@@ -275,34 +275,51 @@ export default function TaxPage() {
   const [incomeMode, setIncomeMode] = useState<"auto" | "manual">("auto");
   const [expenseMode, setExpenseMode] = useState<"auto" | "manual">("auto");
   const [showPoaInfo, setShowPoaInfo] = useState(false);
-  // Persisted local settings — stored independently in localStorage
-  const [salary, setSalaryState] = useState(() => {
-    const v = localStorage.getItem("nexus_tax_salary");
-    return v ? parseFloat(v) : 30000;
-  });
-  const [savedSoFar, setSavedSoFarState] = useState(() => {
-    const v = localStorage.getItem("nexus_tax_saved");
-    return v ? parseFloat(v) : 0;
-  });
-  const [savingsGoalOverride, setSavingsGoalOverrideState] = useState<number | null>(() => {
-    const v = localStorage.getItem("nexus_tax_goal_override");
-    return v ? parseFloat(v) : null;
-  });
+  // Persisted tax settings — synced via AppData
+  const salary = data.taxSettings?.salary ?? 30000;
+  const savedSoFar = data.taxSettings?.savedSoFar ?? 0;
+  const savingsGoalOverride = data.taxSettings?.savingsGoalOverride ?? null;
 
-  // Persisting setters
   const setSalary = (v: number) => {
-    setSalaryState(v);
-    localStorage.setItem("nexus_tax_salary", String(v));
+    update((prev) => ({
+      ...prev,
+      taxSettings: { ...prev.taxSettings, salary: v, savedSoFar: prev.taxSettings?.savedSoFar ?? 0, savingsGoalOverride: prev.taxSettings?.savingsGoalOverride ?? null },
+    }));
   };
   const setSavedSoFar = (v: number) => {
-    setSavedSoFarState(v);
-    localStorage.setItem("nexus_tax_saved", String(v));
+    update((prev) => ({
+      ...prev,
+      taxSettings: { ...prev.taxSettings, salary: prev.taxSettings?.salary ?? 30000, savedSoFar: v, savingsGoalOverride: prev.taxSettings?.savingsGoalOverride ?? null },
+    }));
   };
   const setSavingsGoalOverride = (v: number | null) => {
-    setSavingsGoalOverrideState(v);
-    if (v === null) localStorage.removeItem("nexus_tax_goal_override");
-    else localStorage.setItem("nexus_tax_goal_override", String(v));
+    update((prev) => ({
+      ...prev,
+      taxSettings: { ...prev.taxSettings, salary: prev.taxSettings?.salary ?? 30000, savedSoFar: prev.taxSettings?.savedSoFar ?? 0, savingsGoalOverride: v },
+    }));
   };
+
+  // One-time migration from localStorage to AppData
+  useEffect(() => {
+    if (!data.taxSettings) {
+      const lsSalary = localStorage.getItem("nexus_tax_salary");
+      const lsSaved = localStorage.getItem("nexus_tax_saved");
+      const lsGoal = localStorage.getItem("nexus_tax_goal_override");
+      if (lsSalary || lsSaved || lsGoal) {
+        update((prev) => ({
+          ...prev,
+          taxSettings: {
+            salary: lsSalary ? parseFloat(lsSalary) : 30000,
+            savedSoFar: lsSaved ? parseFloat(lsSaved) : 0,
+            savingsGoalOverride: lsGoal ? parseFloat(lsGoal) : null,
+          },
+        }));
+        localStorage.removeItem("nexus_tax_salary");
+        localStorage.removeItem("nexus_tax_saved");
+        localStorage.removeItem("nexus_tax_goal_override");
+      }
+    }
+  }, []);
 
   // ── Auto-derive from data ──
   const withdrawalsThisYear = useMemo(() =>
@@ -371,7 +388,7 @@ export default function TaxPage() {
       {/* ── Header ── */}
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Tax</div>
-        <h1 className="text-[22px] font-extrabold tracking-tight mb-6" style={{ color: "#f8fafc", letterSpacing: "-0.02em" }}>Tax Profile</h1>
+        <h1 className="page-title mb-6">Tax Profile</h1>
       </div>
 
       {/* ── Info Banner ── */}
@@ -709,7 +726,7 @@ export default function TaxPage() {
                             style={{ width: `${Math.min(100, savingsProgress)}%`, background: `linear-gradient(90deg, ${innerColor}80, ${innerColor})` }}
                           />
                         </div>
-                        <span className="text-[9px] font-mono tabular-nums shrink-0" style={{ color: innerColor }}>
+                        <span className="text-[10px] font-mono tabular-nums shrink-0" style={{ color: innerColor }}>
                           {savingsProgress.toFixed(0)}% saved
                         </span>
                       </div>
@@ -855,7 +872,7 @@ export default function TaxPage() {
                     {savingsGoalOverride !== null && (
                       <button
                         onClick={() => setSavingsGoalOverride(null)}
-                        className="text-[9px] text-tx-4 hover:text-accent transition-colors"
+                        className="text-[10px] text-tx-3 hover:text-accent transition-colors"
                       >
                         reset to auto
                       </button>
@@ -884,7 +901,7 @@ export default function TaxPage() {
                     />
                     {savingsGoalOverride !== null && (
                       <span
-                        className="text-[9px] px-1 rounded font-medium shrink-0"
+                        className="text-[10px] px-1 rounded font-medium shrink-0"
                         style={{ background: "rgba(14,184,154,0.1)", color: "#1dd4b4" }}
                       >
                         custom
@@ -951,7 +968,7 @@ export default function TaxPage() {
                       className="shrink-0 w-10 h-10 rounded-xl flex flex-col items-center justify-center"
                       style={{ background: `${accentColor}18`, border: `1px solid ${accentColor}30` }}
                     >
-                      <span className="text-[9px] font-bold uppercase" style={{ color: accentColor }}>{monthLabel}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: accentColor }}>{monthLabel}</span>
                       <span className="text-sm font-black leading-none" style={{ color: accentColor }}>{dd}</span>
                     </div>
 
@@ -969,7 +986,7 @@ export default function TaxPage() {
                         </span>
                       )}
                       <span
-                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                         style={{
                           background: `${accentColor}18`,
                           color: accentColor,

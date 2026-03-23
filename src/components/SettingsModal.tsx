@@ -9,9 +9,14 @@ import {
   Moon,
   Sun,
   Smartphone,
+  CloudDownload,
+  CloudUpload,
+  RefreshCw,
 } from "lucide-react";
 import Modal from "@/components/Modal";
-import { useAppData } from "@/lib/store";
+import { useAppData, forcePullFromCloud, forcePushToCloud } from "@/lib/store";
+import { uploadAvatar, deleteAvatar } from "@/lib/avatarStorage";
+import { getVersion } from "@tauri-apps/api/app";
 import { cn } from "@/lib/utils";
 import { DEFAULT_MOBILE_NAV_ITEMS, MOBILE_NAV_OPTIONS, sanitizeMobileNavItems } from "@/lib/mobileNav";
 import type { MobileNavItemId } from "@/types";
@@ -69,6 +74,13 @@ export default function SettingsModal({ open, onClose }: Props) {
       : DEFAULT_MOBILE_NAV_ITEMS
   );
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "ok" | "err">("idle");
+  const [appVersion, setAppVersion] = useState("1.0.7");
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
 
   // Re-sync draft state each time the modal opens
   useEffect(() => {
@@ -120,15 +132,27 @@ export default function SettingsModal({ open, onClose }: Props) {
 
   function handleRemovePhoto() {
     setAvatarUrl(undefined);
+    deleteAvatar().catch(() => {});
   }
 
-  function handleSave() {
+  async function handleSave() {
+    // Upload avatar to Supabase Storage if it's a new base64 image
+    let finalAvatarUrl = avatarUrl;
+    if (avatarUrl && avatarUrl.startsWith("data:")) {
+      setUploading(true);
+      const url = await uploadAvatar(avatarUrl);
+      if (url) {
+        finalAvatarUrl = url;
+      }
+      setUploading(false);
+    }
+
     update((prev) => ({
       ...prev,
       userProfile: {
         username:    username.trim() || "Trader",
         avatarColor,
-        avatarUrl,
+        avatarUrl: finalAvatarUrl,
       },
       userSettings: {
         ...(prev.userSettings ?? {}),
@@ -417,26 +441,90 @@ export default function SettingsModal({ open, onClose }: Props) {
         </div>
         )}
 
+        {/* ── Data Sync Section ── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <RefreshCw size={11} className="text-accent" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-tx-3">Data Sync</span>
+          </div>
+          <div
+            className="rounded-xl p-3 mb-2.5"
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <p className="text-[10px] font-semibold text-tx-2 mb-0.5">Sync with cloud</p>
+            <p className="text-[9px] text-tx-4">
+              Data syncs automatically when you save. Use these if your devices are out of sync.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={async () => {
+                setSyncStatus("loading");
+                const ok = await forcePullFromCloud();
+                setSyncStatus(ok ? "ok" : "err");
+                setTimeout(() => setSyncStatus("idle"), 3000);
+              }}
+              disabled={syncStatus === "loading"}
+              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[11px] font-semibold transition-all disabled:opacity-50"
+              style={{
+                background: "rgba(59,130,246,0.10)",
+                border: "1px solid rgba(59,130,246,0.25)",
+                color: "#60a5fa",
+              }}
+            >
+              <CloudDownload size={13} />
+              Pull from cloud
+            </button>
+            <button
+              onClick={async () => {
+                setSyncStatus("loading");
+                const ok = await forcePushToCloud();
+                setSyncStatus(ok ? "ok" : "err");
+                setTimeout(() => setSyncStatus("idle"), 3000);
+              }}
+              disabled={syncStatus === "loading"}
+              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[11px] font-semibold transition-all disabled:opacity-50"
+              style={{
+                background: "rgba(34,197,94,0.10)",
+                border: "1px solid rgba(34,197,94,0.25)",
+                color: "#4ade80",
+              }}
+            >
+              <CloudUpload size={13} />
+              Push to cloud
+            </button>
+          </div>
+          {syncStatus === "ok" && (
+            <p className="text-[9px] mt-2 text-center" style={{ color: "#4ade80" }}>Sync successful</p>
+          )}
+          {syncStatus === "err" && (
+            <p className="text-[9px] mt-2 text-center" style={{ color: "#f87171" }}>Sync failed — check your connection</p>
+          )}
+          {syncStatus === "loading" && (
+            <p className="text-[9px] mt-2 text-center text-tx-4">Syncing…</p>
+          )}
+        </div>
+
         <div
           className="rounded-xl p-3 flex items-center justify-between"
           style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
           <div>
-            <p className="text-[10px] font-bold text-tx-3">LOGI4K Dashboard</p>
-            <p className="text-[9px] text-tx-4">All data stored locally · No cloud sync</p>
+            <p className="text-[10px] font-bold text-tx-3">Nexus</p>
+            <p className="text-[9px] text-tx-4">Synced across devices via Supabase</p>
           </div>
           <span
             className="text-[9px] font-bold px-2 py-1 rounded-lg"
             style={{ background: "rgba(255,255,255,0.05)", color: "#4b5563" }}
           >
-            v2.0
+            v{appVersion}
           </span>
         </div>
 
         {/* ── Actions ── */}
         <div className="flex gap-2 pt-1">
-          <button className="btn-primary btn flex-1" onClick={handleSave}>
-            <Save size={12} />Save Settings
+          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={uploading}>
+            <Save size={12} />{uploading ? "Uploading…" : "Save Settings"}
           </button>
           <button className="btn-ghost btn" onClick={onClose}>Cancel</button>
         </div>

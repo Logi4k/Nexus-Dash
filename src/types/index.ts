@@ -222,6 +222,7 @@ export interface UserSettings {
   subscriptionRenewalDays: number;  // notify this many days before renewal
   theme?: "dark" | "bw";
   mobileNavItems?: MobileNavItemId[];
+  t212ApiKey?: string;
 }
 
 export interface AppData {
@@ -250,6 +251,11 @@ export interface AppData {
   ideaPageMeta?: IdeaPageMeta;
   ideaTopics?: IdeaTopic[];
   ideaNotes?: IdeaNote[];
+  taxSettings?: {
+    salary: number;
+    savedSoFar: number;
+    savingsGoalOverride: number | null;
+  };
 }
 
 export type NavItem = {

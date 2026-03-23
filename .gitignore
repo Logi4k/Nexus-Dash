@@ -6,3 +6,7 @@ dist/
 src-tauri/target/
 src-tauri/gen/
 *.log
+.factory-test-credentials
+SYNC_AUDIT_REPORT.md
+MOBILE_UX_AUDIT.md
+FEATURE_AUDIT.md

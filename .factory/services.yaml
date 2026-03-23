@@ -1,0 +1,15 @@
+commands:
+  install: npm install
+  build: npm run build
+  typecheck: npx tsc --noEmit
+  test: npx vitest run
+  lint: npx eslint src/ --ext .ts,.tsx
+  dev: npx vite --port 1420
+
+services:
+  web:
+    start: Start-Process cmd.exe -ArgumentList "/c","cd /d D:\6 Droid\New Version\nexus && npx vite --port 1420" -WindowStyle Hidden
+    stop: Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq "" } | Stop-Process -Force
+    healthcheck: Invoke-WebRequest -Uri "http://localhost:1420" -UseBasicParsing -TimeoutSec 5
+    port: 1420
+    depends_on: []

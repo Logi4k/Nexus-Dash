@@ -8,12 +8,7 @@ import {
   Trash2,
   Edit2,
   TrendingUp,
-  TrendingDown,
-  Minus,
   Calendar,
-  Smile,
-  Meh,
-  Frown,
   Zap,
   Target,
   BarChart3,
@@ -38,8 +33,12 @@ import Modal from "@/components/Modal";
 import {
   saveImage,
   getImages,
+  getImagesWithCloudFallback,
   deleteImage,
   deleteImages,
+  deleteImageFromCloud,
+  deleteImagesFromCloud,
+  uploadImageToCloud,
   fileToDataUrl,
 } from "@/lib/imageStore";
 import type { JournalEntry, TradeEntry } from "@/types";
@@ -84,7 +83,7 @@ const POINT_VALUE: Record<string, number> = Object.fromEntries(
   FUTURES_CONTRACTS.map((c) => [c.symbol, c.pointValue])
 );
 
-// Instrument color families
+// Instrument color families — keep in sync with --color-instr-* tokens in index.css
 const INSTRUMENT_COLOR: Record<string, string> = {
   ES: "#3b82f6", NQ: "#8b5cf6", YM: "#f97316", RTY: "#1dd4b4",
   MES: "#3b82f6", MNQ: "#8b5cf6", MYM: "#f97316",
@@ -135,18 +134,6 @@ function lastNDays(anchor: string, n: number): string[] {
 
 // ─── Mood & Bias config ───────────────────────────────────────────────────────
 
-const BIAS_OPTIONS = [
-  { value: "bullish",  label: "Bullish",  color: "#22c55e", Icon: TrendingUp },
-  { value: "neutral",  label: "Neutral",  color: "var(--tx-3)", Icon: Minus },
-  { value: "bearish",  label: "Bearish",  color: "#ef4444", Icon: TrendingDown },
-] as const;
-
-const MOOD_OPTIONS = [
-  { value: "great",   label: "Great",   color: "#22c55e", Icon: Smile },
-  { value: "good",    label: "Good",    color: "#4ade80", Icon: Smile },
-  { value: "neutral", label: "Neutral", color: "var(--tx-3)", Icon: Meh },
-  { value: "bad",     label: "Bad",     color: "#ef4444", Icon: Frown },
-] as const;
 
 // ─── Trade Form defaults ──────────────────────────────────────────────────────
 
@@ -183,20 +170,21 @@ function TradeImageGallery({
 
   useEffect(() => {
     if (imageIds.length === 0) return;
-    getImages(imageIds).then(setImages);
+    getImagesWithCloudFallback(imageIds).then(setImages);
   }, [imageIds]);
 
   if (imageIds.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2 px-4 pb-3 pt-2 border-t border-white/[0.04]">
+    <div className="flex flex-wrap gap-2 px-4 pb-3 pt-2 border-t" style={{ borderColor: "rgba(var(--border-rgb),0.07)" }}>
       {imageIds.map((id) =>
         images[id] ? (
           <div key={id} className="relative group/img flex-shrink-0">
             <img
               src={images[id]}
               alt="Trade screenshot"
-              className="h-16 w-24 object-cover rounded-lg border border-white/10 cursor-pointer hover:opacity-80 transition-opacity"
+              className="h-16 w-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+              style={{ border: "1px solid rgba(var(--border-rgb),0.15)" }}
               onClick={() => onLightbox(images[id])}
             />
             <div className="absolute inset-0 rounded-lg flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
@@ -211,7 +199,8 @@ function TradeImageGallery({
           </div>
         ) : (
           // Skeleton while loading
-          <div key={id} className="h-16 w-24 rounded-lg bg-white/[0.04] animate-pulse flex-shrink-0" />
+          <div key={id} className="h-16 w-24 rounded-lg animate-pulse flex-shrink-0"
+            style={{ background: "rgba(var(--surface-rgb),0.06)" }} />
         )
       )}
     </div>
@@ -234,7 +223,7 @@ function PendingImageList({
           <img
             src={img.url}
             alt="Pending screenshot"
-            className="h-14 w-20 object-cover rounded-lg border border-white/10"
+            className="h-14 w-20 object-cover rounded-lg border border-border"
           />
           <button
             onClick={() => onRemove(img.id)}
@@ -286,12 +275,14 @@ function TradeRow({
   trade,
   onDelete,
   onEdit,
+  onView,
   onDeleteImage,
   onLightbox,
 }: {
   trade: TradeEntry;
   onDelete: () => void;
   onEdit: () => void;
+  onView: () => void;
   onDeleteImage: (imageId: string) => void;
   onLightbox: (url: string) => void;
 }) {
@@ -318,11 +309,12 @@ function TradeRow({
       />
 
       <div
-        className="hidden md:grid gap-2 pl-5 pr-3 py-2.5 items-center transition-colors"
+        className="hidden md:grid gap-2 pl-5 pr-3 py-2.5 items-center transition-colors cursor-pointer"
         style={{
           gridTemplateColumns: "68px 72px 72px 52px 88px 88px 1fr 84px 52px",
           background: rowBg,
         }}
+        onClick={onView}
         onMouseEnter={(e) => (e.currentTarget.style.background = isWin ? "rgba(34,197,94,0.06)" : isLoss ? "rgba(239,68,68,0.06)" : "rgba(var(--surface-rgb),0.03)")}
         onMouseLeave={(e) => (e.currentTarget.style.background = rowBg)}
       >
@@ -364,7 +356,7 @@ function TradeRow({
         <div className="flex flex-col gap-0.5 min-w-0">
           <span className="text-[11px] text-tx-3 truncate">{trade.setup || trade.notes || "—"}</span>
           {trade.session && (
-            <span className="text-[9px] font-medium truncate" style={{ color: "var(--tx-4)" }}>{trade.session}</span>
+            <span className="text-[10px] font-medium truncate" style={{ color: "var(--tx-4)" }}>{trade.session}</span>
           )}
         </div>
 
@@ -377,7 +369,7 @@ function TradeRow({
         </span>
 
         {/* Actions */}
-        <div className="flex justify-end gap-0.5">
+        <div className="flex justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
           {!confirm ? (
             <>
               {hasImages && (
@@ -413,16 +405,16 @@ function TradeRow({
             </>
           ) : (
             <div className="flex items-center gap-1">
-              <button onClick={onDelete} className="text-[9px] px-1.5 py-0.5 rounded font-semibold"
+              <button onClick={onDelete} className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                 style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>Del</button>
-              <button onClick={() => setConfirm(false)} className="text-[9px] px-1.5 py-0.5 rounded font-semibold"
+              <button onClick={() => setConfirm(false)} className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                 style={{ background: "rgba(var(--surface-rgb),0.07)", color: "var(--tx-3)" }}>No</button>
             </div>
           )}
         </div>
       </div>
 
-      <div className="px-4 py-3 md:hidden" style={{ background: rowBg }}>
+      <div className="px-4 py-3 md:hidden cursor-pointer" style={{ background: rowBg }} onClick={onView}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -442,11 +434,11 @@ function TradeRow({
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.04)" }}>
-                <div className="text-tx-4 text-[9px] uppercase tracking-wider">Entry</div>
+                <div className="text-tx-3 text-[10px] uppercase tracking-wider">Entry</div>
                 <div className="mt-1 text-tx-2 font-mono tabular-nums text-[11px]">{(trade.entryPrice ?? 0).toFixed(2)}</div>
               </div>
               <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.04)" }}>
-                <div className="text-tx-4 text-[9px] uppercase tracking-wider">Exit</div>
+                <div className="text-tx-3 text-[10px] uppercase tracking-wider">Exit</div>
                 <div className="mt-1 text-tx-2 font-mono tabular-nums text-[11px]">{(trade.exitPrice ?? 0).toFixed(2)}</div>
               </div>
             </div>
@@ -460,7 +452,7 @@ function TradeRow({
             <div className="text-[13px] font-black tabular-nums font-mono" style={{ color: accentColor }}>
               {netPnl >= 0 ? "+" : ""}{fmtUSD(netPnl)}
             </div>
-            <div className="mt-2 flex items-center justify-end gap-1">
+            <div className="mt-2 flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
               {hasImages && (
                 <button onClick={() => setShowImages((v) => !v)} className="p-1 rounded text-tx-4">
                   <ImageIcon size={12} />
@@ -477,9 +469,9 @@ function TradeRow({
                 </>
               ) : (
                 <div className="flex items-center gap-1">
-                  <button onClick={onDelete} className="text-[9px] px-1.5 py-0.5 rounded font-semibold"
+                  <button onClick={onDelete} className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                     style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>Del</button>
-                  <button onClick={() => setConfirm(false)} className="text-[9px] px-1.5 py-0.5 rounded font-semibold"
+                  <button onClick={() => setConfirm(false)} className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                     style={{ background: "rgba(var(--surface-rgb),0.07)", color: "var(--tx-3)" }}>No</button>
                 </div>
               )}
@@ -511,6 +503,7 @@ export default function Journal() {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [addTradeOpen, setAddTradeOpen] = useState(false);
   const [editTradeId, setEditTradeId] = useState<string | null>(null);
+  const [viewTradeId, setViewTradeId] = useState<string | null>(null);
   const [tradeForm, setTradeForm] = useState(emptyTradeForm);
   const [autoSaveLabel, setAutoSaveLabel] = useState("");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -576,8 +569,7 @@ export default function Journal() {
 
   // ── Derived values for current entry ──
   const notes     = entry?.notes ?? "";
-  const bias      = entry?.bias ?? "";
-  const mood      = entry?.mood ?? "";
+
   // ── Trades for selected date ──
   const allTrades: TradeEntry[] = data.tradeJournal ?? [];
   const dayTrades = allTrades
@@ -728,20 +720,45 @@ export default function Journal() {
       .map(([label, v]) => ({ label, net: v.net, count: v.count, wr: v.count > 0 ? (v.wins / v.count) * 100 : 0 }));
   }, [allTrades]);
 
-  // ── 30-day heatmap data ──
-  const heatmapDays = useMemo(() => {
-    const days: { date: string; net: number | null; hasTrades: boolean; hasNote: boolean; dow: number }[] = [];
+  // ── 52-week P&L calendar heatmap data ──
+  const calendarHeatmap = useMemo(() => {
+    const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const anchor = new Date(today + "T00:00:00");
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(anchor);
-      d.setDate(anchor.getDate() - i);
+    // Roll back to the most recent Sunday so columns align Sun–Sat
+    const dayOfWeek = anchor.getDay(); // 0=Sun
+    const startDate = new Date(anchor);
+    startDate.setDate(anchor.getDate() - dayOfWeek - (53 * 7 - 7)); // 53 weeks back, land on Sunday
+    const days: {
+      date: string;
+      net: number | null;
+      hasTrades: boolean;
+      hasNote: boolean;
+      dow: number;
+      weekIndex: number;
+      monthLabel?: string;
+    }[] = [];
+    let seenMonths = new Set<string>();
+    for (let i = 0; i < 371; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
       const iso = d.toISOString().slice(0, 10);
       const trades = allTrades.filter((t) => t.date === iso);
       const hasNote = entries.some((e) => e.date === iso);
       const net = trades.length > 0
         ? trades.reduce((s, t) => s + t.pnl - (t.fees ?? 0), 0)
         : null;
-      days.push({ date: iso, net, hasTrades: trades.length > 0, hasNote, dow: d.getDay() });
+      const weekIndex = Math.floor(i / 7);
+      const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+      const monthLabel = (d.getDate() === 1 || (i === 0)) && !seenMonths.has(monthKey)
+        ? MONTH_NAMES[d.getMonth()]
+        : undefined;
+      if (monthLabel) seenMonths.add(monthKey);
+      // Skip days that are in the future
+      if (iso > today) {
+        days.push({ date: iso, net: null, hasTrades: false, hasNote: false, dow: d.getDay(), weekIndex, monthLabel });
+      } else {
+        days.push({ date: iso, net, hasTrades: trades.length > 0, hasNote, dow: d.getDay(), weekIndex, monthLabel });
+      }
     }
     return days;
   }, [allTrades, entries, today]);
@@ -802,6 +819,11 @@ export default function Journal() {
 
     // Persist any newly added images to IndexedDB
     await Promise.all(pendingImages.map((img) => saveImage(img.id, img.url)));
+
+    // Upload to Supabase Storage in background for cross-device sync
+    pendingImages.forEach((img) => {
+      uploadImageToCloud(img.id, img.url).catch(() => {});
+    });
 
     const newImageIds = pendingImages.map((img) => img.id);
 
@@ -872,7 +894,7 @@ export default function Journal() {
     setOriginalImageIds(existingIds);
 
     if (existingIds.length > 0) {
-      const loaded = await getImages(existingIds);
+      const loaded = await getImagesWithCloudFallback(existingIds);
       const existing = existingIds
         .filter((id) => loaded[id])
         .map((id) => ({ id, url: loaded[id] }));
@@ -890,6 +912,7 @@ export default function Journal() {
     const trade = allTrades.find((t) => t.id === id);
     if (trade?.imageIds?.length) {
       deleteImages(trade.imageIds).catch(() => {});
+      deleteImagesFromCloud(trade.imageIds).catch(() => {});
     }
     update((prev) => ({
       ...prev,
@@ -899,6 +922,7 @@ export default function Journal() {
 
   function handleDeleteTradeImage(tradeId: string, imageId: string) {
     deleteImage(imageId).catch(() => {});
+    deleteImageFromCloud(imageId).catch(() => {});
     update((prev) => ({
       ...prev,
       tradeJournal: (prev.tradeJournal ?? []).map((t) =>
@@ -932,7 +956,7 @@ export default function Journal() {
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Journal</div>
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-[22px] font-extrabold tracking-tight" style={{ color: "#f8fafc", letterSpacing: "-0.02em" }}>Trade Log</h1>
+          <h1 className="page-title">Trade Log</h1>
           <div className="flex items-center gap-2">
           {allStats.total > 0 && (
             <>
@@ -985,7 +1009,7 @@ export default function Journal() {
           style={{ background: "rgba(var(--surface-rgb),0.03)" }}
         >
           <div className="flex-shrink-0">
-            <p className="text-[9px] uppercase tracking-widest font-bold text-tx-4 mb-0.5">This Week</p>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-tx-4 mb-0.5">This Week</p>
             <p
               className="text-sm font-black tabular-nums leading-none"
               style={{ color: weekNetPnL >= 0 ? "#22c55e" : "#ef4444" }}
@@ -1028,12 +1052,12 @@ export default function Journal() {
                     />
                   </div>
                   <span
-                    className="text-[9px] font-mono font-semibold"
+                    className="text-[10px] font-mono font-semibold"
                     style={{ color: day.isToday ? "var(--tx-1)" : "var(--tx-4)" }}
                   >{day.dayLabel}</span>
                   {hasData && (
                     <span
-                      className="text-[8px] font-mono tabular-nums leading-none"
+                      className="text-[10px] font-mono tabular-nums leading-none"
                       style={{ color: isPos ? "#4ade80" : "#f87171" }}
                     >
                       {isPos ? "+" : ""}{fmtUSD(day.net!)}
@@ -1047,7 +1071,7 @@ export default function Journal() {
           <div className="h-8 w-px flex-shrink-0" style={{ background: "rgba(var(--border-rgb),0.09)" }} />
 
           <div className="flex-shrink-0 flex flex-col gap-1 text-right">
-            <p className="text-[9px] uppercase tracking-widest font-bold text-tx-4">Trades</p>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-tx-4">Trades</p>
             <p className="text-sm font-black text-tx-1">
               {thisWeekStats.reduce((s, d) => s + d.tradeCount, 0)}
             </p>
@@ -1066,7 +1090,7 @@ export default function Journal() {
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setSelectedDate(prevDay(selectedDate))}
-                className="p-2 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-white/[0.06] transition-all"
+                className="p-2 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-accent-subtle transition-all"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -1075,7 +1099,7 @@ export default function Journal() {
                 <div className="flex items-center gap-2">
                   {isToday && (
                     <span
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                       style={{ background: "rgba(14,184,154,0.1)", color: "#1dd4b4", border: "1px solid rgba(14,184,154,0.2)" }}
                     >TODAY</span>
                   )}
@@ -1090,7 +1114,7 @@ export default function Journal() {
               <button
                 onClick={() => setSelectedDate(nextDay(selectedDate))}
                 disabled={selectedDate >= today}
-                className="p-2 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-white/[0.06] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-accent-subtle transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronRight size={16} />
               </button>
@@ -1101,7 +1125,7 @@ export default function Journal() {
               const strip = lastNDays(today, 14);
               const DOW = ["Su","Mo","Tu","We","Th","Fr","Sa"];
               return (
-                <div className="flex gap-1 mt-4 pt-3 border-t border-white/[0.06]">
+                <div className="flex gap-1 mt-4 pt-3 border-t border-border">
                   {strip.map((d) => {
                     const trades  = allTrades.filter((t) => t.date === d);
                     const dayNet  = trades.reduce((s, t) => s + t.pnl - (t.fees ?? 0), 0);
@@ -1125,10 +1149,10 @@ export default function Journal() {
                         }}
                         title={d}
                       >
-                        <span className="text-[8px] text-tx-4">{DOW[dow]}</span>
+                        <span className="text-[10px] text-tx-3">{DOW[dow]}</span>
                         <div className="w-3.5 h-3.5 rounded-sm flex items-center justify-center"
                           style={{ background: chipCol, opacity: !hasData && !isWeekend ? 0.3 : 1 }}>
-                          {isToday2 && <div className="w-1 h-1 rounded-full bg-white/80" />}
+                          {isToday2 && <div className="w-1 h-1 rounded-full bg-tx-3" />}
                         </div>
                         <span className="text-[7px] tabular-nums text-tx-4">
                           {new Date(d + "T00:00:00").getDate()}
@@ -1142,7 +1166,7 @@ export default function Journal() {
 
             {/* Day stats strip */}
             {dayStats.total > 0 && (
-              <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+              <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border">
                 {[
                   { label: "Trades",   value: String(dayStats.total),                                                       color: "var(--tx-3)", icon: <BarChart3 size={10} /> },
                   { label: "Win Rate", value: dayStats.winRate !== null ? `${dayStats.winRate.toFixed(0)}%` : "—",           color: "#3b82f6", icon: <Target size={10} /> },
@@ -1152,7 +1176,7 @@ export default function Journal() {
                   <div key={s.label} className="text-center py-2 px-1 rounded-lg"
                     style={{ background: `${s.color}0d`, border: `1px solid ${s.color}25` }}>
                     <div className="flex justify-center mb-0.5" style={{ color: s.color }}>{s.icon}</div>
-                    <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-0.5">{s.label}</p>
+                    <p className="text-[10px] text-tx-3 uppercase tracking-wider mb-0.5">{s.label}</p>
                     <p className="text-[12px] font-black tabular-nums" style={{ color: s.color }}>{s.value}</p>
                   </div>
                 ))}
@@ -1162,7 +1186,7 @@ export default function Journal() {
 
           {/* Trade Log */}
           <div className="card overflow-hidden">
-            <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BarChart3 size={14} className="text-accent" />
                 <h2 className="text-sm font-semibold text-tx-1">Trade Log</h2>
@@ -1189,26 +1213,27 @@ export default function Journal() {
             ) : (
               <div>
                 {/* Column headers */}
-                <div className="hidden md:grid gap-2 pl-5 pr-3 py-2 border-b border-white/[0.04]"
+                <div className="hidden md:grid gap-2 pl-5 pr-3 py-2 border-b border-border"
                   style={{ gridTemplateColumns: "68px 72px 72px 52px 88px 88px 1fr 84px 52px" }}>
                   {["Time", "Symbol", "Dir", "Qty", "Entry", "Exit", "Setup", "Net P&L", ""].map((h) => (
-                    <span key={h} className="text-[9px] uppercase tracking-[0.12em] text-tx-4 font-semibold">{h}</span>
+                    <span key={h} className="text-[10px] uppercase tracking-[0.12em] text-tx-4 font-semibold">{h}</span>
                   ))}
                 </div>
-                <div className="divide-y divide-white/[0.04]">
+                <div className="divide-y divide-border">
                   {filteredDayTrades.map((t) => (
                     <TradeRow
                       key={t.id}
                       trade={t}
                       onDelete={() => handleDeleteTrade(t.id)}
                       onEdit={() => handleEditTrade(t)}
+                      onView={() => setViewTradeId(t.id)}
                       onDeleteImage={(imgId) => handleDeleteTradeImage(t.id, imgId)}
                       onLightbox={setLightboxSrc}
                     />
                   ))}
                 </div>
                 {/* Day summary footer */}
-                <div className="px-4 py-3 border-t border-white/[0.06] flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between bg-white/[0.01]">
+                <div className="px-4 py-3 border-t border-border flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between bg-accent-subtle">
                   <span className="text-[11px] text-tx-4">
                     {dayStats.wins}W / {dayStats.losses}L · {fmtUSD(dayStats.fees)} fees
                   </span>
@@ -1236,7 +1261,7 @@ export default function Journal() {
               {allStats.equityCurve.length > 1 && (
                 <div className="mb-3 rounded-lg overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.07)" }}>
                   <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-                    <span className="text-[9px] text-tx-4 uppercase tracking-wider">Equity Curve</span>
+                    <span className="text-[10px] text-tx-3 uppercase tracking-wider">Equity Curve</span>
                     <span className={cn("text-[10px] font-black tabular-nums", allStats.net >= 0 ? "text-profit" : "text-loss")}>
                       {allStats.net >= 0 ? "+" : ""}{fmtUSD(allStats.net)}
                     </span>
@@ -1290,7 +1315,7 @@ export default function Journal() {
                     className="rounded-lg p-2 text-center"
                     style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.07)" }}
                   >
-                    <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-0.5">{s.label}</p>
+                    <p className="text-[10px] text-tx-3 uppercase tracking-wider mb-0.5">{s.label}</p>
                     <p className="text-[11px] font-black tabular-nums" style={{ color: s.color }}>{s.value}</p>
                   </div>
                 ))}
@@ -1300,8 +1325,8 @@ export default function Journal() {
               {allStats.total > 0 && (
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[9px] text-tx-4">{allStats.wins}W</span>
-                    <span className="text-[9px] text-tx-4">{allStats.losses}L</span>
+                    <span className="text-[10px] text-tx-3">{allStats.wins}W</span>
+                    <span className="text-[10px] text-tx-3">{allStats.losses}L</span>
                   </div>
                   <div className="h-1.5 rounded-full overflow-hidden flex" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                     <div
@@ -1358,7 +1383,7 @@ export default function Journal() {
                     );
                   })}
                 </div>
-                <p className="text-[9px] text-tx-4 mt-2">avg net P&amp;L per trade by weekday</p>
+                <p className="text-[10px] text-tx-3 mt-2">avg net P&amp;L per trade by weekday</p>
               </div>
             );
           })()}
@@ -1413,56 +1438,133 @@ export default function Journal() {
             </div>
           )}
 
-          {/* 30-day heatmap */}
-          {allStats.total > 0 && (
-            <div className="card p-4">
-              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
-                <Activity size={10} className="text-accent" />30-Day Activity
+          {/* 52-week P&L calendar heatmap */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium flex items-center gap-1.5">
+                <Activity size={10} className="text-accent" />P&amp;L Calendar
               </p>
-              <div className="grid gap-0.5" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
-                {heatmapDays.map((d) => {
-                  const isWknd  = d.dow === 0 || d.dow === 6;
-                  const isToday2 = d.date === today;
-                  const isSel   = d.date === selectedDate;
-                  let bg = "rgba(var(--surface-rgb),0.06)";
-                  if (isWknd) bg = "rgba(var(--surface-rgb),0.03)";
-                  if (d.hasNote && !d.hasTrades) bg = "rgba(59,130,246,0.25)";
-                  if (d.hasTrades && d.net !== null) {
-                    const intensity = Math.min(1, Math.abs(d.net) / 200);
-                    if (d.net >= 0) bg = `rgba(34,197,94,${0.25 + intensity * 0.55})`;
-                    else bg = `rgba(239,68,68,${0.25 + intensity * 0.55})`;
-                  }
-                  return (
-                    <button
-                      key={d.date}
-                      title={`${d.date}${d.net !== null ? ` · ${d.net >= 0 ? "+" : ""}$${d.net.toFixed(0)}` : ""}`}
-                      onClick={() => setSelectedDate(d.date)}
-                      className="aspect-square rounded-sm transition-all duration-150"
-                      style={{
-                        background: bg,
-                        outline: isSel ? "1.5px solid rgba(var(--border-rgb),0.55)" : isToday2 ? "1px solid rgba(var(--border-rgb),0.3)" : "none",
-                        outlineOffset: "1px",
-                      }}
-                    />
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1 text-[8px] text-tx-4">
-                    <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(34,197,94,0.7)" }} />Profit
-                  </span>
-                  <span className="flex items-center gap-1 text-[8px] text-tx-4">
-                    <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(239,68,68,0.7)" }} />Loss
-                  </span>
-                  <span className="flex items-center gap-1 text-[8px] text-tx-4">
-                    <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(59,130,246,0.5)" }} />Note
-                  </span>
+              <span className="text-[10px] text-tx-3">(last 12 months)</span>
+            </div>
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: 580 }}>
+                {/* Month labels row */}
+                <div className="flex mb-0.5" style={{ paddingLeft: 16 }}>
+                  {Array.from({ length: 53 }, (_, wi) => {
+                    const weekCells = calendarHeatmap.filter((d) => d.weekIndex === wi);
+                    const monthLabelCell = weekCells.find((d) => d.monthLabel);
+                    return (
+                      <div
+                        key={wi}
+                        className="text-[8px] text-tx-4 flex-shrink-0"
+                        style={{ width: 11, marginRight: 2, overflow: "visible", whiteSpace: "nowrap" }}
+                      >
+                        {monthLabelCell?.monthLabel ?? ""}
+                      </div>
+                    );
+                  })}
                 </div>
-                <span className="text-[8px] text-tx-4">click to navigate</span>
+                {/* Grid: DOW labels + 53 columns of 7 cells */}
+                <div className="flex gap-0">
+                  {/* Day-of-week labels */}
+                  <div className="flex flex-col gap-0.5 mr-1 flex-shrink-0" style={{ width: 14 }}>
+                    {["S","M","T","W","T","F","S"].map((label, idx) => (
+                      <div
+                        key={idx}
+                        className="text-[8px] text-tx-4 flex items-center justify-end pr-0.5"
+                        style={{ height: 11, opacity: idx === 1 || idx === 3 || idx === 5 ? 1 : 0 }}
+                      >
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Week columns */}
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: 53 }, (_, wi) => {
+                      const weekCells = calendarHeatmap.filter((d) => d.weekIndex === wi);
+                      return (
+                        <div key={wi} className="flex flex-col gap-0.5">
+                          {Array.from({ length: 7 }, (_, dow) => {
+                            const cell = weekCells.find((d) => d.dow === dow);
+                            if (!cell) {
+                              return <div key={dow} style={{ width: 11, height: 11 }} />;
+                            }
+                            const isFuture = cell.date > today;
+                            const isWknd = cell.dow === 0 || cell.dow === 6;
+                            const isToday2 = cell.date === today;
+                            const isSel = cell.date === selectedDate;
+                            let bg = "rgba(var(--surface-rgb),0.07)";
+                            if (!isFuture) {
+                              if (cell.hasNote && !cell.hasTrades) {
+                                bg = isWknd ? "rgba(59,130,246,0.18)" : "rgba(59,130,246,0.3)";
+                              } else if (cell.hasTrades && cell.net !== null) {
+                                const intensity = Math.min(1, Math.abs(cell.net) / 300);
+                                if (cell.net >= 0) {
+                                  const alpha = (0.2 + intensity * 0.7) * (isWknd ? 0.6 : 1);
+                                  bg = `rgba(34,197,94,${alpha.toFixed(2)})`;
+                                } else {
+                                  const alpha = (0.2 + intensity * 0.7) * (isWknd ? 0.6 : 1);
+                                  bg = `rgba(239,68,68,${alpha.toFixed(2)})`;
+                                }
+                              } else if (isWknd) {
+                                bg = "rgba(var(--surface-rgb),0.04)";
+                              }
+                            }
+                            let outline = "none";
+                            if (isSel) outline = "2px solid rgba(var(--surface-rgb),0.7)";
+                            else if (isToday2) outline = "1.5px solid rgba(var(--border-rgb),0.6)";
+                            const titleParts = [cell.date];
+                            if (cell.net !== null) titleParts.push(`${cell.net >= 0 ? "+" : ""}$${cell.net.toFixed(0)}`);
+                            if (cell.hasNote) titleParts.push("note");
+                            return (
+                              <button
+                                key={dow}
+                                title={titleParts.join(" · ")}
+                                onClick={() => !isFuture && setSelectedDate(cell.date)}
+                                className="rounded-sm transition-all duration-100 flex-shrink-0"
+                                style={{
+                                  width: 11,
+                                  height: 11,
+                                  background: bg,
+                                  outline,
+                                  outlineOffset: "1px",
+                                  cursor: isFuture ? "default" : "pointer",
+                                  opacity: isFuture ? 0.15 : 1,
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+            {/* Legend */}
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 text-[10px] text-tx-3">
+                  <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(239,68,68,0.7)" }} />Loss
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-tx-3">
+                  <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(34,197,94,0.7)" }} />Profit
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-tx-3">
+                  <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(59,130,246,0.5)" }} />Note only
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-tx-3">
+                  <span className="flex gap-px">
+                    {[0.2, 0.4, 0.6, 0.8, 1.0].map((a) => (
+                      <span key={a} className="w-2 h-2 rounded-sm inline-block" style={{ background: `rgba(34,197,94,${a})` }} />
+                    ))}
+                  </span>
+                  <span className="ml-0.5">Less → More</span>
+                </span>
+              </div>
+              <span className="text-[10px] text-tx-3">click to navigate</span>
+            </div>
+          </div>
 
           {/* Instrument breakdown */}
           {instrStats.length > 0 && (
@@ -1502,7 +1604,7 @@ export default function Journal() {
                         >
                           {isPos ? "+" : ""}{fmtUSD(s.net)}
                         </span>
-                        <span className="text-[8px] text-tx-4 tabular-nums">
+                        <span className="text-[10px] text-tx-3 tabular-nums">
                           {s.count}t · {s.wr.toFixed(0)}%WR
                         </span>
                       </div>
@@ -1526,7 +1628,6 @@ export default function Journal() {
                   const dayNet = trades.reduce((s, t) => s + t.pnl - (t.fees ?? 0), 0);
                   const isSelected = date === selectedDate;
                   const rowCol = trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : "#3b82f6";
-                  const biasObj = BIAS_OPTIONS.find((b) => b.value === e?.bias);
                   return (
                     <button
                       key={date}
@@ -1543,13 +1644,7 @@ export default function Journal() {
                           <p className="text-xs font-bold" style={{ color: isSelected ? rowCol : "var(--tx-1)" }}>
                             {fmtShortDate(date)}
                           </p>
-                          {e?.bias && biasObj ? (
-                            <p className="text-[9px] font-medium capitalize" style={{ color: biasObj.color + "aa" }}>
-                              {e.bias}
-                            </p>
-                          ) : (
-                            <p className="text-[9px] text-tx-4">journal</p>
-                          )}
+                          <p className="text-[10px] text-tx-3">journal</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -1558,10 +1653,10 @@ export default function Journal() {
                             <p className="text-xs font-bold tabular-nums" style={{ color: dayNet >= 0 ? "#22c55e" : "#ef4444" }}>
                               {dayNet >= 0 ? "+" : ""}{fmtUSD(dayNet)}
                             </p>
-                            <p className="text-[9px] text-tx-4">{trades.length} trade{trades.length !== 1 ? "s" : ""}</p>
+                            <p className="text-[10px] text-tx-3">{trades.length} trade{trades.length !== 1 ? "s" : ""}</p>
                           </>
                         ) : (
-                          <p className="text-[9px] text-tx-4">{e?.notes ? "notes" : "—"}</p>
+                          <p className="text-[10px] text-tx-3">{e?.notes ? "notes" : "—"}</p>
                         )}
                       </div>
                     </button>
@@ -1733,25 +1828,25 @@ export default function Journal() {
               >
                 <div className="flex items-center gap-1 mb-2">
                   <Zap size={9} style={{ color: isProfit ? "#22c55e" : "#ef4444" }} />
-                  <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: isProfit ? "#22c55e" : "#ef4444" }}>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: isProfit ? "#22c55e" : "#ef4444" }}>
                     Auto-calculated · {firm === "lucid" ? "Lucid" : "Tradeify"} · {instrument} · {Math.abs(priceDiff).toFixed(2)} pts × ${pointVal} × {qty}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="text-center">
-                    <p className="text-[9px] text-tx-4 mb-0.5">Gross P&L</p>
+                    <p className="text-[10px] text-tx-3 mb-0.5">Gross P&L</p>
                     <p className="text-sm font-bold font-mono tabular-nums" style={{ color: grossPnl >= 0 ? "#22c55e" : "#ef4444" }}>
                       {grossPnl >= 0 ? "+" : ""}{fmtUSD(grossPnl)}
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] text-tx-4 mb-0.5">Fees ({qty}× ${(feePerSide * 2).toFixed(2)})</p>
+                    <p className="text-[10px] text-tx-3 mb-0.5">Fees ({qty}× ${(feePerSide * 2).toFixed(2)})</p>
                     <p className="text-sm font-bold font-mono tabular-nums text-warn">
                       −{fmtUSD(totalFees)}
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] text-tx-4 mb-0.5">Net P&L</p>
+                    <p className="text-[10px] text-tx-3 mb-0.5">Net P&L</p>
                     <p className="text-sm font-bold font-mono tabular-nums" style={{ color: isProfit ? "#22c55e" : "#ef4444" }}>
                       {netPnl >= 0 ? "+" : ""}{fmtUSD(netPnl)}
                     </p>
@@ -1765,7 +1860,7 @@ export default function Journal() {
             <div>
               <label className="text-tx-3 text-xs block mb-1">
                 Gross P&L ($)
-                {tradeForm.firm && <span className="text-[9px] text-tx-4 ml-1">(auto-filled)</span>}
+                {tradeForm.firm && <span className="text-[10px] text-tx-3 ml-1">(auto-filled)</span>}
               </label>
               <input
                 type="number"
@@ -1779,7 +1874,7 @@ export default function Journal() {
             <div>
               <label className="text-tx-3 text-xs block mb-1">
                 Fees ($)
-                {tradeForm.firm && <span className="text-[9px] text-tx-4 ml-1">(auto-filled)</span>}
+                {tradeForm.firm && <span className="text-[10px] text-tx-3 ml-1">(auto-filled)</span>}
               </label>
               <input
                 type="number"
@@ -1831,7 +1926,7 @@ export default function Journal() {
                 style={{ border: "1px dashed rgba(var(--border-rgb),0.2)", background: "rgba(var(--surface-rgb),0.03)" }}
               >
                 <ImageIcon size={14} />
-                <span className="text-[9px] font-medium">Add</span>
+                <span className="text-[10px] font-medium">Add</span>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1843,60 +1938,10 @@ export default function Journal() {
               </label>
             </div>
             {pendingImages.length > 0 && (
-              <p className="text-[9px] text-tx-4 mt-1">
+              <p className="text-[10px] text-tx-3 mt-1">
                 {pendingImages.length} image{pendingImages.length !== 1 ? "s" : ""} attached · saved to local IndexedDB
               </p>
             )}
-          </div>
-
-          {/* Market Bias + Trading Mood */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-tx-3 text-xs block mb-1.5 flex items-center gap-1.5">
-                <TrendingUp size={10} />Market Bias
-              </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {BIAS_OPTIONS.map(({ value, label, color, Icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => patchEntry({ bias: bias === value ? "" : value as JournalEntry["bias"] })}
-                    className="min-w-0 px-1 flex items-center justify-center gap-1 py-2 rounded-lg text-center leading-tight whitespace-normal break-words text-[10px] md:text-[11px] font-semibold transition-all"
-                    style={{
-                      background: bias === value ? `${color}18` : "rgba(255,255,255,0.04)",
-                      border: `1px solid ${bias === value ? color + "40" : "rgba(255,255,255,0.09)"}`,
-                      color: bias === value ? color : "var(--tx-3)",
-                    }}
-                  >
-                    <Icon size={10} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-tx-3 text-xs block mb-1.5 flex items-center gap-1.5">
-                <Smile size={10} />Trading Mood
-              </label>
-              <div className="grid grid-cols-2 gap-1.5 md:grid-cols-4">
-                {MOOD_OPTIONS.map(({ value, label, color, Icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => patchEntry({ mood: mood === value ? "" : value as JournalEntry["mood"] })}
-                    className="min-w-0 px-1 flex items-center justify-center gap-1 py-2 rounded-lg text-center leading-tight whitespace-normal break-words text-[10px] md:text-[11px] font-semibold transition-all"
-                    style={{
-                      background: mood === value ? `${color}18` : "rgba(255,255,255,0.04)",
-                      border: `1px solid ${mood === value ? color + "40" : "rgba(255,255,255,0.09)"}`,
-                      color: mood === value ? color : "var(--tx-3)",
-                    }}
-                  >
-                    <Icon size={10} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="flex gap-2 pt-1">
@@ -1918,6 +1963,112 @@ export default function Journal() {
       {lightboxSrc && (
         <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
+
+      {/* ── Trade Detail Modal ── */}
+      {viewTradeId && (() => {
+        const vt = (data.tradeJournal ?? []).find((t) => t.id === viewTradeId);
+        if (!vt) return null;
+        const netPnl = vt.pnl - (vt.fees ?? 0);
+        const accentColor = netPnl > 0 ? "#22c55e" : netPnl < 0 ? "#ef4444" : "var(--tx-3)";
+        const iCol = getInstrumentColor(vt.instrument);
+        return (
+          <Modal
+            open={true}
+            onClose={() => setViewTradeId(null)}
+            title="Trade Detail"
+            size="md"
+          >
+            <div className="flex flex-col gap-4">
+              {/* Header row */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs font-black font-mono tracking-wide px-2 py-1 rounded-lg"
+                  style={{ color: iCol, background: `${iCol}15`, border: `1px solid ${iCol}30` }}>
+                  {vt.instrument}
+                </span>
+                <span className="flex items-center gap-1 text-sm font-bold"
+                  style={{ color: vt.direction === "long" ? "#22c55e" : "#ef4444" }}>
+                  {vt.direction === "long"
+                    ? <ArrowUpRight size={14} strokeWidth={2.5} />
+                    : <ArrowDownRight size={14} strokeWidth={2.5} />}
+                  {vt.direction === "long" ? "Long" : "Short"}
+                </span>
+                <span className="text-xs text-tx-4 font-mono">{vt.date} · {vt.time || "—"}</span>
+                {vt.session && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-medium text-tx-3"
+                    style={{ background: "rgba(var(--surface-rgb),0.06)", border: "1px solid rgba(var(--border-rgb),0.1)" }}>
+                    {vt.session}
+                  </span>
+                )}
+              </div>
+
+              {/* P&L row */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Gross P&L", value: `${vt.pnl >= 0 ? "+" : ""}${fmtUSD(vt.pnl)}`, color: vt.pnl >= 0 ? "#22c55e" : "#ef4444" },
+                  { label: "Fees", value: `−${fmtUSD(vt.fees ?? 0)}`, color: "var(--tx-3)" },
+                  { label: "Net P&L", value: `${netPnl >= 0 ? "+" : ""}${fmtUSD(netPnl)}`, color: accentColor },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="rounded-xl p-3 text-center"
+                    style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
+                    <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-1">{label}</p>
+                    <p className="text-sm font-black tabular-nums font-mono" style={{ color }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Trade details */}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Entry", value: (vt.entryPrice ?? 0).toFixed(2) },
+                  { label: "Exit", value: (vt.exitPrice ?? 0).toFixed(2) },
+                  { label: "Contracts", value: String(vt.contracts) },
+                  { label: "Setup", value: vt.setup || "—" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-lg px-3 py-2.5"
+                    style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.07)" }}>
+                    <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-0.5">{label}</p>
+                    <p className="text-xs font-semibold text-tx-1 font-mono">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Notes */}
+              {vt.notes && (
+                <div className="rounded-lg px-3 py-2.5"
+                  style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.07)" }}>
+                  <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-1">Notes</p>
+                  <p className="text-xs text-tx-2 leading-relaxed">{vt.notes}</p>
+                </div>
+              )}
+
+              {/* Images */}
+              {(vt.imageIds?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <ImageIcon size={10} />{vt.imageIds!.length} Screenshot{vt.imageIds!.length !== 1 ? "s" : ""}
+                  </p>
+                  <TradeImageGallery
+                    imageIds={vt.imageIds!}
+                    onDelete={(imgId) => handleDeleteTradeImage(vt.id, imgId)}
+                    onLightbox={(url) => { setViewTradeId(null); setTimeout(() => setLightboxSrc(url), 50); }}
+                  />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <button className="btn-ghost btn-sm flex-1" onClick={() => setViewTradeId(null)}>Close</button>
+                <button className="btn-primary btn-sm flex-1" onClick={() => {
+                  setViewTradeId(null);
+                  handleEditTrade(vt);
+                }}>
+                  <Edit2 size={12} />Edit Trade
+                </button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

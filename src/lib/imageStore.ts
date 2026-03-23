@@ -4,7 +4,14 @@
  * Images are stored as data-URL strings keyed by a UUID.
  * This keeps binary blobs out of localStorage (which has a ~5 MB cap)
  * while still being fully local / offline.
+ *
+ * Cloud sync: images are also uploaded to Supabase Storage so they're
+ * available on all devices. IndexedDB acts as a fast local cache.
  */
+
+import { supabase, getSession } from "@/lib/supabase";
+
+const STORAGE_BUCKET = "trade-images";
 
 const DB_NAME    = "nexus-images";
 const DB_VERSION = 1;
@@ -99,4 +106,108 @@ export function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+// ── Supabase Storage (cloud sync) ─────────────────────────────────────────────
+
+/** Upload a data-URL image to Supabase Storage. Returns the storage path. */
+export async function uploadImageToCloud(id: string, dataUrl: string): Promise<string | null> {
+  const session = await getSession();
+  if (!session) return null;
+
+  try {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+    const path = `${session.user.id}/${id}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, blob, { upsert: true, contentType: blob.type });
+
+    if (error) {
+      console.error("[imageStore] Cloud upload failed:", error.message);
+      return null;
+    }
+    return path;
+  } catch (err) {
+    console.error("[imageStore] Cloud upload error:", err);
+    return null;
+  }
+}
+
+/** Delete an image from Supabase Storage. */
+export async function deleteImageFromCloud(id: string): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+
+  const userId = session.user.id;
+  // Try all common extensions since we don't track the exact one
+  await supabase.storage.from(STORAGE_BUCKET).remove([
+    `${userId}/${id}.jpg`,
+    `${userId}/${id}.png`,
+    `${userId}/${id}.webp`,
+  ]);
+}
+
+/** Delete multiple images from Supabase Storage. */
+export async function deleteImagesFromCloud(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const session = await getSession();
+  if (!session) return;
+
+  const userId = session.user.id;
+  const paths = ids.flatMap((id) => [
+    `${userId}/${id}.jpg`,
+    `${userId}/${id}.png`,
+    `${userId}/${id}.webp`,
+  ]);
+  await supabase.storage.from(STORAGE_BUCKET).remove(paths);
+}
+
+/** Get a signed URL for an image from Supabase Storage.
+ *  Tries common extensions. Returns the first working URL or null. */
+export async function getImageFromCloud(id: string): Promise<string | null> {
+  const session = await getSession();
+  if (!session) return null;
+
+  const userId = session.user.id;
+  const extensions = ["jpg", "png", "webp"];
+
+  for (const ext of extensions) {
+    const path = `${userId}/${id}.${ext}`;
+    const { data } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(path, 3600); // 1 hour expiry
+
+    if (data?.signedUrl) return data.signedUrl;
+  }
+  return null;
+}
+
+/** Batch get images: try IndexedDB first, fall back to cloud for missing ones.
+ *  Returns a map of id → dataUrl/signedUrl. */
+export async function getImagesWithCloudFallback(ids: string[]): Promise<Record<string, string>> {
+  if (ids.length === 0) return {};
+
+  // First try IndexedDB (local cache)
+  const local = await getImages(ids);
+
+  // Find which ones are missing locally
+  const missing = ids.filter((id) => !local[id]);
+
+  if (missing.length === 0) return local;
+
+  // Fetch missing ones from cloud
+  const results = { ...local };
+  await Promise.all(
+    missing.map(async (id) => {
+      const url = await getImageFromCloud(id);
+      if (url) {
+        results[id] = url;
+      }
+    })
+  );
+
+  return results;
 }
