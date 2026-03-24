@@ -111,6 +111,8 @@ export interface Subscription {
   startDate: string;
   nextRenewal: string;
   notes?: string;
+  cancelled?: boolean;
+  cancelledAt?: string;
 }
 
 export interface T212 {

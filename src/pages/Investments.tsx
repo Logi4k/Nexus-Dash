@@ -23,6 +23,8 @@ import {
   Flame,
   ArrowUpRight,
   ArrowDownRight,
+  PauseCircle,
+  PlayCircle,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
@@ -372,6 +374,7 @@ function InvestmentSidebar({
 
   const upcoming = [...subscriptions]
     .filter((s) => {
+      if (s.cancelled) return false;
       const d = daysUntil(s.nextRenewal);
       return d >= 0 && d <= 30;
     })
@@ -887,7 +890,27 @@ export default function InvestmentsPage() {
     setDeleteSubId(null);
   }
 
-  const totalMonthlySubs = subscriptions.reduce((s, sub) => s + monthlySubCost(sub), 0);
+  function handleCancelSub(id: string) {
+    update((prev) => ({
+      ...prev,
+      subscriptions: prev.subscriptions.map((s) =>
+        s.id === id ? { ...s, cancelled: true, cancelledAt: new Date().toISOString().split("T")[0] } : s
+      ),
+    }));
+  }
+
+  function handleReactivateSub(id: string) {
+    update((prev) => ({
+      ...prev,
+      subscriptions: prev.subscriptions.map((s) =>
+        s.id === id ? { ...s, cancelled: false, cancelledAt: undefined } : s
+      ),
+    }));
+  }
+
+  const activeSubs = subscriptions.filter((s) => !s.cancelled);
+  const cancelledSubs = subscriptions.filter((s) => s.cancelled);
+  const totalMonthlySubs = activeSubs.reduce((s, sub) => s + monthlySubCost(sub), 0);
 
   const lastSyncText =
     t212.last_sync > 0
@@ -1412,7 +1435,8 @@ export default function InvestmentsPage() {
               {subscriptions.length === 0 && (
                 <p className="text-xs text-tx-3 text-center py-4">No subscriptions added.</p>
               )}
-              {subscriptions.map((sub) => {
+              {/* Active subscriptions */}
+              {activeSubs.map((sub) => {
                 const monthlyCost = monthlySubCost(sub);
                 const days = daysUntil(sub.nextRenewal);
                 const isUrgent = days >= 0 && days <= 7;
@@ -1457,9 +1481,10 @@ export default function InvestmentsPage() {
                             <div className="text-xs text-tx-3">{fmtGBP(sub.amount)}/{sub.frequency === "yearly" ? "yr" : "wk"}</div>
                           )}
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-1.5 text-tx-3 hover:text-tx-1 transition-colors" onClick={() => setEditSub(sub)}><Edit2 size={12} /></button>
-                          <button className="p-1.5 text-tx-3 hover:text-loss transition-colors" onClick={() => setDeleteSubId(sub.id)}><Trash2 size={12} /></button>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <button className="p-1.5 text-tx-3 hover:text-tx-1 transition-colors" title="Edit" onClick={() => setEditSub(sub)}><Edit2 size={12} /></button>
+                          <button className="p-1.5 text-tx-3 hover:text-warn transition-colors" title="Stop subscription" onClick={() => handleCancelSub(sub.id)}><PauseCircle size={12} /></button>
+                          <button className="p-1.5 text-tx-3 hover:text-loss transition-colors" title="Delete" onClick={() => setDeleteSubId(sub.id)}><Trash2 size={12} /></button>
                         </div>
                       </div>
                     </div>
@@ -1474,8 +1499,39 @@ export default function InvestmentsPage() {
                   </div>
                 );
               })}
+
+              {/* Cancelled subscriptions */}
+              {cancelledSubs.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-[10px] font-semibold text-tx-4 uppercase tracking-wider mb-2 px-1">Stopped</p>
+                  <div className="flex flex-col gap-1.5">
+                    {cancelledSubs.map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="group flex items-center justify-between px-4 py-2.5 rounded-xl opacity-50"
+                        style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                          <span className="text-sm font-medium text-tx-3 line-through">{sub.name}</span>
+                          <span className="text-xs text-tx-4">
+                            Stopped {sub.cancelledAt ? fmtShortDate(sub.cancelledAt) : ""}
+                            {sub.notes && <> · {sub.notes}</>}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs text-tx-4 tabular-nums">{fmtGBP(monthlySubCost(sub))}/mo</span>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                            <button className="p-1.5 text-tx-4 hover:text-profit transition-colors" title="Reactivate" onClick={() => handleReactivateSub(sub.id)}><PlayCircle size={12} /></button>
+                            <button className="p-1.5 text-tx-4 hover:text-loss transition-colors" title="Delete" onClick={() => setDeleteSubId(sub.id)}><Trash2 size={12} /></button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            {subscriptions.length > 0 && (
+            {activeSubs.length > 0 && (
               <div className="mt-3 pt-3 border-t flex justify-between text-sm" style={{ borderColor: "rgba(14,184,154,0.06)" }}>
                 <span className="text-tx-3">Total monthly cost</span>
                 <span className="font-semibold text-tx-1">{fmtGBP(totalMonthlySubs)}</span>

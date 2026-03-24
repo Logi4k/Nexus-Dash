@@ -500,8 +500,8 @@ export default function Dashboard() {
     );
     const activeAccs = [...fundedAccs, ...challengeAccs].slice(0, 8);
 
-    // Monthly subscriptions
-    const monthlySubs = data.subscriptions.reduce((s, sub) => {
+    // Monthly subscriptions (active only)
+    const monthlySubs = data.subscriptions.filter((sub) => !sub.cancelled).reduce((s, sub) => {
       if (sub.frequency === "monthly") return s + toNum(sub.amount);
       if (sub.frequency === "yearly") return s + toNum(sub.amount) / 12;
       if (sub.frequency === "weekly") return s + (toNum(sub.amount) * 52) / 12;
