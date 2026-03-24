@@ -377,68 +377,68 @@ export default function MobileNav({
             )}
           </AnimatePresence>
         </nav>
-
-        {/* FAB — inside the animated wrapper so it slides with the nav */}
-        <div ref={fabRef}>
-          {/* Action items stacked above FAB */}
-          <AnimatePresence>
-            {fabOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed right-4 z-50 flex flex-col items-end gap-2 md:hidden"
-                style={{ bottom: "calc(env(safe-area-inset-bottom) + 9.5rem)" }}
-              >
-                {FAB_ACTIONS.map((action, i) => (
-                  <motion.button
-                    key={action.label}
-                    initial={{ opacity: 0, y: 16, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    transition={{ delay: i * 0.05, duration: 0.2 }}
-                    onClick={() => handleFabAction(action)}
-                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
-                    style={{
-                      background: `${action.color}20`,
-                      border: `1px solid ${action.color}35`,
-                      boxShadow: `0 4px 12px ${action.color}25`,
-                      minWidth: 160,
-                    }}
-                  >
-                    <action.Icon size={16} style={{ color: action.color }} />
-                    <span className="text-sm font-semibold text-tx-1 whitespace-nowrap">{action.label}</span>
-                  </motion.button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* FAB button */}
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.92 }}
-            onClick={() => setFabOpen((o) => !o)}
-            aria-label={fabOpen ? "Close quick actions" : "Open quick actions"}
-            className="fixed right-4 z-[51] flex items-center justify-center rounded-full md:hidden"
-            style={{
-              bottom: "calc(env(safe-area-inset-bottom) + 8rem)",
-              width: 52,
-              height: 52,
-              background: "var(--tx-1)",
-              color: "var(--bg-base)",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-            }}
-          >
-            <motion.div
-              animate={{ rotate: fabOpen ? 45 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Plus size={22} strokeWidth={2.5} />
-            </motion.div>
-          </motion.button>
-        </div>
       </motion.div>
+
+      {/* FAB — outside the animated nav wrapper so it is never affected by the translateY transform */}
+      <div ref={fabRef} className="md:hidden">
+        {/* Action items stacked above FAB */}
+        <AnimatePresence>
+          {fabOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed right-4 z-50 flex flex-col items-end gap-2 md:hidden"
+              style={{ bottom: "calc(env(safe-area-inset-bottom) + 9.5rem)" }}
+            >
+              {FAB_ACTIONS.map((action, i) => (
+                <motion.button
+                  key={action.label}
+                  initial={{ opacity: 0, y: 16, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
+                  onClick={() => handleFabAction(action)}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
+                  style={{
+                    background: `${action.color}20`,
+                    border: `1px solid ${action.color}35`,
+                    boxShadow: `0 4px 12px ${action.color}25`,
+                    minWidth: 160,
+                  }}
+                >
+                  <action.Icon size={16} style={{ color: action.color }} />
+                  <span className="text-sm font-semibold text-tx-1 whitespace-nowrap">{action.label}</span>
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* FAB button */}
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setFabOpen((o) => !o)}
+          aria-label={fabOpen ? "Close quick actions" : "Open quick actions"}
+          className="fixed right-4 z-[51] flex items-center justify-center rounded-full md:hidden"
+          style={{
+            bottom: "calc(env(safe-area-inset-bottom) + 8rem)",
+            width: 52,
+            height: 52,
+            background: "var(--tx-1)",
+            color: "var(--bg-base)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+          }}
+        >
+          <motion.div
+            animate={{ rotate: fabOpen ? 45 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Plus size={22} strokeWidth={2.5} />
+          </motion.div>
+        </motion.button>
+      </div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
