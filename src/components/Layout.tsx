@@ -95,6 +95,26 @@ export default function Layout() {
       if (e.key === "Escape") {
         setCommandPaletteOpen(false);
       }
+
+      // Single-letter page navigation (only when not editing and no modifier keys)
+      const tag = (e.target as HTMLElement).tagName.toLowerCase();
+      const isEditing =
+        tag === "input" ||
+        tag === "textarea" ||
+        (e.target as HTMLElement).isContentEditable;
+      if (isEditing || e.ctrlKey || e.metaKey || e.altKey) return;
+
+      switch (e.key.toLowerCase()) {
+        case "d": navigate("/"); break;
+        case "m": navigate("/market"); break;
+        case "j": navigate("/journal"); break;
+        case "p": navigate("/prop"); break;
+        case "e": navigate("/expenses"); break;
+        case "b": navigate("/debt"); break;
+        case "i": navigate("/investments"); break;
+        case "t": navigate("/tax"); break;
+        case "n": navigate("/ideas"); break;
+      }
     }
 
     window.addEventListener("keydown", onKeyDown);
