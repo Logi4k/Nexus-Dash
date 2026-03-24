@@ -16,9 +16,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   items: CommandPaletteItem[];
+  dynamicItems?: CommandPaletteItem[];
 }
 
-export default function CommandPalette({ open, onClose, items }: Props) {
+export default function CommandPalette({ open, onClose, items, dynamicItems }: Props) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,18 +37,36 @@ export default function CommandPalette({ open, onClose, items }: Props) {
 
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return items;
 
-    return items.filter((item) => {
-      const haystack = [
-        item.label,
-        item.description ?? "",
-        item.group,
-        ...(item.keywords ?? []),
-      ].join(" ").toLowerCase();
-      return haystack.includes(normalized);
-    });
-  }, [items, query]);
+    const staticFiltered = !normalized
+      ? items
+      : items.filter((item) => {
+          const haystack = [
+            item.label,
+            item.description ?? "",
+            item.group,
+            ...(item.keywords ?? []),
+          ].join(" ").toLowerCase();
+          return haystack.includes(normalized);
+        });
+
+    if (!normalized || normalized.length < 2 || !dynamicItems?.length) {
+      return staticFiltered;
+    }
+
+    const dynamicFiltered = dynamicItems
+      .filter((item) => {
+        const haystack = [
+          item.label,
+          item.description ?? "",
+          ...(item.keywords ?? []),
+        ].join(" ").toLowerCase();
+        return haystack.includes(normalized);
+      })
+      .slice(0, 8);
+
+    return [...staticFiltered, ...dynamicFiltered];
+  }, [items, dynamicItems, query]);
 
   useEffect(() => {
     if (selectedIndex > filteredItems.length - 1) {

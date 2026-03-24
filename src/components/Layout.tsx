@@ -11,12 +11,15 @@ import {
   NotebookPen,
   PieChart,
   Plus,
+  Receipt,
   Scale,
+  TrendingUp,
   Wallet,
 } from "lucide-react";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import CommandPalette, { type CommandPaletteItem } from "./CommandPalette";
+import { useAppData } from "@/lib/store";
 
 const PAGE_ORDER = [
   "/",
@@ -33,6 +36,7 @@ const PAGE_ORDER = [
 export default function Layout() {
   const loc = useLocation();
   const navigate = useNavigate();
+  const { data } = useAppData();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
   const mainRef = useRef<HTMLElement>(null);
@@ -297,6 +301,54 @@ export default function Layout() {
     [navigate]
   );
 
+  const dynamicItems = useMemo<CommandPaletteItem[]>(() => {
+    const tradeItems: CommandPaletteItem[] = [...(data.tradeJournal ?? [])]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 200)
+      .map((t) => ({
+        id: `trade-${t.id}`,
+        label: `${t.instrument} ${t.direction} — ${t.date}`,
+        description:
+          [t.setup, t.notes].filter(Boolean).join(" · ") || undefined,
+        group: "Trades",
+        keywords: [t.instrument, t.setup, t.notes, ...(t.tags ?? [])].filter(
+          Boolean
+        ) as string[],
+        Icon: TrendingUp,
+        run: () => navigate("/journal"),
+      }));
+
+    const expenseItems: CommandPaletteItem[] = [...(data.expenses ?? [])]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 100)
+      .map((e) => {
+        const amt =
+          typeof e.amount === "string" ? parseFloat(e.amount) : e.amount;
+        return {
+          id: `expense-${e.id}`,
+          label: e.description || `${e.cat} expense`,
+          description: `${amt < 0 ? "-" : ""}£${Math.abs(amt).toLocaleString()} · ${e.date}`,
+          group: "Expenses",
+          keywords: [e.description, e.cat].filter(Boolean) as string[],
+          Icon: Receipt,
+          run: () => navigate("/expenses"),
+        };
+      });
+
+    const ideaItems: CommandPaletteItem[] = (data.ideaTopics ?? []).map(
+      (topic) => ({
+        id: `idea-${topic.id}`,
+        label: topic.name,
+        group: "Ideas",
+        keywords: [topic.name],
+        Icon: Lightbulb,
+        run: () => navigate("/ideas"),
+      })
+    );
+
+    return [...tradeItems, ...expenseItems, ...ideaItems];
+  }, [data, navigate]);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg-base">
       <div className="hidden md:flex h-full flex-shrink-0">
@@ -332,6 +384,7 @@ export default function Layout() {
         open={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         items={commandItems}
+        dynamicItems={dynamicItems}
       />
     </div>
   );
