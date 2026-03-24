@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { toast } from 'sonner';
 import { PAGE_THEMES } from "@/lib/theme";
 import {
   CreditCard,
@@ -621,8 +622,14 @@ export default function DebtPage() {
   }
 
   function handleDeleteDebt(id: string) {
+    const deleted = debts.find((d) => d.id === id);
+    if (!deleted) return;
     update((prev) => ({ ...prev, debts: prev.debts.filter((d) => d.id !== id) }));
     setDeleteConfirm(null);
+    toast('Debt deleted', {
+      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, debts: [...prev.debts, deleted] })) },
+      duration: 5000,
+    });
   }
 
   const utilColors = utilizationColor(stats.overallUtil);

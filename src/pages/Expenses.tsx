@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { toast } from 'sonner';
 import { PAGE_THEMES } from "@/lib/theme";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -478,10 +479,16 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
   };
 
   const handleDelete = (id: string) => {
+    const deleted = data.expenses.find((e) => e.id === id);
+    if (!deleted) return;
     update((prev) => ({
       ...prev,
       expenses: prev.expenses.filter((e) => e.id !== id),
     }));
+    toast('Expense deleted', {
+      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, expenses: [...prev.expenses, deleted] })) },
+      duration: 5000,
+    });
   };
 
   return (
@@ -942,10 +949,16 @@ function OtherExpensesTab() {
   };
 
   const handleDelete = (id: string) => {
+    const deleted = data.genExpenses.find((e) => e.id === id);
+    if (!deleted) return;
     update((prev) => ({
       ...prev,
       genExpenses: prev.genExpenses.filter((e) => e.id !== id),
     }));
+    toast('Expense deleted', {
+      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, genExpenses: [...prev.genExpenses, deleted] })) },
+      duration: 5000,
+    });
   };
 
   return (

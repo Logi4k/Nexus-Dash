@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { toast } from 'sonner';
 import { PAGE_THEMES } from "@/lib/theme";
 import {
   BarChart3,
@@ -845,11 +846,17 @@ export default function InvestmentsPage() {
   }
 
   function handleDeleteInvestment(id: string) {
+    const deleted = investments.find((inv) => inv.id === id);
+    if (!deleted) return;
     update((prev) => ({
       ...prev,
       investments: prev.investments.filter((inv) => inv.id !== id),
     }));
     setDeleteInvId(null);
+    toast('Investment deleted', {
+      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, investments: [...prev.investments, deleted] })) },
+      duration: 5000,
+    });
   }
 
   // ── Wealth target CRUD ────────────────────────────────────────────────────
@@ -883,11 +890,17 @@ export default function InvestmentsPage() {
   }
 
   function handleDeleteSub(id: string) {
+    const deleted = subscriptions.find((s) => s.id === id);
+    if (!deleted) return;
     update((prev) => ({
       ...prev,
       subscriptions: prev.subscriptions.filter((s) => s.id !== id),
     }));
     setDeleteSubId(null);
+    toast('Subscription deleted', {
+      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, subscriptions: [...prev.subscriptions, deleted] })) },
+      duration: 5000,
+    });
   }
 
   function handleCancelSub(id: string) {

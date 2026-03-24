@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { toast } from 'sonner';
 import { useLocation, useNavigate } from "react-router-dom";
 import { PAGE_THEMES } from "@/lib/theme";
 import {
@@ -949,6 +950,13 @@ export default function Journal() {
       ...prev,
       tradeJournal: (prev.tradeJournal ?? []).filter((t) => t.id !== id),
     }));
+    if (trade) {
+      toast('Trade deleted', {
+        description: 'Images cannot be recovered',
+        action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, tradeJournal: [...(prev.tradeJournal ?? []), trade] })) },
+        duration: 5000,
+      });
+    }
   }
 
   function handleDeleteTradeImage(tradeId: string, imageId: string) {

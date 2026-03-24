@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { toast } from 'sonner';
 import { PAGE_THEMES } from "@/lib/theme";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -1540,7 +1541,13 @@ export default function PropAccounts() {
 
   /* ---- Delete account ---- */
   const handleDelete = (id: string) => {
+    const deleted = data.accounts.find((a) => a.id === id);
+    if (!deleted) return;
     update((prev) => ({ ...prev, accounts: prev.accounts.filter((a) => a.id !== id) }));
+    toast('Account deleted', {
+      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, accounts: [...prev.accounts, deleted] })) },
+      duration: 5000,
+    });
   };
 
   /* ---- Edit passed challenge ---- */
@@ -1557,11 +1564,17 @@ export default function PropAccounts() {
 
   /* ---- Delete passed challenge ---- */
   const handleDeleteChallenge = (id: string) => {
+    const deleted = (data.passedChallenges ?? []).find((c) => c.id === id);
+    if (!deleted) return;
     update((prev) => ({
       ...prev,
       passedChallenges: (prev.passedChallenges ?? []).filter((c) => c.id !== id),
     }));
     setDeleteChallengeConfirm(null);
+    toast('Challenge deleted', {
+      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, passedChallenges: [...(prev.passedChallenges ?? []), deleted] })) },
+      duration: 5000,
+    });
   };
 
   /* ---- Save payout (add or edit) — also deducts from linked account balance ---- */
@@ -1615,8 +1628,14 @@ export default function PropAccounts() {
 
   /* ---- Delete payout ---- */
   const handleDeletePayout = (id: string) => {
+    const deleted = data.withdrawals.find((w) => w.id === id);
+    if (!deleted) return;
     update((prev) => ({ ...prev, withdrawals: prev.withdrawals.filter((w) => w.id !== id) }));
     setDeletingPayoutId(null);
+    toast('Payout deleted', {
+      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, withdrawals: [...prev.withdrawals, deleted] })) },
+      duration: 5000,
+    });
   };
 
   const openPayout = (firm?: string, accountId?: string) => {
