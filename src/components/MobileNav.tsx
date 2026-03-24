@@ -222,7 +222,7 @@ export default function MobileNav({
         <nav
           className="px-3 pb-[calc(env(safe-area-inset-bottom)+0.7rem)] pt-2"
           style={{
-            background: `linear-gradient(180deg, rgba(var(--bg-base-rgb),0.6) 0%, rgba(var(--bg-base-rgb),0.95) 40%, rgb(var(--bg-base-rgb)) 100%)`,
+            background: "rgb(var(--bg-base-rgb))",
           }}
         >
           <div className="mx-auto mb-2 flex justify-end" style={{ maxWidth: 430 }}>
