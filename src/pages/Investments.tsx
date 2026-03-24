@@ -911,6 +911,7 @@ export default function InvestmentsPage() {
   const activeSubs = subscriptions.filter((s) => !s.cancelled);
   const cancelledSubs = subscriptions.filter((s) => s.cancelled);
   const totalMonthlySubs = activeSubs.reduce((s, sub) => s + monthlySubCost(sub), 0);
+  const annualSubCost = activeSubs.reduce((sum, s) => sum + monthlySubCost(s) * 12, 0);
 
   const lastSyncText =
     t212.last_sync > 0
@@ -1431,6 +1432,15 @@ export default function InvestmentsPage() {
                 <Plus size={12} /> Add
               </button>
             </div>
+            {activeSubs.length > 0 && (
+              <div
+                className="flex items-center justify-between px-3 py-2 rounded-lg mb-3"
+                style={{ background: "rgba(14,184,154,0.05)", border: "1px solid rgba(14,184,154,0.1)" }}
+              >
+                <span className="text-xs text-tx-3">Annual cost</span>
+                <span className="text-sm font-semibold tabular-nums text-tx-1">{fmtGBP(annualSubCost)} / yr</span>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               {subscriptions.length === 0 && (
                 <p className="text-xs text-tx-3 text-center py-4">No subscriptions added.</p>
