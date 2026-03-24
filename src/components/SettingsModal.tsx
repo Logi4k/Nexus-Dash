@@ -9,6 +9,7 @@ import {
   Moon,
   Sun,
   Smartphone,
+  Download,
 } from "lucide-react";
 import Modal from "@/components/Modal";
 import { useAppData } from "@/lib/store";
@@ -16,6 +17,34 @@ import { deleteAvatar } from "@/lib/avatarStorage";
 import { cn } from "@/lib/utils";
 import { DEFAULT_MOBILE_NAV_ITEMS, MOBILE_NAV_OPTIONS, sanitizeMobileNavItems } from "@/lib/mobileNav";
 import type { MobileNavItemId } from "@/types";
+
+// ── Export helpers ────────────────────────────────────────────────────────────
+function downloadFile(content: string, filename: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toCSV(rows: Record<string, unknown>[], headers: string[]): string {
+  const escape = (v: unknown) => {
+    const s = String(v ?? "").replace(/"/g, '""');
+    return /[,\n"]/.test(s) ? `"${s}"` : s;
+  };
+  return [
+    headers.join(","),
+    ...rows.map(row => headers.map(h => escape(row[h])).join(","))
+  ].join("\n");
+}
 
 const AVATAR_COLORS = [
   "#1dd4b4", // teal (accent)
@@ -139,6 +168,23 @@ export default function SettingsModal({ open, onClose }: Props) {
       },
     }));
     onClose();
+  }
+
+  function exportAllJSON() {
+    const json = JSON.stringify(data, null, 2);
+    downloadFile(json, `nexus-backup-${todayISO()}.json`, "application/json");
+  }
+
+  function exportTradesCSV() {
+    const headers = ["date","time","instrument","direction","entryPrice","exitPrice","stopLoss","contracts","pnl","fees","setup","session","notes","tags"];
+    const rows = (data.tradeJournal ?? []) as unknown as Record<string, unknown>[];
+    downloadFile(toCSV(rows, headers), `nexus-trades-${todayISO()}.csv`, "text/csv");
+  }
+
+  function exportExpensesCSV() {
+    const headers = ["date","description","amount","category","firm"];
+    const rows = (data.expenses ?? []) as unknown as Record<string, unknown>[];
+    downloadFile(toCSV(rows, headers), `nexus-expenses-${todayISO()}.csv`, "text/csv");
   }
 
   const initials = (username.trim() || "T").slice(0, 2).toUpperCase();
@@ -396,6 +442,38 @@ export default function SettingsModal({ open, onClose }: Props) {
           </div>
         </div>
         )}
+
+        {/* ── Export Data ── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Download size={11} className="text-accent" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-tx-3">Export Data</span>
+          </div>
+          <p className="text-[9px] text-tx-4 mb-3">Download your data for backup or analysis.</p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={exportAllJSON}
+              className="text-[10px] font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-all bg-accent-muted border border-border text-tx-2 hover:border-accent/40 hover:text-tx-1"
+            >
+              <Download size={11} className="text-accent flex-shrink-0" />
+              Export All Data (JSON)
+            </button>
+            <button
+              onClick={exportTradesCSV}
+              className="text-[10px] font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-all bg-accent-muted border border-border text-tx-2 hover:border-accent/40 hover:text-tx-1"
+            >
+              <Download size={11} className="text-accent flex-shrink-0" />
+              Export Trades (CSV)
+            </button>
+            <button
+              onClick={exportExpensesCSV}
+              className="text-[10px] font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-all bg-accent-muted border border-border text-tx-2 hover:border-accent/40 hover:text-tx-1"
+            >
+              <Download size={11} className="text-accent flex-shrink-0" />
+              Export Expenses (CSV)
+            </button>
+          </div>
+        </div>
 
         {/* ── Actions ── */}
         <div className="flex gap-2 pt-1">
