@@ -851,6 +851,11 @@ export default function Journal() {
     return () => clearTimeout(timer);
   }, [notes, entry]);
 
+  // Reset tag filter when selected date changes so stale selections don't hide trades
+  useEffect(() => {
+    setFilters(f => ({ ...f, tag: "" }));
+  }, [selectedDate]);
+
   function handleNotesChange(val: string) {
     patchEntry({ notes: val });
     setAutoSaveLabel("Saving…");
@@ -2117,6 +2122,10 @@ export default function Journal() {
                 if (e.key === 'Enter' || e.key === ',') {
                   e.preventDefault();
                   addTag(tagInput);
+                }
+                if (e.key === "Backspace" && tagInput === "" && tradeForm.tags.length > 0) {
+                  e.preventDefault();
+                  setTradeForm(p => ({ ...p, tags: p.tags.slice(0, -1) }));
                 }
               }}
             />

@@ -182,7 +182,7 @@ export default function SettingsModal({ open, onClose }: Props) {
   }
 
   function exportExpensesCSV() {
-    const headers = ["date","description","amount","category","firm"];
+    const headers = ["date","description","amount","cat","firm"];
     const rows = (data.expenses ?? []) as unknown as Record<string, unknown>[];
     downloadFile(toCSV(rows, headers), `nexus-expenses-${todayISO()}.csv`, "text/csv");
   }
