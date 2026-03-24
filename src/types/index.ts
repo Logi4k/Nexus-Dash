@@ -259,6 +259,7 @@ export interface AppData {
     savedSoFar: number;
     savingsGoalOverride: number | null;
   };
+  categoryBudgets?: Record<string, number>;
 }
 
 export type NavItem = {

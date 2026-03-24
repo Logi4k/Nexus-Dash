@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Pencil,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { fmtGBP, fmtDate, toNum, groupByMonth, cn, generateId } from "@/lib/utils";
@@ -375,6 +376,10 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  /* ---- Budget editing state ---- */
+  const [editingBudgetCat, setEditingBudgetCat] = useState<string | null>(null);
+  const [budgetInputVal, setBudgetInputVal] = useState("");
+
   /* ---- Stats ---- */
   const stats = useMemo(() => {
     const expenses = data.expenses;
@@ -443,6 +448,17 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
         total: items.reduce((s, e) => s + toNum(e.amount), 0),
       }));
   }, [filtered]);
+
+  /* ---- Monthly spend per category (current month) ---- */
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const monthlySpend = useMemo(() =>
+    EXPENSE_CATS.reduce((acc, cat) => {
+      acc[cat] = data.expenses
+        .filter((e) => e.cat === cat && e.date?.startsWith(currentMonth))
+        .reduce((s, e) => s + toNum(e.amount), 0);
+      return acc;
+    }, {} as Record<string, number>),
+  [data.expenses, currentMonth]);
 
   useEffect(() => {
     const q = search.trim();
@@ -694,6 +710,111 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
 
         {/* ── Right: Insights sidebar ── */}
         <div className="flex flex-col gap-4 xl:sticky xl:top-6">
+
+          {/* Monthly Budget */}
+          {(() => {
+            const budgets = data.categoryBudgets ?? {};
+            return (
+              <div className="card p-4">
+                <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3">Monthly Budget</p>
+                <div className="flex flex-col gap-3">
+                  {EXPENSE_CATS.map((cat) => {
+                    const spend  = monthlySpend[cat] ?? 0;
+                    const budget = budgets[cat];
+                    const hasBudget = budget != null && budget > 0;
+                    const pct    = hasBudget ? Math.min((spend / budget) * 100, 100) : 0;
+                    const barColor =
+                      pct >= 90 ? "#ef4444" :
+                      pct >= 70 ? "#f59e0b" :
+                      "#22c55e";
+                    const catColor = bwColor(CAT_COLORS[cat] ?? "#94a3b8", bw);
+                    const isEditing = editingBudgetCat === cat;
+
+                    const startEdit = () => {
+                      setBudgetInputVal(hasBudget ? String(budget) : "");
+                      setEditingBudgetCat(cat);
+                    };
+
+                    const saveBudget = () => {
+                      const parsed = parseFloat(budgetInputVal);
+                      if (!isNaN(parsed) && parsed > 0) {
+                        update((prev) => ({
+                          ...prev,
+                          categoryBudgets: { ...(prev.categoryBudgets ?? {}), [cat]: parsed },
+                        }));
+                      }
+                      setEditingBudgetCat(null);
+                      setBudgetInputVal("");
+                    };
+
+                    return (
+                      <div key={cat}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span
+                            className="text-[11px] font-bold capitalize px-1.5 py-0.5 rounded"
+                            style={{ background: `${catColor}18`, color: catColor }}
+                          >
+                            {cat}
+                          </span>
+                          {isEditing ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                className="nx-input text-xs w-20 px-2 py-0.5 h-6"
+                                type="number"
+                                min="0"
+                                step="1"
+                                autoFocus
+                                value={budgetInputVal}
+                                onChange={(e) => setBudgetInputVal(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveBudget();
+                                  if (e.key === "Escape") { setEditingBudgetCat(null); setBudgetInputVal(""); }
+                                }}
+                              />
+                              <button
+                                className="px-2 py-0.5 rounded text-[10px] font-semibold bg-accent/15 text-accent hover:bg-accent/25 transition-all"
+                                onClick={saveBudget}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          ) : hasBudget ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-mono tabular-nums text-tx-2">
+                                {fmtGBP(spend, 0)} / {fmtGBP(budget, 0)}
+                              </span>
+                              <button
+                                className="p-0.5 rounded text-tx-4 hover:text-tx-1 transition-colors"
+                                title="Edit budget"
+                                onClick={startEdit}
+                              >
+                                <Pencil size={10} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="text-[10px] font-semibold text-accent hover:underline"
+                              onClick={startEdit}
+                            >
+                              + Set budget
+                            </button>
+                          )}
+                        </div>
+                        {hasBudget && (
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
+                            <div
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${pct}%`, background: barColor }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Spend vs Earned ROI */}
           {(() => {
