@@ -500,6 +500,13 @@ export default function Dashboard() {
     );
     const activeAccs = [...fundedAccs, ...challengeAccs].slice(0, 8);
 
+    // Funded account P&L (balance growth above initial balance in active funded accounts)
+    const fundedAccountPnL = fundedAccs.reduce((s, a) => {
+      const bal = toNum(a.balance);
+      const init = toNum(a.initialBalance ?? a.balance);
+      return s + (bal - init);
+    }, 0);
+
     // Monthly subscriptions (active only)
     const monthlySubs = data.subscriptions.filter((sub) => !sub.cancelled).reduce((s, sub) => {
       if (sub.frequency === "monthly") return s + toNum(sub.amount);
@@ -597,7 +604,7 @@ export default function Dashboard() {
     return {
       netPnL, totalWithdrawals, totalExpenses, margin, portfolioValue,
       portfolioGain, investVal, t212Val, totalDebt, monthlyDebtPayments,
-      fundedAccs, challengeAccs, breachedAccs, activeAccs,
+      fundedAccs, challengeAccs, breachedAccs, activeAccs, fundedAccountPnL,
       monthlySubs, monthlyChart, pnlChart, topFirms, firmMax,
       recentTx, avgMonthlyIncome, topPayouts,
       allDebts, investCost,
@@ -1986,7 +1993,13 @@ export default function Dashboard() {
 
         {/* Net Worth Snapshot */}
         {(() => {
-          const netWorth = stats.totalWithdrawals - stats.totalExpenses + stats.portfolioValue - stats.totalDebt;
+          const netWorth = stats.totalWithdrawals - stats.totalExpenses + stats.portfolioValue - stats.totalDebt + stats.fundedAccountPnL;
+          const rows = [
+            { label: "Prop P&L",      value: stats.netPnL,              cls: stats.netPnL >= 0 ? "text-profit" : "text-loss" },
+            ...(stats.fundedAccountPnL !== 0 ? [{ label: "Active Accounts", value: stats.fundedAccountPnL, cls: stats.fundedAccountPnL >= 0 ? "text-profit" : "text-loss" }] : []),
+            { label: "Portfolio",     value: stats.portfolioValue,      cls: "text-accent" },
+            { label: "Debt",          value: -stats.totalDebt,          cls: "text-loss" },
+          ];
           return (
             <div
               className="card p-4"
@@ -1996,11 +2009,7 @@ export default function Dashboard() {
                 <Banknote size={10} />Net Worth
               </p>
               <div className="flex flex-col gap-1.5">
-                {[
-                  { label: "Prop P&L",   value: stats.netPnL,         cls: stats.netPnL >= 0 ? "text-profit" : "text-loss" },
-                  { label: "Portfolio",  value: stats.portfolioValue, cls: "text-accent" },
-                  { label: "Debt",       value: -stats.totalDebt,     cls: "text-loss" },
-                ].map((r) => (
+                {rows.map((r) => (
                   <div key={r.label} className="flex items-center justify-between">
                     <span className="text-xs text-tx-3">{r.label}</span>
                     <span className={cn("text-xs font-bold tabular-nums font-mono", r.cls)}>
