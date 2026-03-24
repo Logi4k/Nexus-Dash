@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { fmtGBP, fmtDate, toNum, groupByMonth, cn, generateId } from "@/lib/utils";
+import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
 import StatCard from "@/components/StatCard";
 import type { Expense } from "@/types";
@@ -40,10 +41,11 @@ const FIRMS = [
 const EXPENSE_CATS = ["account", "subscription", "other"] as const;
 type ExpenseCat = (typeof EXPENSE_CATS)[number];
 
+// Keep in sync with --color-cat-* tokens in index.css
 const CAT_COLORS: Record<string, string> = {
-  account:      "#3b82f6",
-  subscription: "#8b5cf6",
-  other:        "#1dd4b4",
+  account:      "#3b82f6",  // --color-cat-account
+  subscription: "#8b5cf6",  // --color-cat-subscription
+  other:        "#1dd4b4",  // --color-cat-other (brand teal)
 };
 
 type TabKey = "propfirm" | "other";
@@ -114,6 +116,7 @@ function MonthlyTrendChart({
 }: {
   monthGroups: { month: string; label: string; total: number }[];
 }) {
+  const bw = useBWMode();
   const chartData = useMemo(() => {
     return [...monthGroups]
       .slice(0, 8)
@@ -180,11 +183,11 @@ function MonthlyTrendChart({
           const isCurrent = i === chartData.length - 1;
           const isPeak    = d.total === maxVal;
           const isLow     = d.total === Math.min(...chartData.map((c) => c.total));
-          const color     = isPeak ? "#ef4444" : isCurrent ? "#10f5a4" : "#a1a1aa";
+          const color     = isPeak ? "#ef4444" : isCurrent ? bwColor("#10f5a4", bw) : "#a1a1aa";
           const barBg     = isPeak
             ? "linear-gradient(90deg,#ef444460,#ef4444)"
             : isCurrent
-            ? "linear-gradient(90deg,#0eb89880,#10f5a4)"
+            ? bwColor("linear-gradient(90deg,#0eb89880,#10f5a4)", bw)
             : "linear-gradient(90deg,rgba(var(--surface-rgb),0.08),rgba(var(--surface-rgb),0.16))";
 
           // Delta vs previous month
@@ -218,20 +221,20 @@ function MonthlyTrendChart({
               </div>
               <div className="w-full md:w-20 shrink-0 flex items-center gap-1 justify-start md:justify-end flex-wrap">
                 {isPeak && (
-                  <span className="text-[9px] font-bold text-loss px-1.5 py-0.5 rounded"
+                  <span className="text-[10px] font-bold text-loss px-1.5 py-0.5 rounded"
                     style={{ background: "rgba(239,68,68,0.1)" }}>PEAK</span>
                 )}
                 {isCurrent && !isPeak && (
-                  <span className="text-[9px] font-bold text-accent px-1.5 py-0.5 rounded"
+                  <span className="text-[10px] font-bold text-accent px-1.5 py-0.5 rounded"
                     style={{ background: "rgba(14,184,154,0.1)" }}>NOW</span>
                 )}
                 {isLow && !isCurrent && !isPeak && (
-                  <span className="text-[9px] font-bold text-tx-4 px-1.5 py-0.5 rounded"
+                  <span className="text-[10px] font-bold text-tx-4 px-1.5 py-0.5 rounded"
                     style={{ background: "rgba(var(--surface-rgb),0.07)" }}>LOW</span>
                 )}
                 {delta !== null && !isPeak && !isCurrent && !isLow && (
                   <span className={cn(
-                    "text-[9px] font-mono tabular-nums",
+                    "text-[10px] font-mono tabular-nums",
                     delta > 0 ? "text-loss/70" : "text-profit/70"
                   )}>
                     {delta > 0 ? "+" : ""}{fmtGBP(delta, 0)}
@@ -268,6 +271,7 @@ function MonthlyTrendChart({
 /* ------------------------------------------------------------------ */
 
 function FirmBreakdownStrip({ expenses }: { expenses: { description: string; amount: number | string }[] }) {
+  const bw = useBWMode();
   const firmTotals = useMemo(() => {
     const map: Record<string, number> = {};
     for (const e of expenses) {
@@ -280,7 +284,7 @@ function FirmBreakdownStrip({ expenses }: { expenses: { description: string; amo
 
   const maxSpend = firmTotals[0]?.[1] ?? 1;
 
-  const FIRM_COLORS = ["#ef4444","#f97316","#f59e0b","#3b82f6","#8b5cf6","#1dd4b4"];
+  const FIRM_COLORS = ["#ef4444","#f97316","#f59e0b","#3b82f6","#8b5cf6","#1dd4b4"].map(c => bwColor(c, bw));
   const totalAll = firmTotals.reduce((s, [, v]) => s + v, 0) || 1;
 
   return (
@@ -307,12 +311,12 @@ function FirmBreakdownStrip({ expenses }: { expenses: { description: string; amo
           const col = FIRM_COLORS[i % FIRM_COLORS.length];
           const pct = (total / maxSpend) * 100;
           const share = (total / totalAll) * 100;
-          const medalColors = ["#f59e0b", "#94a3b8", "#cd7f32"];
+          const medalColors = [bwColor("#f59e0b", bw), bwColor("#94a3b8", bw), bwColor("#cd7f32", bw)];
           const rankColor = i < 3 ? medalColors[i] : col;
           return (
             <div key={firm} className="flex items-center gap-2.5 group px-2.5 py-2 rounded-lg transition-colors hover:bg-white/[0.025]">
               <span
-                className="text-[9px] font-black w-4 h-4 rounded flex items-center justify-center shrink-0 tabular-nums"
+                className="text-[10px] font-black w-4 h-4 rounded flex items-center justify-center shrink-0 tabular-nums"
                 style={{
                   background: `${rankColor}18`,
                   color: rankColor,
@@ -349,6 +353,7 @@ function FirmBreakdownStrip({ expenses }: { expenses: { description: string; amo
 /* ------------------------------------------------------------------ */
 
 function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
+  const bw = useBWMode();
   const { data, update } = useAppData();
 
   const [search, setSearch] = useState("");
@@ -363,9 +368,9 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     firm: FIRMS[0] as string,
-    cat: "account" as ExpenseCat,
+    cat: "" as ExpenseCat | "",
     amount: "",
-    notes: "",
+    customFirm: "",
   });
 
   /* ---- Stats ---- */
@@ -452,23 +457,23 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
   };
 
   const handleAdd = () => {
-    if (!form.amount || !form.firm) return;
+    const firmName = form.firm === "__other__" ? form.customFirm.trim() : form.firm;
+    if (!form.amount || !firmName || !form.cat) return;
     const expense: Expense = {
       id: generateId(),
       date: form.date,
-      description: form.firm,
-      cat: form.cat,
+      description: firmName,
+      cat: form.cat as ExpenseCat,
       amount: parseFloat(form.amount),
-      notes: form.notes || undefined,
     };
     update((prev) => ({ ...prev, expenses: [expense, ...prev.expenses] }));
     setAddOpen(false);
     setForm({
       date: new Date().toISOString().slice(0, 10),
       firm: FIRMS[0],
-      cat: "account",
+      cat: "",
       amount: "",
-      notes: "",
+      customFirm: "",
     });
   };
 
@@ -546,14 +551,19 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
 
           {/* Monthly collapsible sections */}
           {monthGroups.length === 0 ? (
-            <div className="py-16 text-center text-tx-3 text-sm">
-              No expenses found{search ? " matching your search" : ""}.
+            <div className="py-16 text-center flex flex-col items-center gap-3">
+              <p className="text-tx-3 text-sm">No expenses found{search ? " matching your search" : ""}.</p>
+              {search && (
+                <button className="btn btn-ghost btn-sm text-tx-3" onClick={() => setSearch("")}>
+                  Clear search
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
               {monthGroups.map(({ month, label, items, total }, mIdx) => {
             const isOpen = expandedMonths.has(month);
-            const mColors = ["#3b82f6","#8b5cf6","#f59e0b","#ef4444","#1dd4b4","#f97316","#22c55e","#ec4899"];
+            const mColors = ["#3b82f6","#8b5cf6","#f59e0b","#ef4444","#1dd4b4","#f97316","#22c55e","#ec4899"].map(c => bwColor(c, bw));
             const mColor = mColors[mIdx % mColors.length];
             return (
               <div
@@ -589,9 +599,8 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
                 {isOpen && (
                   <div className="border-t border-white/[0.06]">
                     {/* Column headers */}
-                    <div className="hidden md:grid grid-cols-[100px_1fr_120px_90px_80px_40px] gap-3 px-4 py-2 border-b border-white/[0.04]">
+                    <div className="hidden md:grid grid-cols-[100px_1fr_100px_80px_40px] gap-3 px-4 py-2 border-b border-white/[0.04]">
                       <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Date</span>
-                      <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Notes</span>
                       <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Firm</span>
                       <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Category</span>
                       <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium text-right">Amount</span>
@@ -599,7 +608,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
                     </div>
                     <div className="divide-y divide-white/[0.04] md:hidden">
                       {items.map((e) => {
-                        const catColor = CAT_COLORS[e.cat ?? "other"] ?? "#94a3b8";
+                        const catColor = bwColor(CAT_COLORS[e.cat ?? "other"] ?? "#94a3b8", bw);
                         return (
                           <div key={`mobile-${e.id}`} className="space-y-2 px-4 py-3">
                             <div className="flex items-start justify-between gap-3">
@@ -621,7 +630,6 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
                               >
                                 {e.cat ?? "other"}
                               </span>
-                              <span className="text-tx-2 text-[11px] truncate">{e.notes ?? "-"}</span>
                             </div>
                           </div>
                         );
@@ -631,19 +639,16 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
                       {items.map((e) => (
                         <div
                           key={e.id}
-                          className="grid grid-cols-[100px_1fr_120px_90px_80px_40px] gap-3 px-4 py-2.5 group hover:bg-white/[0.02] transition-colors"
+                          className="grid grid-cols-[100px_1fr_100px_80px_40px] gap-3 px-4 py-2.5 group hover:bg-white/[0.02] transition-colors"
                         >
                           <span className="text-tx-3 text-xs font-mono tabular-nums self-center">
                             {fmtDate(e.date)}
-                          </span>
-                          <span className="text-tx-2 text-xs self-center truncate">
-                            {e.notes ?? "—"}
                           </span>
                           <span className="text-tx-1 text-xs font-medium self-center truncate">
                             {e.description}
                           </span>
                           {(() => {
-                            const catColor = CAT_COLORS[e.cat ?? "other"] ?? "#94a3b8";
+                            const catColor = bwColor(CAT_COLORS[e.cat ?? "other"] ?? "#94a3b8", bw);
                             return (
                               <span
                                 className="text-[10px] font-bold px-1.5 py-0.5 rounded capitalize self-center"
@@ -708,11 +713,11 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
                 </span>
                 <div className="flex items-center justify-between text-xs mb-2">
                   <div>
-                    <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-0.5">Invested</p>
+                    <p className="text-[10px] text-tx-3 uppercase tracking-wider mb-0.5">Invested</p>
                     <p className="text-loss font-bold tabular-nums">{fmtGBP(stats.total)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-0.5">Earned</p>
+                    <p className="text-[10px] text-tx-3 uppercase tracking-wider mb-0.5">Earned</p>
                     <p className="text-profit font-bold tabular-nums">{fmtGBP(stats.totalEarned)}</p>
                   </div>
                 </div>
@@ -735,7 +740,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
                   const net    = f.earned - f.spent;
                   const isPos  = net >= 0;
                   const roi    = f.spent > 0 ? ((f.earned - f.spent) / f.spent) * 100 : 0;
-                  const medalColors = ["#f59e0b", "#94a3b8", "#cd7f32"];
+                  const medalColors = [bwColor("#f59e0b", bw), bwColor("#94a3b8", bw), bwColor("#cd7f32", bw)];
                   const rankColor = i < 3 ? medalColors[i] : (isPos ? "#22c55e" : "#ef4444");
                   return (
                     <div key={f.firm}
@@ -808,8 +813,9 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
               <select
                 className="nx-select"
                 value={form.cat}
-                onChange={(e) => setForm((p) => ({ ...p, cat: e.target.value as ExpenseCat }))}
+                onChange={(e) => setForm((p) => ({ ...p, cat: e.target.value as ExpenseCat | "" }))}
               >
+                <option value="" disabled>Select...</option>
                 {EXPENSE_CATS.map((c) => (
                   <option key={c} value={c}>
                     {c.charAt(0).toUpperCase() + c.slice(1)}
@@ -824,14 +830,21 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
             <select
               className="nx-select"
               value={form.firm}
-              onChange={(e) => setForm((p) => ({ ...p, firm: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, firm: e.target.value, customFirm: "" }))}
             >
               {FIRMS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
+                <option key={f} value={f}>{f}</option>
               ))}
+              <option value="__other__">Other...</option>
             </select>
+            {form.firm === "__other__" && (
+              <input
+                className="nx-input mt-2"
+                placeholder="Firm name"
+                value={form.customFirm}
+                onChange={(e) => setForm((p) => ({ ...p, customFirm: e.target.value }))}
+              />
+            )}
           </div>
 
           <div>
@@ -846,20 +859,10 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
             />
           </div>
 
-          <div>
-            <label className="text-tx-3 text-xs block mb-1">
-              Notes <span className="opacity-50">(optional)</span>
-            </label>
-            <input
-              className="nx-input"
-              placeholder="Optional notes..."
-              value={form.notes}
-              onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-            />
-          </div>
-
           <div className="flex gap-2 pt-2">
-            <button className="btn-primary btn flex-1" onClick={handleAdd}>
+            <button className="btn-primary btn flex-1" onClick={handleAdd}
+              disabled={!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false)}
+              style={(!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false)) ? { opacity: 0.5 } : undefined}>
               Add Expense
             </button>
             <button className="btn-ghost btn" onClick={() => setAddOpen(false)}>
@@ -881,10 +884,10 @@ function OtherExpensesTab() {
 
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [listExpanded, setListExpanded] = useState(false);
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     amount: "",
-    notes: "",
     description: "",
   });
 
@@ -928,14 +931,12 @@ function OtherExpensesTab() {
       description: form.description.trim() || "Other",
       cat: "personal",
       amount: parseFloat(form.amount),
-      notes: form.notes || undefined,
     };
     update((prev) => ({ ...prev, genExpenses: [expense, ...prev.genExpenses] }));
     setAddOpen(false);
     setForm({
       date: new Date().toISOString().slice(0, 10),
       amount: "",
-      notes: "",
       description: "",
     });
   };
@@ -1006,71 +1007,70 @@ function OtherExpensesTab() {
         </button>
       </div>
 
-      {/* Entries table */}
+      {/* Entries list */}
       <div className="card overflow-hidden" style={{ border: "1px solid rgba(14,184,154,0.1)" }}>
-        {/* Column headers */}
-        <div className="hidden md:grid grid-cols-[110px_1fr_110px_1fr_48px] gap-3 px-4 py-3 border-b border-white/[0.06]">
-          <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Date</span>
-          <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Description</span>
-          <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium text-right">Amount</span>
-          <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Notes</span>
-          <span />
-        </div>
-
-        {/* Rows */}
         {sorted.length === 0 ? (
-          <div className="py-16 text-center text-tx-3 text-sm">No entries recorded{search ? " matching your search" : ""}.</div>
+          <div className="py-16 text-center flex flex-col items-center gap-3">
+            <p className="text-tx-3 text-sm">No entries recorded{search ? " matching your search" : ""}.</p>
+            {search && (
+              <button className="btn btn-ghost btn-sm text-tx-3" onClick={() => setSearch("")}>
+                Clear search
+              </button>
+            )}
+          </div>
         ) : (
-          <div className="divide-y divide-white/[0.04]">
-            {sorted.map((e, i) => {
-              const gbp = toNum(e.amount);
-              const usd = parseUSD(e.notes);
-              const cleanNotes = e.notes
-                ? e.notes.replace(/Orig\s+\$[\d,]+(?:\.\d+)?/i, "").trim() || "-"
-                : "-";
-
-              return (
-                <div key={e.id} className={cn("group hover:bg-white/[0.02] transition-colors", i % 2 !== 0 && "bg-white/[0.01]")}>
-                  <div className="space-y-2 px-4 py-3 md:hidden">
-                    <div className="flex items-start justify-between gap-3">
+          <>
+            {/* Column headers — desktop */}
+            <div className="hidden md:grid grid-cols-[110px_1fr_110px_48px] gap-3 px-4 py-3 border-b border-white/[0.06]">
+              <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Date</span>
+              <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Description</span>
+              <span className="text-tx-3 text-[10px] uppercase tracking-wider font-medium text-right">Amount</span>
+              <span />
+            </div>
+            <div className="divide-y divide-white/[0.04]">
+              {(listExpanded ? sorted : sorted.slice(0, 5)).map((e, i) => {
+                const gbp = toNum(e.amount);
+                const usd = parseUSD(e.notes);
+                return (
+                  <div key={e.id} className={cn("group hover:bg-white/[0.02] transition-colors", i % 2 !== 0 && "bg-white/[0.01]")}>
+                    {/* Mobile */}
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 md:hidden">
                       <div className="min-w-0">
                         <div className="text-tx-2 text-sm font-medium truncate">{e.description}</div>
-                        <div className="mt-1 text-tx-3 text-[11px]">{fmtDate(e.date)}</div>
+                        <div className="mt-0.5 text-tx-3 text-[11px]">{fmtDate(e.date)}</div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-tx-1 text-sm font-semibold font-mono tabular-nums">{fmtGBP(gbp)}</div>
-                        {usd !== null && <div className="mt-0.5 text-tx-4 text-[10px] font-mono">${usd.toFixed(0)}</div>}
-                        <div className="mt-1 flex justify-end">
-                          <DeleteButton onDelete={() => handleDelete(e.id)} />
+                      <div className="text-right shrink-0 flex items-center gap-2">
+                        <div>
+                          <div className="text-tx-1 text-sm font-semibold font-mono tabular-nums">{fmtGBP(gbp)}</div>
+                          {usd !== null && <div className="mt-0.5 text-tx-4 text-[10px] font-mono">${usd.toFixed(0)}</div>}
                         </div>
+                        <DeleteButton onDelete={() => handleDelete(e.id)} />
                       </div>
                     </div>
-                    <div className="text-tx-3 text-[11px] break-words">{cleanNotes}</div>
-                  </div>
-                  <div className={cn(
-                    "hidden md:grid grid-cols-[110px_1fr_110px_1fr_48px] gap-3 px-4 py-2.5",
-                    i % 2 !== 0 && "bg-white/[0.01]"
-                  )}>
-                    <span className="text-tx-2 text-xs font-mono tabular-nums self-center">
-                      {fmtDate(e.date)}
-                    </span>
-                    <span className="text-tx-2 text-xs font-medium self-center truncate">
-                      {e.description}
-                    </span>
-                    <span className="text-tx-1 text-xs font-mono tabular-nums font-semibold text-right self-center">
-                      {fmtGBP(gbp)}{usd !== null && (
-                        <span className="text-tx-4 font-normal text-[10px] ml-1">(${usd.toFixed(0)})</span>
-                      )}
-                    </span>
-                    <span className="text-tx-3 text-xs self-center truncate">{cleanNotes}</span>
-                    <div className="self-center flex justify-end">
-                      <DeleteButton onDelete={() => handleDelete(e.id)} />
+                    {/* Desktop */}
+                    <div className={cn("hidden md:grid grid-cols-[110px_1fr_110px_48px] gap-3 px-4 py-2.5", i % 2 !== 0 && "bg-white/[0.01]")}>
+                      <span className="text-tx-2 text-xs font-mono tabular-nums self-center">{fmtDate(e.date)}</span>
+                      <span className="text-tx-2 text-xs font-medium self-center truncate">{e.description}</span>
+                      <span className="text-tx-1 text-xs font-mono tabular-nums font-semibold text-right self-center">
+                        {fmtGBP(gbp)}{usd !== null && <span className="text-tx-4 font-normal text-[10px] ml-1">(${usd.toFixed(0)})</span>}
+                      </span>
+                      <div className="self-center flex justify-end">
+                        <DeleteButton onDelete={() => handleDelete(e.id)} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            {sorted.length > 5 && (
+              <button
+                className="w-full py-2.5 text-[11px] font-medium text-tx-3 hover:text-tx-1 transition-colors border-t border-white/[0.04]"
+                onClick={() => setListExpanded((v) => !v)}
+              >
+                {listExpanded ? `Show less` : `Show ${sorted.length - 5} more`}
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -1114,21 +1114,6 @@ function OtherExpensesTab() {
             />
           </div>
 
-          <div>
-            <label className="text-tx-3 text-xs block mb-1">
-              Notes <span className="opacity-50">(optional)</span>
-            </label>
-            <input
-              className="nx-input"
-              placeholder='e.g. "Orig $120.00 — monthly support"'
-              value={form.notes}
-              onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-            />
-            <p className="text-tx-3 text-[10px] mt-1">
-              Include "Orig $XX.XX" in notes to record USD equivalent.
-            </p>
-          </div>
-
           <div className="flex gap-2 pt-2">
             <button className="btn-primary btn flex-1" onClick={handleAdd}
               disabled={!form.amount}
@@ -1156,7 +1141,8 @@ export default function Expenses() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>("propfirm");
 
-  const theme = PAGE_THEMES.expenses;
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.expenses, isBW);
   const locationAction = (location.state as { action?: string } | null)?.action;
 
   useEffect(() => {
@@ -1187,7 +1173,7 @@ export default function Expenses() {
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Expenses</div>
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-[22px] font-extrabold tracking-tight" style={{ color: "#f8fafc", letterSpacing: "-0.02em" }}>Expense Tracker</h1>
+          <h1 className="page-title">Expense Tracker</h1>
         </div>
       </div>
 

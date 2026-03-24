@@ -28,15 +28,18 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 
-// ── Palette constants ──────────────────────────────────────────────────────────
-const ACCENT  = "#f1f5f9";  // near-white
+// ── Palette constants (semantic – these keep colour even in BW) ────────────────
 const PROFIT  = "#22c55e";
 const LOSS    = "#ef4444";
 const WARN    = "#f59e0b";
-const PURPLE  = "#a855f7";
-const BLUE    = "#3b82f6";
-const ORANGE  = "#f97316";
+
+// ── Decorative palette (greyed out in BW mode via useBWMode) ───────────────────
+const ACCENT_RAW = "#f1f5f9";
+const PURPLE_RAW = "#a855f7";
+const BLUE_RAW   = "#3b82f6";
+const ORANGE_RAW = "#f97316";
 
 // ── Framer Motion variants ─────────────────────────────────────────────────────
 const container = {
@@ -91,8 +94,8 @@ function ChartTooltip({ active, payload, label }: {
     <div
       className="rounded-xl px-3.5 py-3 text-xs space-y-2 z-50"
       style={{
-        background: "#09090b",
-        border: "1px solid rgba(255,255,255,0.12)",
+        background: "var(--bg-base)",
+        border: "1px solid rgba(var(--border-rgb),0.12)",
         boxShadow: "0 12px 40px rgba(0,0,0,0.7)",
       }}
     >
@@ -130,7 +133,7 @@ function KPICard({
       >
         {/* Top row */}
         <div className="flex items-start justify-between mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-tx-3">{label}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--color)" }}>{label}</p>
           <div
             className="p-2 rounded-xl transition-all duration-200 group-hover:scale-110"
             style={{ background: `${color}18`, color }}
@@ -140,7 +143,7 @@ function KPICard({
         </div>
 
         {/* Value */}
-        <div className="text-[26px] font-black tabular-nums text-tx-1 leading-none mb-2.5">
+        <div className="text-[28px] font-black tabular-nums text-tx-1 leading-none mb-2.5">
           {prefix}
           <AnimatedNumber value={value} prefix="" decimals={decimals} />
         </div>
@@ -203,7 +206,7 @@ function TrendPill({ value, suffix = "%" }: { value: number; suffix?: string }) 
   const up = value >= 0;
   return (
     <span
-      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
       style={{
         background: up ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.14)",
         color: up ? PROFIT : LOSS,
@@ -265,9 +268,9 @@ function AccountTile({
         className="text-base font-black tabular-nums"
         style={{ color }}
       >
-        {fmtGBP(balance)}
+        {fmtUSD(balance)}
       </p>
-      <p className="text-[9px] uppercase tracking-widest mt-1 text-tx-3">{type}</p>
+      <p className="text-[10px] uppercase tracking-widest mt-1 text-tx-3">{type}</p>
     </div>
   );
 }
@@ -283,17 +286,17 @@ function SessionCard({
     <div
       className="flex-1 rounded-2xl p-4 transition-all duration-300 relative overflow-hidden"
       style={isActive ? {
-        background: `linear-gradient(160deg, ${session.color}09 0%, #090e1a 60%)`,
+        background: `linear-gradient(160deg, ${session.color}09 0%, var(--bg-base) 60%)`,
         border: `1px solid ${session.color}35`,
         borderLeft: `3px solid ${session.color}`,
-        boxShadow: `0 0 28px ${session.color}0d, 0 4px 20px rgba(0,0,0,0.5)`,
+        boxShadow: `0 0 28px ${session.color}0d, 0 4px 20px rgba(0,0,0,0.3)`,
       } : isNext ? {
         background: `${session.color}04`,
         border: `1px solid ${session.color}28`,
         borderLeft: `3px solid ${session.color}70`,
       } : {
-        background: "rgba(255,255,255,0.025)",
-        border: "1px solid rgba(255,255,255,0.06)",
+        background: "rgba(var(--surface-rgb),0.04)",
+        border: "1px solid rgba(var(--border-rgb),0.09)",
         borderLeft: `3px solid ${session.color}25`,
       }}
     >
@@ -319,12 +322,12 @@ function SessionCard({
           </span>
         </div>
         {isActive ? (
-          <span className="text-[9px] font-black uppercase tracking-[0.18em] px-2 py-0.5 rounded-full"
+          <span className="text-[10px] font-black uppercase tracking-[0.18em] px-2 py-0.5 rounded-full"
             style={{ background: `${session.color}1a`, color: session.color, border: `1px solid ${session.color}35` }}>
             LIVE
           </span>
         ) : isNext ? (
-          <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
+          <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
             style={{ background: `${session.color}12`, color: `${session.color}cc`, border: `1px solid ${session.color}28` }}>
             Next
           </span>
@@ -375,7 +378,12 @@ function opensInLabel(session: MarketSession, now: Date): string {
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const theme = PAGE_THEMES.dashboard;
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.dashboard, isBW);
+  const ACCENT = bwColor(ACCENT_RAW, isBW);
+  const PURPLE = bwColor(PURPLE_RAW, isBW);
+  const BLUE   = bwColor(BLUE_RAW, isBW);
+  const ORANGE = bwColor(ORANGE_RAW, isBW);
   const { data, update } = useAppData();
   const navigate = useNavigate();
   const now = useCurrentTime();
@@ -389,7 +397,7 @@ export default function Dashboard() {
   const [heroPeriod, setHeroPeriod] = useState<"1W" | "1M" | "3M" | "All">("All");
 
   // ── Wealth target modal ──────────────────────────────────────────────────────
-  const emptyTargetForm = { emoji: "🎯", name: "", desc: "", target: "", saved: "", monthly: "" };
+  const emptyTargetForm = { emoji: "TG", name: "", desc: "", target: "", saved: "", monthly: "" };
   const [targetModalOpen, setTargetModalOpen] = useState(false);
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [targetForm, setTargetForm] = useState(emptyTargetForm);
@@ -408,7 +416,7 @@ export default function Dashboard() {
   }
   function saveTarget() {
     const payload = {
-      emoji: targetForm.emoji || "🎯",
+      emoji: targetForm.emoji || "TG",
       name: targetForm.name.trim(),
       desc: targetForm.desc.trim(),
       target: parseFloat(targetForm.target) || 0,
@@ -622,14 +630,12 @@ export default function Dashboard() {
             Dashboard
           </div>
           <div className="flex items-start justify-between gap-4 mb-4">
-            <h1 className="text-[22px] font-extrabold tracking-tight" style={{ color: "#f8fafc", letterSpacing: "-0.02em" }}>
-              Portfolio Overview
-            </h1>
+            <h1 className="page-title">Portfolio Overview</h1>
             <div
               className="flex items-center gap-2.5 px-4 py-2 rounded-xl flex-shrink-0"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(var(--surface-rgb),0.04)",
+                border: "1px solid rgba(var(--border-rgb),0.08)",
               }}
             >
               <span
@@ -658,21 +664,21 @@ export default function Dashboard() {
           className="pointer-events-none absolute -top-32 -right-20"
           style={{
             width: 400, height: 400, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(20,184,166,0.15) 0%, transparent 70%)",
           }}
         />
         <div
           className="pointer-events-none absolute -bottom-20 left-40"
           style={{
             width: 280, height: 280, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(34,197,94,0.05) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(34,197,94,0.10) 0%, transparent 70%)",
           }}
         />
         <div
           className="pointer-events-none absolute top-8 right-60"
           style={{
             width: 180, height: 180, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(59,130,246,0.04) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
           }}
         />
 
@@ -681,7 +687,7 @@ export default function Dashboard() {
           {/* Left: Net P&L */}
           <div>
             <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(255,255,255,0.75)" }}>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: theme.accent }}>
                 Net Trading P&L
               </p>
               {/* Period filter pills */}
@@ -692,9 +698,9 @@ export default function Dashboard() {
                     onClick={() => setHeroPeriod(p)}
                     className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
                     style={{
-                      background: heroPeriod === p ? `${theme.accent}22` : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${heroPeriod === p ? theme.accent + "55" : "rgba(255,255,255,0.08)"}`,
-                      color: heroPeriod === p ? theme.accent : "rgba(255,255,255,0.45)",
+                      background: heroPeriod === p ? `${theme.accent}22` : "rgba(var(--surface-rgb),0.05)",
+                      border: `1px solid ${heroPeriod === p ? theme.accent + "55" : "rgba(var(--border-rgb),0.08)"}`,
+                      color: heroPeriod === p ? theme.accent : "var(--tx-4)",
                     }}
                   >
                     {p}
@@ -703,10 +709,10 @@ export default function Dashboard() {
               </div>
             </div>
             <div
-              className="text-[26px] font-extrabold tabular-nums leading-none"
+              className="text-[52px] font-black tabular-nums leading-none"
               style={{
                 color: stats.netPnL >= 0 ? "#4ade80" : LOSS,
-                letterSpacing: "-0.03em",
+                letterSpacing: "-0.04em",
               }}
             >
               <AnimatedNumber value={stats.netPnL} prefix="£" decimals={2} />
@@ -720,7 +726,7 @@ export default function Dashboard() {
               )}
               {stats.totalDebt > 0 && (
                 <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                   style={{
                     background: "rgba(239,68,68,0.12)",
                     color: LOSS,
@@ -732,7 +738,7 @@ export default function Dashboard() {
                 </span>
               )}
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                 style={{
                   background: "rgba(20,184,166,0.12)",
                   color: ACCENT,
@@ -744,7 +750,7 @@ export default function Dashboard() {
               </span>
               {stats.totalMonths > 0 && (
                 <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                   style={{ background: "rgba(59,130,246,0.12)", color: BLUE, border: "1px solid rgba(59,130,246,0.2)" }}
                 >
                   <Target size={8} />
@@ -753,7 +759,7 @@ export default function Dashboard() {
               )}
               {stats.streak >= 2 && (
                 <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                   style={{ background: "rgba(249,115,22,0.12)", color: ORANGE, border: "1px solid rgba(249,115,22,0.2)" }}
                 >
                   <Flame size={8} />
@@ -764,50 +770,58 @@ export default function Dashboard() {
           </div>
 
           {/* Right: account status pills */}
-          <div className="flex gap-3 overflow-x-auto">
+          <div className="grid grid-cols-3 gap-2 md:gap-3 w-full md:w-auto md:flex md:flex-row">
             {[
               {
                 label: "Funded",
                 count: stats.fundedAccs.length,
                 color: PROFIT,
-                icon: <CheckCircle2 size={18} />,
+                icon: <CheckCircle2 size={16} className="md:w-[18px] md:h-[18px]" />,
                 onClick: () => navigate("/prop"),
               },
               {
                 label: "Challenges",
                 count: stats.challengeAccs.length,
                 color: WARN,
-                icon: <Target size={18} />,
+                icon: <Target size={16} className="md:w-[18px] md:h-[18px]" />,
                 onClick: () => navigate("/prop"),
               },
               {
                 label: "Breached",
                 count: stats.breachedAccs.length,
                 color: LOSS,
-                icon: <AlertCircle size={18} />,
+                icon: <AlertCircle size={16} className="md:w-[18px] md:h-[18px]" />,
                 onClick: () => navigate("/prop"),
               },
             ].map((p) => (
               <button
                 key={p.label}
                 onClick={p.onClick}
-                className="text-center px-6 py-4 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                className="text-center px-3 py-3 md:px-7 md:py-5 rounded-2xl cursor-pointer transition-all duration-200 active:scale-95"
                 style={{
                   background: `${p.color}0d`,
                   border: `1px solid ${p.color}22`,
                 }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = `${p.color}18`;
+                  (e.currentTarget as HTMLButtonElement).style.border = `1px solid ${p.color}40`;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = `${p.color}0d`;
+                  (e.currentTarget as HTMLButtonElement).style.border = `1px solid ${p.color}22`;
+                }}
               >
-                <div className="flex justify-center mb-2" style={{ color: p.color }}>
+                <div className="flex justify-center mb-1.5 md:mb-2" style={{ color: p.color }}>
                   {p.icon}
                 </div>
                 <div
-                  className="text-3xl font-black leading-none tabular-nums"
-                  style={{ color: p.color }}
+                  className="text-[28px] md:text-[44px] font-black leading-none tabular-nums"
+                  style={{ color: p.color, letterSpacing: "-0.03em" }}
                 >
                   {p.count}
                 </div>
                 <div
-                  className="text-[9px] uppercase tracking-[0.15em] mt-1.5 font-bold"
+                  className="text-[9px] md:text-[10px] uppercase tracking-[0.12em] mt-1 md:mt-1.5 font-bold"
                   style={{ color: `${p.color}88` }}
                 >
                   {p.label}
@@ -836,7 +850,7 @@ export default function Dashboard() {
           return (
             <div className="relative z-10 mt-5 -mb-1">
               <div className="flex items-center justify-between mb-1.5 px-1">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-tx-4">Cumulative P&L</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-tx-4">Cumulative P&L</span>
                 <span className="text-[10px] font-mono font-bold tabular-nums" style={{ color: col }}>
                   {values[values.length - 1] >= 0 ? "+" : ""}{fmtGBP(values[values.length - 1])}
                 </span>
@@ -858,7 +872,7 @@ export default function Dashboard() {
                   <line
                     x1="0" y1={(H - 18 - ((0 - min) / range) * (H - 28)).toFixed(1)}
                     x2={W} y2={(H - 18 - ((0 - min) / range) * (H - 28)).toFixed(1)}
-                    stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 4"
+                    stroke="rgba(var(--surface-rgb),0.1)" strokeWidth="1" strokeDasharray="4 4"
                   />
                 )}
                 <path d={area} fill="url(#heroSparkGrad)" />
@@ -869,12 +883,12 @@ export default function Dashboard() {
                 ))}
                 {/* Terminal dot (highlighted) */}
                 <circle cx={lastPt[0].toFixed(1)} cy={lastPt[1].toFixed(1)} r="4" fill={col} filter="url(#heroGlow)" />
-                <circle cx={lastPt[0].toFixed(1)} cy={lastPt[1].toFixed(1)} r="2" fill="#09090b" />
+                <circle cx={lastPt[0].toFixed(1)} cy={lastPt[1].toFixed(1)} r="2" fill="var(--bg-base)" />
               </svg>
               {/* Month labels — positioned absolutely using percentage-based left */}
               <div className="flex justify-between mt-0.5 px-0">
                 {stats.pnlChart.map((d, i) => (
-                  <span key={i} className="text-[8px] font-mono tabular-nums" style={{ color: "var(--tx-4)" }}>
+                  <span key={i} className="text-[10px] font-mono tabular-nums" style={{ color: "var(--tx-4)" }}>
                     {d.month}
                   </span>
                 ))}
@@ -909,7 +923,7 @@ export default function Dashboard() {
                 <div className="p-1.5 rounded-lg flex-shrink-0" style={{ background: `${s.color}18`, color: s.color }}>
                   {s.icon}
                 </div>
-                <p className="text-[9px] uppercase tracking-widest font-bold text-tx-3">{s.label}</p>
+                <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: `${s.color}b3` }}>{s.label}</p>
               </div>
               <p className="text-[17px] font-black font-mono tabular-nums leading-none" style={{ color: s.color }}>
                 {fmtGBP(s.value)}
@@ -970,8 +984,8 @@ export default function Dashboard() {
       {/* ── CHARTS ROW ────────────────────────────────────────────────────────── */}
       <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {/* Monthly Breakdown — custom grouped bar chart */}
-        <Card className="md:col-span-3">
-          <CardContent className="pt-5">
+        <Card className="md:col-span-3 flex flex-col">
+          <CardContent className="pt-5 flex flex-col flex-1">
             {stats.monthlyChart.length > 0 ? (() => {
               const maxVal = Math.max(...stats.monthlyChart.map((m) => Math.max(m.income, m.costs)), 1);
               const totalIncome = stats.monthlyChart.reduce((s, m) => s + m.income, 0);
@@ -981,7 +995,7 @@ export default function Dashboard() {
               const selM   = stats.monthlyChart[selIdx] ?? null;
 
               return (
-                <>
+                <div className="flex flex-col flex-1 gap-0">
                   {/* ── Aggregate summary strip ── */}
                   <div className="grid grid-cols-3 gap-3 mb-5">
                     {[
@@ -990,14 +1004,14 @@ export default function Dashboard() {
                       { label: "Net P&L",      value: `${totalNet >= 0 ? "+" : ""}${fmtGBP(totalNet)}`, color: totalNet >= 0 ? PROFIT : LOSS, bg: totalNet >= 0 ? "rgba(34,197,94,0.07)" : "rgba(239,68,68,0.07)", border: totalNet >= 0 ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)" },
                     ].map(({ label, value, color, bg, border }) => (
                       <div key={label} className="rounded-xl px-3.5 py-2.5" style={{ background: bg, border: `1px solid ${border}` }}>
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-tx-4 mb-1">{label}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-tx-4 mb-1">{label}</p>
                         <p className="text-base font-black tabular-nums leading-none" style={{ color }}>{value}</p>
                       </div>
                     ))}
                   </div>
 
                   {/* ── Custom grouped bar chart ── */}
-                  <div className="flex items-end gap-1 h-[130px] px-1 mb-3">
+                  <div className="flex items-end gap-1 flex-1 min-h-[100px] px-1 mb-3">
                     {stats.monthlyChart.map((m, idx) => {
                       const isSelected = selIdx === idx;
                       const isOther    = selectedChartMonth !== null && !isSelected;
@@ -1015,7 +1029,7 @@ export default function Dashboard() {
                         >
                           {/* Net label */}
                           <span
-                            className="text-[8px] font-bold tabular-nums mb-1 leading-none transition-opacity"
+                            className="text-[10px] font-bold tabular-nums mb-1 leading-none transition-opacity"
                             style={{
                               color: isPos ? PROFIT : LOSS,
                               opacity: isSelected ? 1 : 0.7,
@@ -1051,7 +1065,7 @@ export default function Dashboard() {
                           </div>
                           {/* Month label */}
                           <span
-                            className="text-[9px] mt-1.5 font-mono leading-none"
+                            className="text-[10px] mt-1.5 font-mono leading-none"
                             style={{ color: isSelected ? "var(--tx-1)" : "var(--tx-4)", fontWeight: isSelected ? 700 : 400 }}
                           >
                             {m.month}
@@ -1074,7 +1088,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4 text-[10px] text-tx-4 mb-4 px-1">
                     <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: PROFIT }} />Income</span>
                     <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: LOSS }} />Costs</span>
-                    <span className="text-tx-4 ml-auto text-[9px]">Click a bar to inspect</span>
+                    <span className="text-tx-4 ml-auto text-[10px]">Click a bar to inspect</span>
                   </div>
 
                   {/* ── Selected month detail ── */}
@@ -1096,13 +1110,13 @@ export default function Dashboard() {
                         }}
                       >
                         {/* Header bar */}
-                        <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: "rgba(var(--border-rgb),0.09)" }}>
                           <div className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full" style={{ background: isPos ? PROFIT : LOSS }} />
                             <span className="text-xs font-bold text-tx-1">{selM.month}</span>
                             {roi !== null && (
                               <span
-                                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                                 style={{
                                   background: isPos ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
                                   color: isPos ? PROFIT : LOSS,
@@ -1123,15 +1137,15 @@ export default function Dashboard() {
                         {/* Metrics row */}
                         <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
                           <div className="px-4 py-3">
-                            <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-1">Income</p>
+                            <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-1">Income</p>
                             <p className="text-lg font-black tabular-nums text-profit leading-none">{fmtGBP(selM.income)}</p>
                           </div>
                           <div className="px-4 py-3 border-l border-white/[0.06]">
-                            <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-1">Costs</p>
+                            <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-1">Costs</p>
                             <p className="text-lg font-black tabular-nums text-loss leading-none">{fmtGBP(selM.costs)}</p>
                           </div>
                           <div className="px-4 py-3 border-l border-white/[0.06]">
-                            <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-1">Net</p>
+                            <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-1">Net</p>
                             <p className="text-lg font-black tabular-nums leading-none" style={{ color: isPos ? PROFIT : LOSS }}>
                               {isPos ? "+" : ""}{fmtGBP(net)}
                             </p>
@@ -1140,11 +1154,11 @@ export default function Dashboard() {
 
                         {/* Income vs costs split bar */}
                         <div className="px-4 pb-3">
-                          <div className="h-1.5 rounded-full overflow-hidden flex" style={{ background: "rgba(255,255,255,0.06)" }}>
+                          <div className="h-1.5 rounded-full overflow-hidden flex" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                             <div className="h-full transition-all duration-700" style={{ width: `${incPct}%`, background: "linear-gradient(90deg,#16a34a,#22c55e)" }} />
                             <div className="h-full flex-1" style={{ background: "linear-gradient(90deg,#ef4444,#b91c1c)" }} />
                           </div>
-                          <div className="flex justify-between mt-1.5 text-[9px] text-tx-4">
+                          <div className="flex justify-between mt-1.5 text-[10px] text-tx-4">
                             <span>{incPct.toFixed(0)}% income</span>
                             <span>{(100 - incPct).toFixed(0)}% costs</span>
                           </div>
@@ -1162,10 +1176,10 @@ export default function Dashboard() {
                       </div>
                     );
                   })()}
-                </>
+                </div>
               );
             })() : (
-              <div className="h-[260px] flex flex-col items-center justify-center gap-2">
+              <div className="flex-1 flex flex-col items-center justify-center gap-2">
                 <BarChart3 size={32} className="text-tx-4" />
                 <p className="text-sm text-tx-3">No data yet</p>
                 <p className="text-xs text-tx-4">Add withdrawals and expenses to see your breakdown</p>
@@ -1175,7 +1189,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Firm spending breakdown */}
-        <Card className="hidden md:block md:col-span-2">
+        <Card className="md:col-span-2">
           <CardHeader className="pb-3">
             <CardDescription>Cost Breakdown</CardDescription>
             <CardTitle className="mt-1">Spending by Firm</CardTitle>
@@ -1201,7 +1215,7 @@ export default function Dashboard() {
                       className="h-1.5"
                       indicatorStyle={{ background: col }}
                     />
-                    <p className="text-[9px] text-tx-4 mt-1 text-right">
+                    <p className="text-[10px] text-tx-4 mt-1 text-right">
                       {pct.toFixed(0)}% of top spend
                     </p>
                   </div>
@@ -1234,7 +1248,7 @@ export default function Dashboard() {
       {/* ── ACCOUNTS + ACTIVITY ───────────────────────────────────────────────── */}
       <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {/* Active prop accounts */}
-        <Card className="hidden md:block lg:col-span-3">
+        <Card className="lg:col-span-3 flex flex-col">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -1250,7 +1264,8 @@ export default function Dashboard() {
               </button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col flex-1">
+            <div className="flex-1">
             {stats.activeAccs.length === 0 ? (
               <div className="py-12 text-center flex flex-col items-center gap-2">
                 <Target size={28} className="text-tx-4" />
@@ -1274,29 +1289,62 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+            </div>
 
             {/* Payout summary */}
             {stats.topPayouts.length > 0 && (
               <>
                 <Separator className="mt-4 mb-3" />
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <p className="text-[10px] uppercase tracking-wider font-bold text-tx-3">
                     Top Payout Sources
                   </p>
+                  <span className="text-xs font-black font-mono text-profit">
+                    {fmtGBP(stats.topPayouts.reduce((s, [, a]) => s + a, 0))}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {stats.topPayouts.map(([firm, amount]) => (
-                    <div
-                      key={firm}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg"
-                      style={{ background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.12)" }}
-                    >
-                      <span className="text-xs text-tx-2 truncate mr-2">{firm}</span>
-                      <span className="text-xs font-bold font-mono text-profit flex-shrink-0">
-                        {fmtGBP(amount)}
-                      </span>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  {(() => {
+                    const maxAmt = stats.topPayouts[0]?.[1] ?? 1;
+                    const totalAmt = stats.topPayouts.reduce((s, [, a]) => s + a, 0);
+                    const rankBg = ["rgba(34,197,94,0.18)", "rgba(34,197,94,0.12)", "rgba(34,197,94,0.09)", "rgba(34,197,94,0.07)"];
+                    const barColors = [
+                      "linear-gradient(90deg,#16a34a,#4ade80)",
+                      "linear-gradient(90deg,#15803d,#22c55e)",
+                      "linear-gradient(90deg,#166534,#16a34a)",
+                      "linear-gradient(90deg,#14532d,#15803d)",
+                    ];
+                    return stats.topPayouts.map(([firm, amount], i) => {
+                      const pct = (amount / maxAmt) * 100;
+                      const sharePct = totalAmt > 0 ? (amount / totalAmt) * 100 : 0;
+                      return (
+                        <div key={firm}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div
+                              className="w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
+                              style={{ background: rankBg[i], color: "#4ade80" }}
+                            >
+                              {i + 1}
+                            </div>
+                            <span className="text-xs font-medium text-tx-2 flex-1 min-w-0 truncate">{firm}</span>
+                            <span className="text-[10px] text-tx-4 flex-shrink-0 tabular-nums">{sharePct.toFixed(0)}%</span>
+                            <span className="text-xs font-black font-mono text-profit flex-shrink-0 tabular-nums">
+                              {fmtGBP(amount)}
+                            </span>
+                          </div>
+                          <div
+                            className="h-1.5 rounded-full overflow-hidden"
+                            style={{ background: "rgba(34,197,94,0.08)" }}
+                          >
+                            <div
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${pct}%`, background: barColors[i] }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </>
             )}
@@ -1304,7 +1352,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Recent activity */}
-        <Card className="hidden md:block md:col-span-2">
+        <Card className="md:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -1327,7 +1375,7 @@ export default function Dashboard() {
                 return (
                   <div
                     key={tx.id}
-                    className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-white/[0.03] transition-colors group"
+                    className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-accent-subtle transition-colors group"
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -1335,10 +1383,10 @@ export default function Dashboard() {
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <p className="text-[9px] text-tx-4 font-mono">{fmtShortDate(tx.date)}</p>
+                        <p className="text-[10px] text-tx-4 font-mono">{fmtShortDate(tx.date)}</p>
                         {tx.cat && (
                           <span
-                            className="text-[8px] px-1 py-px rounded font-bold uppercase tracking-wide"
+                            className="text-[10px] px-1 py-px rounded font-bold uppercase tracking-wide"
                             style={{ background: `${dotColor}18`, color: dotColor }}
                           >
                             {tx.cat}
@@ -1392,7 +1440,7 @@ export default function Dashboard() {
 
       {/* ── WEALTH TARGETS ────────────────────────────────────────────────────── */}
       {(
-        <div className="hidden md:block">
+        <div>
         <motion.div variants={item}>
           <Card>
             <CardHeader className="pb-3">
@@ -1427,7 +1475,7 @@ export default function Dashboard() {
               {!data.wealthTargets || data.wealthTargets.length === 0 ? (
                 /* ── Empty state ── */
                 <div className="flex flex-col items-center justify-center py-8 gap-3">
-                  <span className="text-3xl opacity-30">🎯</span>
+                  <Target size={28} className="opacity-30 text-tx-3" />
                   <p className="text-[11px] text-tx-4 text-center">No targets yet. Click <strong className="text-tx-3">Add</strong> to create your first goal.</p>
                 </div>
               ) : expandedSection !== "targets" ? (
@@ -1439,7 +1487,7 @@ export default function Dashboard() {
                       <div key={t.id} className="flex items-center gap-3 group">
                         <span className="text-base leading-none w-5 shrink-0 text-center">{t.emoji}</span>
                         <p className="text-[11px] text-tx-2 font-medium truncate flex-1 min-w-0">{t.name}</p>
-                        <div className="w-28 h-1.5 rounded-full overflow-hidden shrink-0" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="w-28 h-1.5 rounded-full overflow-hidden shrink-0" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                           <div
                             className="h-full rounded-full transition-all duration-700"
                             style={{
@@ -1472,7 +1520,7 @@ export default function Dashboard() {
                     const onTrack     = data.wealthTargets.filter(t => (t.saved / t.target) >= 0.25).length;
                     return (
                       <div className="mt-1 pt-2 border-t border-white/[0.05] flex items-center justify-between">
-                        <span className="text-[9px] text-tx-4 uppercase tracking-wider">
+                        <span className="text-[10px] text-tx-4 uppercase tracking-wider">
                           {onTrack} of {data.wealthTargets.length} goals on track
                         </span>
                         <span className="text-[10px] text-tx-3 font-mono">
@@ -1484,7 +1532,7 @@ export default function Dashboard() {
                 </div>
               ) : (
                 /* ── Expanded full card grid ── */
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {data.wealthTargets.map((t) => {
                     const pct = Math.min(100, t.target > 0 ? (t.saved / t.target) * 100 : 0);
                     const remaining = t.target - t.saved;
@@ -1494,8 +1542,8 @@ export default function Dashboard() {
                         key={t.id}
                         className="rounded-xl p-4 group relative"
                         style={{
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.07)",
+                          background: "rgba(var(--surface-rgb),0.03)",
+                          border: "1px solid rgba(var(--border-rgb),0.09)",
                         }}
                       >
                         <div className="absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1510,7 +1558,7 @@ export default function Dashboard() {
                           <span className="text-2xl leading-none">{t.emoji}</span>
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-tx-1 truncate">{t.name}</p>
-                            <p className="text-[10px] text-tx-3">{t.desc}</p>
+                            <p className="text-[10px] text-tx-3 line-clamp-2">{t.desc}</p>
                           </div>
                         </div>
                         <Progress
@@ -1534,7 +1582,7 @@ export default function Dashboard() {
                           </span>
                         </div>
                         {monthsLeft !== null && monthsLeft > 0 && (
-                          <p className="text-[9px] text-tx-4 mt-1">
+                          <p className="text-[10px] text-tx-4 mt-1">
                             ~{monthsLeft} months at {fmtGBP(t.monthly)}/mo
                           </p>
                         )}
@@ -1599,7 +1647,7 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between gap-1">
                         <p className="text-xs font-bold text-tx-1 truncate">{sub.name}</p>
                         <span
-                          className="text-[8px] px-1 py-px rounded font-bold uppercase shrink-0"
+                          className="text-[10px] px-1 py-px rounded font-bold uppercase shrink-0"
                           style={{ background: `${col}20`, color: col }}
                         >
                           {sub.frequency.slice(0, 2)}
@@ -1665,7 +1713,7 @@ export default function Dashboard() {
               ) : (
                 <div
                   className="px-3 py-1.5 rounded-xl text-xs font-semibold text-tx-3"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  style={{ background: "rgba(var(--surface-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
                 >
                   No active session
                 </div>
@@ -1715,7 +1763,7 @@ export default function Dashboard() {
             borderColor: "rgba(59,130,246,0.12)",
           }}
         >
-          <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
+          <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
             <Zap size={10} />Quick Actions
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -1756,10 +1804,10 @@ export default function Dashboard() {
           const gradId = "perfGrad";
           return (
             <div
-              className="card p-4 hidden md:block"
+              className="card p-4"
               style={{ background: "linear-gradient(160deg, rgba(59,130,246,0.07) 0%, rgba(168,85,247,0.04) 50%, rgba(34,197,94,0.03) 100%)" }}
             >
-              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
+              <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                 <TrendingUp size={10} />Trading Performance
               </p>
               <div className="flex items-center gap-4">
@@ -1773,7 +1821,7 @@ export default function Dashboard() {
                       </linearGradient>
                     </defs>
                     {/* Outer track */}
-                    <circle cx={CX} cy={CY} r={R_OUTER} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5.5" />
+                    <circle cx={CX} cy={CY} r={R_OUTER} fill="none" stroke="rgba(var(--surface-rgb),0.08)" strokeWidth="5.5" />
                     {/* Outer arc — win rate */}
                     <circle cx={CX} cy={CY} r={R_OUTER} fill="none"
                       stroke={`url(#${gradId})`} strokeWidth="5.5"
@@ -1781,7 +1829,7 @@ export default function Dashboard() {
                       strokeLinecap="round"
                     />
                     {/* Inner track */}
-                    <circle cx={CX} cy={CY} r={R_INNER} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
+                    <circle cx={CX} cy={CY} r={R_INNER} fill="none" stroke="rgba(var(--surface-rgb),0.08)" strokeWidth="4" />
                     {/* Inner arc — profitable months */}
                     <circle cx={CX} cy={CY} r={R_INNER} fill="none"
                       stroke={innerColor} strokeWidth="4"
@@ -1794,7 +1842,7 @@ export default function Dashboard() {
                     <span className="text-[15px] font-black tabular-nums leading-none" style={{ color: ringColor }}>
                       {stats.winRateMonths.toFixed(0)}%
                     </span>
-                    <span className="text-[8px] text-tx-4 uppercase tracking-wider mt-0.5">win rate</span>
+                    <span className="text-[10px] text-tx-4 uppercase tracking-wider mt-0.5">win rate</span>
                   </div>
                 </div>
                 {/* Stats grid */}
@@ -1803,11 +1851,11 @@ export default function Dashboard() {
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: ringColor }} />
-                      <span className="text-[9px] text-tx-4">Monthly win rate</span>
+                      <span className="text-[10px] text-tx-4">Monthly win rate</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: innerColor }} />
-                      <span className="text-[9px] text-tx-4">{stats.profitableMonths}/{stats.totalMonths} profitable mo</span>
+                      <span className="text-[10px] text-tx-4">{stats.profitableMonths}/{stats.totalMonths} profitable mo</span>
                     </div>
                   </div>
                   {/* Divider */}
@@ -1816,24 +1864,24 @@ export default function Dashboard() {
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
                     {stats.bestMonthIncome > 0 && (
                       <div>
-                        <div className="text-[8px] text-tx-4 uppercase tracking-wider">Best Mo.</div>
+                        <div className="text-[10px] text-tx-4 uppercase tracking-wider">Best Mo.</div>
                         <div className="text-[11px] font-bold text-profit tabular-nums font-mono">{fmtGBP(stats.bestMonthIncome)}</div>
                       </div>
                     )}
                     <div>
-                      <div className="text-[8px] text-tx-4 uppercase tracking-wider">Avg Payout</div>
+                      <div className="text-[10px] text-tx-4 uppercase tracking-wider">Avg Payout</div>
                       <div className="text-[11px] font-bold tabular-nums font-mono" style={{ color: ACCENT }}>{fmtGBP(stats.avgMonthlyIncome)}</div>
                     </div>
                     {stats.streak > 0 && (
                       <div>
-                        <div className="text-[8px] text-tx-4 uppercase tracking-wider">Streak</div>
+                        <div className="text-[10px] text-tx-4 uppercase tracking-wider">Streak</div>
                         <div className="text-[11px] font-bold flex items-center gap-1" style={{ color: ORANGE }}>
                           <Flame size={9} />{stats.streak}mo
                         </div>
                       </div>
                     )}
                     <div>
-                      <div className="text-[8px] text-tx-4 uppercase tracking-wider">Active Mo.</div>
+                      <div className="text-[10px] text-tx-4 uppercase tracking-wider">Active Mo.</div>
                       <div className="text-[11px] font-bold text-tx-2 tabular-nums">{stats.totalMonths}</div>
                     </div>
                   </div>
@@ -1844,14 +1892,14 @@ export default function Dashboard() {
         })()}
 
         {/* Market Pulse */}
-        <div className="hidden md:block">
+        <div>
         <div
           className="card p-4"
           style={{
-            background: "linear-gradient(135deg, rgba(20,184,166,0.05) 0%, rgba(255,255,255,0.02) 100%)",
+            background: "linear-gradient(135deg, rgba(20,184,166,0.05) 0%, transparent 100%)",
           }}
         >
-          <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
+          <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
             <Globe size={10} />Market Pulse
           </p>
           <div className="flex flex-col gap-2">
@@ -1861,25 +1909,25 @@ export default function Dashboard() {
               return (
                 <div key={session.name} className="flex items-center gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ background: isActive ? session.color : "rgba(255,255,255,0.15)",
+                    style={{ background: isActive ? session.color : "rgba(var(--surface-rgb),0.2)",
                       boxShadow: isActive ? `0 0 6px ${session.color}` : "none",
                       animation: isActive ? "pulseDot 2s ease-in-out infinite" : "none" }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className="text-[11px] font-medium"
-                        style={{ color: isActive ? session.color : "rgba(255,255,255,0.40)" }}>
+                        style={{ color: isActive ? session.color : "var(--tx-4)" }}>
                         {session.name}
                       </span>
                       {isActive && (
-                        <span className="text-[9px] font-bold tabular-nums font-mono"
+                        <span className="text-[10px] font-bold tabular-nums font-mono"
                           style={{ color: session.color }}>{prog.toFixed(0)}%</span>
                       )}
                     </div>
-                    <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                       <div className="h-full rounded-full transition-all duration-1000"
                         style={{ width: `${prog}%`, background: isActive ? session.color : "transparent" }} />
                     </div>
-                    <span className="text-[9px] text-tx-4 font-mono">{session.startET}–{session.endET} ET</span>
+                    <span className="text-[10px] text-tx-4 font-mono">{session.startET}–{session.endET} ET</span>
                   </div>
                 </div>
               );
@@ -1889,7 +1937,7 @@ export default function Dashboard() {
         </div>
 
         {/* Monthly Snapshot */}
-        <div className="hidden md:block">
+        <div>
         {(() => {
           const thisMth = stats.monthlyChart[stats.monthlyChart.length - 1];
           const lastMth = stats.monthlyChart[stats.monthlyChart.length - 2];
@@ -1901,9 +1949,9 @@ export default function Dashboard() {
           return (
             <div
               className="card p-4"
-              style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(255,255,255,0.02) 100%)" }}
+              style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.05) 0%, transparent 100%)" }}
             >
-              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
+              <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                 <CalendarDays size={10} />This Month
               </p>
               <div className="flex flex-col gap-2">
@@ -1941,10 +1989,10 @@ export default function Dashboard() {
           const netWorth = stats.totalWithdrawals - stats.totalExpenses + stats.portfolioValue - stats.totalDebt;
           return (
             <div
-              className="card p-4 hidden md:block"
+              className="card p-4"
               style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.05) 0%, rgba(59,130,246,0.03) 100%)" }}
             >
-              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
+              <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                 <Banknote size={10} />Net Worth
               </p>
               <div className="flex flex-col gap-1.5">
@@ -1986,7 +2034,7 @@ export default function Dashboard() {
               className="card p-4 relative overflow-hidden"
               onClick={() => navigate("/journal")}
               style={{
-                background: `linear-gradient(135deg, ${isPos ? "rgba(34,197,94,0.05)" : "rgba(239,68,68,0.05)"} 0%, rgba(255,255,255,0.02) 100%)`,
+                background: `linear-gradient(135deg, ${isPos ? "rgba(34,197,94,0.05)" : "rgba(239,68,68,0.05)"} 0%, transparent 100%)`,
                 borderColor: isPos ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.14)",
                 cursor: "pointer",
               }}
@@ -1996,7 +2044,7 @@ export default function Dashboard() {
                 style={{ color: isPos ? "rgba(34,197,94,0.06)" : "rgba(239,68,68,0.06)" }}>
                 {todayTrades.length}
               </div>
-              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-2 flex items-center gap-1.5">
+              <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-2 flex items-center gap-1.5">
                 <BookOpen size={10} />Today's Trades
               </p>
               <div className={cn("text-xl font-black tabular-nums font-mono mb-1", isPos ? "text-profit" : "text-loss")}>
@@ -2029,7 +2077,7 @@ export default function Dashboard() {
           if (diff < 0 || diff > 365) return null;
           return (
             <div className={cn("card p-4", diff <= 30 ? "border-warn/20 bg-warn/[0.04]" : "")}>
-              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-2 flex items-center gap-1.5">
+              <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-2 flex items-center gap-1.5">
                 <PiggyBank size={10} />SA Tax Deadline
               </p>
               <div className="flex items-end justify-between">
@@ -2070,9 +2118,9 @@ export default function Dashboard() {
           if (upcoming.length === 0) return null;
           const todayET = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
           return (
-            <div className="card p-4 hidden md:block">
+            <div className="card p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium flex items-center gap-1.5">
+                <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium flex items-center gap-1.5">
                   <Calendar size={10} className="text-accent" />Upcoming Events
                 </p>
                 <button
@@ -2102,13 +2150,13 @@ export default function Dashboard() {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] text-tx-1 font-medium truncate leading-tight">{ev.title}</p>
-                        <p className="text-[9px] text-tx-4 font-mono mt-0.5">
+                        <p className="text-[10px] text-tx-4 font-mono mt-0.5">
                           <span style={{ color: isToday ? "#10f5a4" : undefined }}>{dayStr}</span>
                           {" · "}{timeStr} ET
                         </p>
                       </div>
                       <span
-                        className="text-[8px] font-bold flex-shrink-0 mt-0.5 px-1 py-0.5 rounded"
+                        className="text-[10px] font-bold flex-shrink-0 mt-0.5 px-1 py-0.5 rounded"
                         style={{ background: `${impCol}15`, color: impCol }}
                       >
                         {ev.country}
@@ -2139,9 +2187,9 @@ export default function Dashboard() {
           const pf = grossLoss > 0 ? grossWins / grossLoss : null;
 
           return (
-            <div className="card p-4 hidden md:block">
+            <div className="card p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium flex items-center gap-1.5">
+                <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium flex items-center gap-1.5">
                   <BookOpen size={10} className="text-accent" />Trade Journal
                 </p>
                 <button
@@ -2162,7 +2210,7 @@ export default function Dashboard() {
                   }}
                 >
                   <div>
-                    <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.55)" }}>Today</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-tx-3">Today</p>
                     <p className="text-[11px] font-semibold text-tx-2">{todayTrades.length} trade{todayTrades.length !== 1 ? "s" : ""}</p>
                   </div>
                   <span
@@ -2177,7 +2225,7 @@ export default function Dashboard() {
               {trades.length === 0 ? (
                 <button
                   onClick={() => navigate("/journal")}
-                  className="w-full py-6 flex flex-col items-center gap-2 rounded-xl transition-colors hover:bg-white/[0.03]"
+                  className="w-full py-6 flex flex-col items-center gap-2 rounded-xl transition-colors hover:bg-accent-subtle"
                   style={{ border: "1px dashed rgba(var(--border-rgb,255,255,255),0.1)" }}
                 >
                   <BookOpen size={20} className="text-tx-4" />
@@ -2189,13 +2237,13 @@ export default function Dashboard() {
                   {/* Key stats grid */}
                   <div className="grid grid-cols-2 gap-1.5 mb-2.5">
                     {[
-                      { label: "Total Trades", value: String(trades.length),                                     color: "rgba(255,255,255,0.55)" },
+                      { label: "Total Trades", value: String(trades.length),                                     color: "var(--tx-2)" },
                       { label: "Win Rate",      value: `${winRate.toFixed(0)}%`,                                  color: "#3b82f6" },
                       { label: "Net P&L",       value: `${net >= 0 ? "+" : ""}${fmtUSD(net)}`,                   color: net >= 0 ? "#22c55e" : "#ef4444" },
                       { label: "P.Factor",      value: pf !== null ? pf.toFixed(2) : "—",                        color: "#a78bfa" },
                     ].map((s) => (
                       <div key={s.label} className="rounded-lg p-2 text-center" style={{ background: "rgba(var(--surface-rgb,255,255,255),0.03)", border: "1px solid rgba(var(--border-rgb,255,255,255),0.05)" }}>
-                        <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-0.5">{s.label}</p>
+                        <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-0.5">{s.label}</p>
                         <p className="text-[11px] font-black tabular-nums" style={{ color: s.color }}>{s.value}</p>
                       </div>
                     ))}
@@ -2203,12 +2251,12 @@ export default function Dashboard() {
 
                   {/* W/L bar */}
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] text-tx-4 w-5 text-right tabular-nums">{wins}W</span>
+                    <span className="text-[10px] text-tx-4 w-5 text-right tabular-nums">{wins}W</span>
                     <div className="flex-1 h-1.5 rounded-full overflow-hidden flex" style={{ background: "rgba(var(--surface-rgb,255,255,255),0.06)" }}>
                       <div style={{ width: `${(wins / trades.length) * 100}%`, background: "linear-gradient(90deg,#16a34a,#22c55e)" }} className="h-full rounded-l-full" />
                       <div style={{ flex: 1, background: "linear-gradient(90deg,#ef4444,#b91c1c)" }} className="h-full rounded-r-full" />
                     </div>
-                    <span className="text-[9px] text-tx-4 w-5 tabular-nums">{losses}L</span>
+                    <span className="text-[10px] text-tx-4 w-5 tabular-nums">{losses}L</span>
                   </div>
                 </>
               )}
@@ -2219,10 +2267,10 @@ export default function Dashboard() {
         {/* Recent payouts */}
         {data.withdrawals.length > 0 && (
           <div
-            className="card p-4 hidden md:block"
-            style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.04) 0%, rgba(255,255,255,0.02) 100%)" }}
+            className="card p-4"
+            style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.04) 0%, transparent 100%)" }}
           >
-            <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
+            <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
               <ArrowDownToLine size={10} />Recent Payouts
             </p>
             <div className="flex flex-col gap-1.5">
@@ -2260,7 +2308,7 @@ export default function Dashboard() {
               type="text"
               value={targetForm.emoji}
               onChange={(e) => setTargetForm((p) => ({ ...p, emoji: e.target.value }))}
-              className="w-14 bg-white/[0.05] border border-white/[0.10] rounded-lg px-2.5 py-2 text-center text-xl outline-none focus:border-white/20"
+              className="nx-input w-14 text-center text-xl px-2.5 py-2"
               maxLength={2}
             />
           </div>
@@ -2271,7 +2319,7 @@ export default function Dashboard() {
               placeholder="e.g. Emergency Fund"
               value={targetForm.name}
               onChange={(e) => setTargetForm((p) => ({ ...p, name: e.target.value }))}
-              className="bg-white/[0.05] border border-white/[0.10] rounded-lg px-3 py-2 text-sm text-tx-1 outline-none focus:border-white/20 placeholder:text-tx-4"
+              className="nx-input"
             />
           </div>
         </div>
@@ -2297,7 +2345,7 @@ export default function Dashboard() {
               placeholder="0"
               value={targetForm.target}
               onChange={(e) => setTargetForm((p) => ({ ...p, target: e.target.value }))}
-              className="bg-white/[0.05] border border-white/[0.10] rounded-lg px-3 py-2 text-sm text-tx-1 outline-none focus:border-white/20 font-mono placeholder:text-tx-4"
+              className="nx-input font-mono"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -2307,7 +2355,7 @@ export default function Dashboard() {
               placeholder="0"
               value={targetForm.saved}
               onChange={(e) => setTargetForm((p) => ({ ...p, saved: e.target.value }))}
-              className="bg-white/[0.05] border border-white/[0.10] rounded-lg px-3 py-2 text-sm text-tx-1 outline-none focus:border-white/20 font-mono placeholder:text-tx-4"
+              className="nx-input font-mono"
             />
           </div>
         </div>
@@ -2320,7 +2368,7 @@ export default function Dashboard() {
             placeholder="0"
             value={targetForm.monthly}
             onChange={(e) => setTargetForm((p) => ({ ...p, monthly: e.target.value }))}
-            className="bg-white/[0.05] border border-white/[0.10] rounded-lg px-3 py-2 text-sm text-tx-1 outline-none focus:border-white/20 font-mono placeholder:text-tx-4"
+            className="nx-input font-mono"
           />
         </div>
 
@@ -2329,7 +2377,7 @@ export default function Dashboard() {
           <button
             onClick={() => setTargetModalOpen(false)}
             className="flex-1 py-2.5 rounded-xl text-sm font-medium text-tx-3 hover:text-tx-1 transition-colors"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "rgba(var(--surface-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
           >
             Cancel
           </button>

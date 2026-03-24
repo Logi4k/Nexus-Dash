@@ -19,6 +19,7 @@ import {
   Target,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import {
   fmtGBP,
   fmtDate,
@@ -240,7 +241,9 @@ function DebtRow({
   onDeleteConfirm: () => void;
   onDeleteCancel: () => void;
 }) {
-  const accent = getCardAccent(debt.name);
+  const bw = useBWMode();
+  const rawAccent = getCardAccent(debt.name);
+  const accent = { color: bwColor(rawAccent.color, bw), network: rawAccent.network, bg: bwColor(rawAccent.bg, bw) };
   const utilPct = pct(debt.currentBalance, debt.creditLimit);
   const colors = utilizationColor(utilPct);
   const mi = monthlyInterest(debt.currentBalance, debt.rate);
@@ -380,6 +383,7 @@ function DebtRow({
 // ─── Strategy Comparison ──────────────────────────────────────────────────────
 
 function StrategyPanel({ debts }: { debts: Debt[] }) {
+  const isBW = useBWMode();
   const [extraMonthly, setExtraMonthly] = useState(50);
 
   const totalMinimum = debts.reduce((s, d) => s + d.monthly, 0);
@@ -505,7 +509,8 @@ function StrategyPanel({ debts }: { debts: Debt[] }) {
           .sort((a, b) => b.rate - a.rate)
           .map((d, i) => {
             const r = calcPayoff(d.currentBalance, d.rate, d.monthly + (i === 0 ? extraMonthly : 0));
-            const accent = getCardAccent(d.name);
+            const rawAcc = getCardAccent(d.name);
+            const accent = { color: bwColor(rawAcc.color, isBW), network: rawAcc.network, bg: bwColor(rawAcc.bg, isBW) };
             return (
               <div key={d.id} className="flex items-center gap-2 py-1.5 border-b border-white/[0.04] last:border-0">
                 <span className="text-[10px] text-tx-4 w-4 shrink-0">{i + 1}.</span>
@@ -539,7 +544,12 @@ export default function DebtPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const theme = PAGE_THEMES.debt;
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.debt, isBW);
+  const bwAccent = (name: string) => {
+    const raw = getCardAccent(name);
+    return { color: bwColor(raw.color, isBW), network: raw.network, bg: bwColor(raw.bg, isBW) };
+  };
   const stats = useMemo(() => {
     const totalDebt     = debts.reduce((s, d) => s + d.currentBalance, 0);
     const totalLimit    = debts.reduce((s, d) => s + d.creditLimit, 0);
@@ -682,7 +692,7 @@ export default function DebtPage() {
               <div className="flex flex-col gap-3 md:hidden">
                 {debts.map((d) => {
                   const r = calcPayoff(d.currentBalance, d.rate, d.monthly);
-                  const acc = getCardAccent(d.name);
+                  const acc = bwAccent(d.name);
                   return (
                     <div key={d.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -751,7 +761,7 @@ export default function DebtPage() {
                   <tbody className="divide-y divide-white/[0.04]">
                     {debts.map((d) => {
                       const r = calcPayoff(d.currentBalance, d.rate, d.monthly);
-                      const acc = getCardAccent(d.name);
+                      const acc = bwAccent(d.name);
                       return (
                         <tr key={d.id} className="group hover:bg-white/[0.02] transition-colors">
                           <td className="py-2.5 pr-4">
@@ -797,7 +807,7 @@ export default function DebtPage() {
               {/* Visual Payoff Timeline */}
               {(() => {
                 const timelineData = debts
-                  .map((d) => ({ ...d, result: calcPayoff(d.currentBalance, d.rate, d.monthly), accent: getCardAccent(d.name) }))
+                  .map((d) => ({ ...d, result: calcPayoff(d.currentBalance, d.rate, d.monthly), accent: bwAccent(d.name) }))
                   .filter((d) => d.result)
                   .sort((a, b) => (a.result?.months ?? 0) - (b.result?.months ?? 0));
                 if (timelineData.length === 0) return null;
@@ -903,7 +913,7 @@ export default function DebtPage() {
             const segments = [...debts]
               .sort((a, b) => b.currentBalance - a.currentBalance)
               .map((d) => {
-                const acc = getCardAccent(d.name);
+                const acc = bwAccent(d.name);
                 const frac = d.currentBalance / total;
                 const dash = Math.max(0, frac * circ - GAP);
                 const offset = -(runPct * circ);
@@ -979,7 +989,7 @@ export default function DebtPage() {
                   .sort((a, b) => daysUntil(a.nextPayment) - daysUntil(b.nextPayment))
                   .map((d) => {
                     const days = daysUntil(d.nextPayment);
-                    const acc = getCardAccent(d.name);
+                    const acc = bwAccent(d.name);
                     const isPast = days < 0;
                     const isSoon = days >= 0 && days <= 7;
                     return (

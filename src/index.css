@@ -15,6 +15,9 @@
   --bg-input:    #14161e;
   --bg-hover:    #1e2028;
   --bg-subtle:   #0d0f16;
+  /* RGB components for rgba() usage */
+  --bg-base-rgb: 8,10,16;
+  --bg-card-rgb: 17,19,24;
 
   /* text */
   --tx-1: #f8fafc;
@@ -30,6 +33,31 @@
   /* component surface helpers */
   --surface-rgb:  255,255,255;  /* used for rgba(var(--surface-rgb), opacity) overlays */
   --border-rgb:   255,255,255;
+
+  /* glass card background */
+  --bg-glass: rgba(24,24,27,0.75);
+
+  /* semantic chart / data colors */
+  --color-profit: #22c55e;
+  --color-loss:   #ef4444;
+  --color-warn:   #f59e0b;
+  --color-purple: #a855f7;
+  --color-blue:   #3b82f6;
+  --color-orange: #f97316;
+
+  /* expense category colors */
+  --color-cat-account:      #3b82f6;
+  --color-cat-subscription: #8b5cf6;
+  --color-cat-other:        #1dd4b4;
+
+  /* instrument color families (Journal) */
+  --color-instr-es:   #3b82f6;
+  --color-instr-nq:   #8b5cf6;
+  --color-instr-ym:   #f97316;
+  --color-instr-rty:  #1dd4b4;
+  --color-instr-cl:   #f59e0b;
+  --color-instr-gc:   #eab308;
+  --color-instr-fallback: #60a5fa;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -56,6 +84,36 @@
 
   --surface-rgb:  0,0,0;
   --border-rgb:   0,0,0;
+
+  --bg-base-rgb: 240,242,245;
+  --bg-card-rgb: 255,255,255;
+  --bg-glass:    rgba(255,255,255,0.85);
+
+  /* ── BW overrides for decorative/non-semantic colours ──────────────── */
+  --color-purple: #6b7280;
+  --color-blue:   #6b7280;
+  --color-orange: #6b7280;
+
+  --color-cat-account:      #4b5563;
+  --color-cat-subscription: #6b7280;
+  --color-cat-other:        #374151;
+
+  --color-instr-es:   #374151;
+  --color-instr-nq:   #4b5563;
+  --color-instr-ym:   #6b7280;
+  --color-instr-rty:  #374151;
+  --color-instr-cl:   #4b5563;
+  --color-instr-gc:   #6b7280;
+  --color-instr-fallback: #9ca3af;
+}
+
+/* ── BW theme: Recharts SVG grayscale filter ───────────────────────────────────
+   Wrap any Recharts <ResponsiveContainer> with a div.bw-chart (or add the class
+   on the container itself). In BW mode, the SVG surface turns grayscale.
+   Semantic profit/loss bars opt-out via .pnl-keep className on the <Cell>.
+   ──────────────────────────────────────────────────────────────────────────── */
+.theme-bw .bw-chart .recharts-surface {
+  filter: grayscale(1);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -65,7 +123,10 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   html {
-    font-size: 14px;
+    /* 87.5% preserves the 14px visual size (87.5% × 16px = 14px) while
+       still respecting the user's browser font-size preference for zoom
+       and accessibility scaling. All rem values remain identical visually. */
+    font-size: 87.5%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -75,10 +136,29 @@
   body {
     background-color: var(--bg-base);
     color: var(--tx-1);
-    font-family: "DM Sans", system-ui, sans-serif;
-    overflow: hidden;
-    user-select: none;
+    font-family: "DM Sans", system-ui, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    line-height: 1.5;
+    /* overflow: hidden moved to Layout's root div — body-level hidden blocks
+       browser zoom, print, and assistive technology scroll */
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* ── Focus visible — keyboard navigation ────────────────────────────────── */
+  /* Suppress default outlines in favour of our own below */
+  :focus { outline: none; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Nav links and buttons: slightly tighter radius */
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 8px;
   }
 
   /* Scrollbar */
@@ -113,7 +193,7 @@
 
   .card-glass {
     @apply relative rounded-2xl;
-    background: rgba(24,24,27,0.75);
+    background: var(--bg-glass);
     border: 1px solid rgba(var(--border-rgb),0.08);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -121,7 +201,6 @@
   }
 
   .theme-bw .card-glass {
-    background: rgba(255,255,255,0.85);
     border-color: rgba(0,0,0,0.1);
     box-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(0,0,0,0.04);
   }
@@ -129,12 +208,13 @@
   .card-hero {
     @apply relative rounded-3xl overflow-hidden;
     background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-subtle) 50%, var(--bg-base) 100%);
-    border: 1px solid rgba(var(--border-rgb),0.07);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(var(--surface-rgb),0.05);
+    border: 1px solid rgba(var(--border-rgb),0.10);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(var(--surface-rgb),0.07);
   }
 
   .card-hover {
     @apply transition-all duration-200 cursor-pointer;
+    will-change: transform; /* promote to composite layer to avoid layout recalc on hover */
   }
   .card-hover:hover {
     border-color: rgba(var(--border-rgb),0.15);
@@ -166,7 +246,8 @@
   /* ── Navigation ──────────────────────────────────────────────────────────── */
   .nav-item {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-           transition-all duration-150 cursor-pointer select-none;
+           transition-all duration-150 cursor-pointer;
+    user-select: none; /* intentional: prevent accidental selection while navigating */
   }
 
   /* ── Inputs ──────────────────────────────────────────────────────────────── */
@@ -177,7 +258,10 @@
     border: 1px solid rgba(var(--border-rgb),0.09);
     color: var(--tx-1);
   }
-  .nx-input::placeholder { color: var(--tx-4); }
+  .nx-input::placeholder { color: var(--tx-3); }
+  .nx-input[type="number"]::-webkit-inner-spin-button,
+  .nx-input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .nx-input[type="number"] { -moz-appearance: textfield; }
   .nx-input:focus {
     border-color: rgba(var(--border-rgb),0.25);
     box-shadow: 0 0 0 3px rgba(var(--border-rgb),0.06);
@@ -209,6 +293,7 @@
     box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     transform: translateY(-1px);
   }
+  .btn-primary:active { transform: scale(0.96); transition-duration: 80ms; }
   .btn-ghost {
     @apply btn;
     color: var(--tx-2);
@@ -220,6 +305,9 @@
     color: var(--tx-1);
     border-color: rgba(var(--border-rgb),0.15);
   }
+  .btn-ghost:active   { transform: scale(0.96); transition-duration: 80ms; }
+  .btn-danger:active  { transform: scale(0.96); transition-duration: 80ms; }
+  .btn-success:active { transform: scale(0.96); transition-duration: 80ms; }
   .btn-danger {
     @apply btn;
     color: #f87171;
@@ -266,8 +354,9 @@
   /* ── Table ───────────────────────────────────────────────────────────────── */
   .tbl { @apply w-full text-sm; }
   .tbl th {
-    @apply text-left font-semibold py-2.5 px-3 text-[10px] uppercase tracking-widest;
-    color: var(--tx-4);
+    @apply text-left font-semibold py-2.5 px-3 uppercase tracking-widest;
+    font-size: 11px;
+    color: var(--tx-3);
     border-bottom: 1px solid rgba(var(--border-rgb),0.07);
   }
   .tbl td {
@@ -290,6 +379,27 @@
 
   .page-enter { animation: fadeUp 0.35s ease-out both; }
 
+  /* ── Page titles ─────────────────────────────────────────────────────────── */
+  /* Single source of truth for the standard page <h1> heading used on all pages */
+  .page-title {
+    font-size: 1.875rem;   /* 30px at 16px base */
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--tx-1);
+  }
+
+  /* ── Micro labels ─────────────────────────────────────────────────────────── */
+  /* Axis labels, chart hints, contextual whispers — minimum readable size */
+  .micro-label {
+    font-size: 0.643rem;   /* ~9px at 14px base */
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--tx-4);
+    line-height: 1.2;
+  }
+
   /* ── Stagger helpers ─────────────────────────────────────────────────────── */
   .stagger-1  { animation-delay: 60ms; }
   .stagger-2  { animation-delay: 120ms; }
@@ -301,9 +411,9 @@
   .tab-pill {
     @apply px-4 py-1.5 rounded-full text-sm font-medium transition-all
            duration-150 cursor-pointer select-none;
-    color: var(--tx-3);
+    color: var(--tx-2);
   }
-  .tab-pill:hover { color: var(--tx-2); background: rgba(var(--surface-rgb),0.05); }
+  .tab-pill:hover { color: var(--tx-1); background: rgba(var(--surface-rgb),0.05); }
   .tab-pill.active {
     background: var(--accent);
     color: var(--bg-base);
@@ -410,6 +520,13 @@
   .glow-teal  { box-shadow: 0 0 24px rgba(var(--surface-rgb),0.08); }
   .glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.2); }
   .glow-red   { box-shadow: 0 0 20px rgba(239,68,68,0.2); }
+
+  /* ── BW chart wrapper ─────────────────────────────────────────────────
+     Apply to a <div> wrapping any Recharts component.
+     Turns all chart colours grayscale except semantic P&L (profit/loss).
+     The .bw-chart-keep child can override to retain colour.                */
+  .bw-chart .recharts-surface { filter: grayscale(1); }
+  .bw-chart .recharts-surface .bw-chart-keep { filter: grayscale(0); }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -422,3 +539,43 @@
 @keyframes pulseDot { 0%, 100% { opacity:1; transform:scale(1); } 50% { opacity:0.35; transform:scale(0.8); } }
 @keyframes shimmer  { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
 @keyframes float    { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   REDUCED MOTION — respect user's OS preference
+───────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  /* Collapse all CSS transitions and animations to nearly instant */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  /* Page entrance: disable the translateY movement, keep a brief fade */
+  .page-enter {
+    animation: fadeIn 0.1s ease-out both;
+  }
+
+  /* Live session dot: keep visible but stop pulsing */
+  .live-dot {
+    animation: none;
+    opacity: 1;
+  }
+
+  /* Card hover: no translate, keep border feedback */
+  .card-hover:hover {
+    transform: none;
+  }
+
+  /* Button hover: no translate */
+  .btn-primary:hover,
+  .btn-ghost:hover {
+    transform: none;
+  }
+
+  /* Credit card: no tilt */
+  .credit-card-visual:hover {
+    transform: none;
+  }
+}

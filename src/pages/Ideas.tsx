@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, FolderPen, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, FolderPen, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { PAGE_THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { useBWMode, bwPageTheme } from "@/lib/useBWMode";
 import NoteEditor from "@/components/NoteEditor";
 import type { IdeaNote, IdeaTopic } from "@/types";
 import type { AppData } from "@/types";
-
-const theme = PAGE_THEMES.ideas;
 
 const DEFAULT_TOPICS: IdeaTopic[] = [
   { id: "t1", name: "AI Research", emoji: "AI" },
@@ -37,7 +36,7 @@ function NoteDeleteButton({
         }}
         className="opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <Trash2 size={12} style={{ color: "rgba(255,255,255,0.35)" }} />
+        <Trash2 size={12} style={{ color: "var(--tx-4)" }} />
       </button>
     );
   }
@@ -58,7 +57,8 @@ function NoteDeleteButton({
           e.stopPropagation();
           onCancel();
         }}
-        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/[0.05] text-tx-3 hover:text-tx-1 transition-all"
+        className="px-2 py-0.5 rounded text-[10px] font-semibold text-tx-3 hover:text-tx-1 transition-all"
+        style={{ background: "rgba(var(--surface-rgb),0.05)" }}
       >
         No
       </button>
@@ -86,7 +86,7 @@ function TopicDeleteButton({
         }}
         className="opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <Trash2 size={12} style={{ color: "rgba(255,255,255,0.35)" }} />
+        <Trash2 size={12} style={{ color: "var(--tx-4)" }} />
       </button>
     );
   }
@@ -107,7 +107,8 @@ function TopicDeleteButton({
           e.stopPropagation();
           onCancel();
         }}
-        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/[0.05] text-tx-3 hover:text-tx-1 transition-all"
+        className="px-2 py-0.5 rounded text-[10px] font-semibold text-tx-3 hover:text-tx-1 transition-all"
+        style={{ background: "rgba(var(--surface-rgb),0.05)" }}
       >
         No
       </button>
@@ -116,6 +117,8 @@ function TopicDeleteButton({
 }
 
 export default function Ideas() {
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.ideas, isBW);
   const { data, update } = useAppData();
   const location = useLocation();
   const navigate = useNavigate();
@@ -133,7 +136,10 @@ export default function Ideas() {
   const [topicDeleteConfirmId, setTopicDeleteConfirmId] = useState<string | null>(null);
   const [noteDeleteConfirmId, setNoteDeleteConfirmId] = useState<string | null>(null);
   const [zenMode, setZenMode] = useState(false);
-  const [mobileView, setMobileView] = useState<"topics" | "notes" | "editor">("topics");
+  // Start on notes view if a topic exists (saves 1 tap on mobile)
+  const [mobileView, setMobileView] = useState<"topics" | "notes" | "editor">(
+    topics.length > 0 ? "notes" : "topics"
+  );
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -298,9 +304,7 @@ export default function Ideas() {
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>
           Ideas
         </div>
-        <h1 className="text-[24px] font-extrabold tracking-tight" style={{ color: "#f8fafc", letterSpacing: "-0.03em" }}>
-          Research & Brainstorm
-        </h1>
+        <h1 className="page-title">Research & Brainstorm</h1>
       </div>
 
       <div
@@ -309,8 +313,8 @@ export default function Ideas() {
           isMobile ? "rounded-none" : isZenActive ? "rounded-[20px]" : "rounded-[28px]"
         )}
         style={{
-          background: "#090b12",
-          border: isZenActive ? "1px solid rgba(255,255,255,0.04)" : "1px solid rgba(255,255,255,0.07)",
+          background: "var(--bg-subtle)",
+          border: isZenActive ? "1px solid rgba(var(--border-rgb),0.04)" : "1px solid rgba(var(--border-rgb),0.07)",
         }}
       >
         <aside
@@ -320,21 +324,21 @@ export default function Ideas() {
             showSidePanels ? "md:block" : "md:hidden",
             "md:w-[250px]"
           )}
-          style={{ borderColor: "rgba(255,255,255,0.06)", background: "#0d1018" }}
+          style={{ borderColor: "rgba(var(--border-rgb),0.06)", background: "var(--bg-card)" }}
         >
-          <div className="px-4 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em]" style={{ color: "rgba(255,255,255,0.42)" }}>
+          <div className="px-4 py-4 border-b" style={{ borderColor: "rgba(var(--border-rgb),0.06)" }}>
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em]" style={{ color: theme.accent }}>
               <FolderPen size={12} />
               Workspace
             </div>
             <div className="mt-3 relative">
-              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "rgba(255,255,255,0.28)" }} />
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--tx-4)" }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search pages..."
                 className="w-full pl-9 pr-3 py-2.5 rounded-2xl text-[12px] outline-none"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "#f8fafc" }}
+                style={{ background: "var(--bg-input)", border: "1px solid rgba(var(--border-rgb),0.06)", color: "var(--tx-1)" }}
               />
             </div>
           </div>
@@ -352,7 +356,7 @@ export default function Ideas() {
                   className="group rounded-2xl px-3 py-3 transition-all cursor-pointer"
                   style={
                     isActive
-                      ? { background: "rgba(255,255,255,0.06)", border: `1px solid ${theme.border}` }
+                      ? { background: "rgba(var(--surface-rgb),0.06)", border: `1px solid ${theme.border}` }
                       : { border: "1px solid transparent" }
                   }
                   onClick={() => {
@@ -366,7 +370,7 @@ export default function Ideas() {
                   <div className="flex items-start gap-3">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-                      style={{ background: "rgba(255,255,255,0.05)", color: isActive ? theme.accent : "rgba(255,255,255,0.68)" }}
+                      style={{ background: theme.dim, color: isActive ? theme.accent : `${theme.accent}99` }}
                     >
                       {topic.emoji}
                     </div>
@@ -385,26 +389,25 @@ export default function Ideas() {
                             }
                           }}
                           className="w-full rounded-lg px-2 py-1 text-[13px] font-semibold outline-none"
-                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#f8fafc" }}
+                          style={{ background: "var(--bg-input)", border: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--tx-1)" }}
                         />
                       ) : (
-                        <div className="text-[13px] font-semibold truncate" style={{ color: isActive ? "#f8fafc" : "rgba(255,255,255,0.75)" }}>
+                        <div className="text-[13px] font-semibold truncate" style={{ color: isActive ? "var(--tx-1)" : "var(--tx-2)" }}>
                           {topic.name}
                         </div>
                       )}
-                      <div className="text-[11px] mt-0.5" style={{ color: isActive ? theme.accent : "rgba(255,255,255,0.3)" }}>
+                      <div className="text-[11px] mt-0.5" style={{ color: isActive ? theme.accent : "var(--tx-4)" }}>
                         {topicCount} pages
                       </div>
                     </div>
-                    <div className="hidden md:flex items-center gap-1">
+                    <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           beginTopicEdit(topic);
                         }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <Pencil size={12} style={{ color: "rgba(255,255,255,0.35)" }} />
+                        <Pencil size={12} style={{ color: "var(--tx-4)" }} />
                       </button>
                       <TopicDeleteButton
                         pending={isDeletePending}
@@ -430,7 +433,7 @@ export default function Ideas() {
                   }}
                   className="w-full rounded-2xl px-3 py-2.5 text-[12px] outline-none"
                   placeholder="New space..."
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "#f8fafc" }}
+                  style={{ background: "var(--bg-input)", border: "1px solid rgba(var(--border-rgb),0.06)", color: "var(--tx-1)" }}
                 />
               </div>
             ) : (
@@ -454,21 +457,29 @@ export default function Ideas() {
             showSidePanels ? "md:block" : "md:hidden",
             "md:w-[320px]"
           )}
-          style={{ borderColor: "rgba(255,255,255,0.06)", background: "#0b0e16" }}
+          style={{ borderColor: "rgba(var(--border-rgb),0.06)", background: "var(--bg-base)" }}
         >
-          <div className="px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="px-5 py-4 border-b" style={{ borderColor: "rgba(var(--border-rgb),0.06)" }}>
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.16em]" style={{ color: "rgba(255,255,255,0.36)" }}>
-                  Pages
-                </div>
-                <div className="text-[17px] font-bold mt-1" style={{ color: "#f8fafc" }}>
-                  {activeTopic.name}
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  onClick={() => setMobileView("topics")}
+                  className="md:hidden flex-shrink-0"
+                >
+                  <ArrowLeft size={16} style={{ color: "var(--tx-3)" }} />
+                </button>
+                <div className="min-w-0">
+                  <div className="text-[11px] uppercase tracking-[0.16em]" style={{ color: theme.accent }}>
+                    Pages
+                  </div>
+                  <div className="text-[17px] font-bold mt-1 truncate" style={{ color: "var(--tx-1)" }}>
+                    {activeTopic.name}
+                  </div>
                 </div>
               </div>
               <button
                 onClick={createNote}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[12px] font-semibold"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[12px] font-semibold flex-shrink-0"
                 style={{ background: theme.dim, border: `1px solid ${theme.border}`, color: theme.accent }}
               >
                 <Plus size={13} />
@@ -480,8 +491,8 @@ export default function Ideas() {
           <div className="p-3 space-y-2 overflow-y-auto h-full">
             {topicNotes.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center px-8">
-                <BookOpen size={22} style={{ color: "rgba(255,255,255,0.2)" }} />
-                <div className="mt-3 text-[13px]" style={{ color: "rgba(255,255,255,0.48)" }}>
+                <BookOpen size={22} style={{ color: theme.accent }} />
+                <div className="mt-3 text-[13px]" style={{ color: "var(--tx-3)" }}>
                   No pages in this space yet.
                 </div>
                 <button onClick={createNote} className="mt-4 text-[12px] font-semibold" style={{ color: theme.accent }}>
@@ -504,8 +515,8 @@ export default function Ideas() {
                     className="group rounded-2xl px-4 py-3 cursor-pointer transition-all"
                     style={
                       isActive
-                        ? { background: "rgba(255,255,255,0.07)", border: `1px solid ${theme.border}` }
-                        : { background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }
+                        ? { background: "rgba(var(--surface-rgb),0.07)", border: `1px solid ${theme.border}` }
+                        : { background: "rgba(var(--surface-rgb),0.025)", border: "1px solid rgba(var(--border-rgb),0.05)" }
                     }
                     onClick={() => {
                       setActiveNoteId(note.id);
@@ -515,13 +526,13 @@ export default function Ideas() {
                     <div className="flex items-start gap-3">
                       <div
                         className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-                        style={{ background: isActive ? theme.dim : "rgba(255,255,255,0.04)", color: isActive ? theme.accent : "rgba(255,255,255,0.55)" }}
+                        style={{ background: theme.dim, color: isActive ? theme.accent : `${theme.accent}80` }}
                       >
                         Pg
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <div className="text-[13px] font-semibold truncate" style={{ color: isActive ? "#f8fafc" : "rgba(255,255,255,0.75)" }}>
+                          <div className="text-[13px] font-semibold truncate" style={{ color: isActive ? "var(--tx-1)" : "var(--tx-2)" }}>
                             {note.title || "Untitled"}
                           </div>
                           <NoteDeleteButton
@@ -531,11 +542,11 @@ export default function Ideas() {
                             onCancel={() => setNoteDeleteConfirmId(null)}
                           />
                         </div>
-                        <div className="text-[11px] mt-1 line-clamp-2" style={{ color: "rgba(255,255,255,0.38)" }}>
+                        <div className="text-[11px] mt-1 line-clamp-2" style={{ color: "var(--tx-4)" }}>
                           {preview}
                         </div>
                         <div className="flex items-center gap-2 mt-3">
-                          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.24)" }}>
+                          <span className="text-[10px]" style={{ color: `${theme.accent}80` }}>
                             {dateLabel}
                           </span>
                           {note.tags.slice(0, 2).map((tag) => (

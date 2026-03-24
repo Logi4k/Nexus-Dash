@@ -29,6 +29,7 @@ import {
 } from "recharts";
 import { useAppData } from "@/lib/store";
 import { cn, fmtUSD, generateId, FUTURES_CONTRACTS } from "@/lib/utils";
+import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
 import {
   saveImage,
@@ -286,6 +287,7 @@ function TradeRow({
   onDeleteImage: (imageId: string) => void;
   onLightbox: (url: string) => void;
 }) {
+  const bw = useBWMode();
   const [confirm, setConfirm] = useState(false);
   const [showImages, setShowImages] = useState(false);
   const isWin   = trade.pnl > 0;
@@ -323,7 +325,7 @@ function TradeRow({
 
         {/* Instrument */}
         {(() => {
-          const iCol = getInstrumentColor(trade.instrument);
+          const iCol = bwColor(getInstrumentColor(trade.instrument), bw);
           return (
             <span className="text-[10px] font-black font-mono tracking-wide px-1.5 py-0.5 rounded"
               style={{ color: iCol, background: `${iCol}15`, border: `1px solid ${iCol}30` }}>
@@ -419,7 +421,7 @@ function TradeRow({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               {(() => {
-                const iCol = getInstrumentColor(trade.instrument);
+                const iCol = bwColor(getInstrumentColor(trade.instrument), bw);
                 return (
                   <span className="text-[10px] font-black font-mono tracking-wide px-1.5 py-0.5 rounded"
                     style={{ color: iCol, background: `${iCol}15`, border: `1px solid ${iCol}30` }}>
@@ -516,7 +518,9 @@ export default function Journal() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Page theme + filter state ──
-  const theme = PAGE_THEMES.journal;
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.journal, isBW);
+  const getInstrColor = (s: string) => bwColor(getInstrumentColor(s), isBW);
   const [filters, setFilters] = useState({ direction: "all", outcome: "all", sort: "date" });
 
   useEffect(() => {
@@ -970,7 +974,7 @@ export default function Journal() {
               {allStats.winRate !== null && (
                 <span
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.15)", color: "#60a5fa" }}
+                  style={{ background: bwColor("rgba(59,130,246,0.07)", isBW), border: `1px solid ${bwColor("rgba(59,130,246,0.15)", isBW)}`, color: bwColor("#60a5fa", isBW) }}
                 >
                   <Target size={11} />
                   {allStats.winRate.toFixed(0)}% WR
@@ -990,7 +994,7 @@ export default function Journal() {
               {allStats.profitFactor !== null && (
                 <span
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.15)", color: "#a78bfa" }}
+                  style={{ background: bwColor("rgba(167,139,250,0.07)", isBW), border: `1px solid ${bwColor("rgba(167,139,250,0.15)", isBW)}`, color: bwColor("#a78bfa", isBW) }}
                 >
                   <Sigma size={11} />
                   PF {allStats.profitFactor.toFixed(2)}
@@ -1100,7 +1104,7 @@ export default function Journal() {
                   {isToday && (
                     <span
                       className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ background: "rgba(14,184,154,0.1)", color: "#1dd4b4", border: "1px solid rgba(14,184,154,0.2)" }}
+                      style={{ background: bwColor("rgba(14,184,154,0.1)", isBW), color: bwColor("#1dd4b4", isBW), border: `1px solid ${bwColor("rgba(14,184,154,0.2)", isBW)}` }}
                     >TODAY</span>
                   )}
                   <button
@@ -1135,8 +1139,9 @@ export default function Journal() {
                     const isToday2 = d === today;
                     const dow = new Date(d + "T00:00:00").getDay();
                     const isWeekend = dow === 0 || dow === 6;
-                    const chipCol = trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : hasNote ? "#3b82f6" : isWeekend ? "#1f2937" : "#1f2937";
-                    const borderCol = isSelected2 ? (trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : "#3b82f6") : "transparent";
+                    const noteBlue = bwColor("#3b82f6", isBW);
+                    const chipCol = trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : hasNote ? noteBlue : isWeekend ? "#1f2937" : "#1f2937";
+                    const borderCol = isSelected2 ? (trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : noteBlue) : "transparent";
                     return (
                       <button
                         key={d}
@@ -1169,7 +1174,7 @@ export default function Journal() {
               <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border">
                 {[
                   { label: "Trades",   value: String(dayStats.total),                                                       color: "var(--tx-3)", icon: <BarChart3 size={10} /> },
-                  { label: "Win Rate", value: dayStats.winRate !== null ? `${dayStats.winRate.toFixed(0)}%` : "—",           color: "#3b82f6", icon: <Target size={10} /> },
+                  { label: "Win Rate", value: dayStats.winRate !== null ? `${dayStats.winRate.toFixed(0)}%` : "—",           color: bwColor("#3b82f6", isBW), icon: <Target size={10} /> },
                   { label: "Gross",    value: fmtUSD(dayStats.gross), color: dayStats.gross >= 0 ? "#22c55e" : "#ef4444",   icon: <TrendingUp size={10} /> },
                   { label: "Net P&L",  value: fmtUSD(dayStats.net),   color: dayStats.net   >= 0 ? "#22c55e" : "#ef4444",   icon: <Activity size={10} /> },
                 ].map((s) => (
@@ -1193,7 +1198,7 @@ export default function Journal() {
                 {filteredDayTrades.length > 0 && (
                   <span
                     className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                    style={{ background: "rgba(14,184,154,0.08)", color: "#1dd4b4", border: "1px solid rgba(14,184,154,0.15)" }}
+                    style={{ background: bwColor("rgba(14,184,154,0.08)", isBW), color: bwColor("#1dd4b4", isBW), border: `1px solid ${bwColor("rgba(14,184,154,0.15)", isBW)}` }}
                   >
                     {filteredDayTrades.length} trade{filteredDayTrades.length !== 1 ? "s" : ""}
                   </span>
@@ -1304,11 +1309,11 @@ export default function Journal() {
               <div className="grid grid-cols-2 gap-1.5">
                 {[
                   { label: "Trades",   value: String(allStats.total),                                                             color: "var(--tx-3)" },
-                  { label: "Win Rate", value: allStats.winRate !== null ? `${allStats.winRate.toFixed(0)}%` : "—",                 color: "#3b82f6" },
+                  { label: "Win Rate", value: allStats.winRate !== null ? `${allStats.winRate.toFixed(0)}%` : "—",                 color: bwColor("#3b82f6", isBW) },
                   { label: "Avg Win",  value: allStats.avgWin  !== null ? fmtUSD(allStats.avgWin)  : "—",                         color: "#22c55e" },
                   { label: "Avg Loss", value: allStats.avgLoss !== null ? fmtUSD(allStats.avgLoss) : "—",                         color: "#ef4444" },
                   { label: "Best",     value: allStats.bestTrade  !== null ? `+${fmtUSD(allStats.bestTrade)}`  : "—",             color: "#4ade80" },
-                  { label: "P.Factor", value: allStats.profitFactor !== null ? allStats.profitFactor.toFixed(2) : "—",            color: "#a78bfa" },
+                  { label: "P.Factor", value: allStats.profitFactor !== null ? allStats.profitFactor.toFixed(2) : "—",            color: bwColor("#a78bfa", isBW) },
                 ].map((s) => (
                   <div
                     key={s.label}
@@ -1551,7 +1556,7 @@ export default function Journal() {
                   <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(34,197,94,0.7)" }} />Profit
                 </span>
                 <span className="flex items-center gap-1 text-[10px] text-tx-3">
-                  <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(59,130,246,0.5)" }} />Note only
+                  <span className="w-2 h-2 rounded-sm inline-block" style={{ background: bwColor("rgba(59,130,246,0.5)", isBW) }} />Note only
                 </span>
                 <span className="flex items-center gap-1 text-[10px] text-tx-3">
                   <span className="flex gap-px">
@@ -1581,7 +1586,7 @@ export default function Journal() {
                     <div key={s.label} className="flex items-center gap-2">
                       <span
                         className="text-[10px] font-black font-mono w-8 flex-shrink-0"
-                        style={{ color: getInstrumentColor(s.label) }}
+                        style={{ color: getInstrColor(s.label) }}
                       >
                         {s.label}
                       </span>
@@ -1627,7 +1632,7 @@ export default function Journal() {
                   const trades = allTrades.filter((t) => t.date === date);
                   const dayNet = trades.reduce((s, t) => s + t.pnl - (t.fees ?? 0), 0);
                   const isSelected = date === selectedDate;
-                  const rowCol = trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : "#3b82f6";
+                  const rowCol = trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : bwColor("#3b82f6", isBW);
                   return (
                     <button
                       key={date}
@@ -1970,7 +1975,7 @@ export default function Journal() {
         if (!vt) return null;
         const netPnl = vt.pnl - (vt.fees ?? 0);
         const accentColor = netPnl > 0 ? "#22c55e" : netPnl < 0 ? "#ef4444" : "var(--tx-3)";
-        const iCol = getInstrumentColor(vt.instrument);
+        const iCol = getInstrColor(vt.instrument);
         return (
           <Modal
             open={true}

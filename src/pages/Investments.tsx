@@ -25,6 +25,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import {
   fmtGBP,
   fmtDate,
@@ -353,6 +354,7 @@ function InvestmentSidebar({
   subscriptions: Subscription[];
   stats: { totalValue: number; totalInvested: number; totalPnl: number; totalPnlPct: number };
 }) {
+  const bw = useBWMode();
   const topPerformers = [...investments]
     .filter((inv) => investmentValue(inv) > 0)
     .sort((a, b) => investmentPnlPct(b) - investmentPnlPct(a))
@@ -389,7 +391,7 @@ function InvestmentSidebar({
           const dash = Math.max(0, frac * circ - GAP);
           const offset = -(runPct * circ);
           runPct += frac;
-          return { ...item, dash, offset, color: ALLOC_COLORS[i % ALLOC_COLORS.length] };
+          return { ...item, dash, offset, color: bwColor(ALLOC_COLORS[i % ALLOC_COLORS.length], bw) };
         });
         return (
           <div className="card p-4 flex flex-col gap-3">
@@ -692,7 +694,8 @@ export default function InvestmentsPage() {
   const [deleteSubId, setDeleteSubId] = useState<string | null>(null);
 
   // ── Page theme + filter state ─────────────────────────────────────────────
-  const theme = PAGE_THEMES.investments;
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.investments, isBW);
   const [filters, setFilters] = useState({ performance: "all", sort: "value" });
 
   // ── T212 sync ─────────────────────────────────────────────────────────────
@@ -936,7 +939,7 @@ export default function InvestmentsPage() {
       {!apiKey && !showApiKeyInput && (
         <div
           className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-xs -mt-2"
-          style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)" }}
+          style={{ background: bwColor("rgba(99,102,241,0.06)", isBW), border: `1px solid ${bwColor("rgba(99,102,241,0.18)", isBW)}` }}
         >
           <div className="flex items-center gap-2.5">
             <WifiOff size={13} className="text-tx-3 shrink-0" />
@@ -944,7 +947,7 @@ export default function InvestmentsPage() {
           </div>
           <button
             className="btn-ghost btn-sm shrink-0"
-            style={{ color: "#818cf8" }}
+            style={{ color: bwColor("#818cf8", isBW) }}
             onClick={() => setShowApiKeyInput(true)}
           >
             Connect T212
@@ -956,7 +959,7 @@ export default function InvestmentsPage() {
       {showApiKeyInput && (
         <div
           className="flex flex-col gap-3 px-4 py-3.5 rounded-xl -mt-2"
-          style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)" }}
+          style={{ background: bwColor("rgba(99,102,241,0.06)", isBW), border: `1px solid ${bwColor("rgba(99,102,241,0.18)", isBW)}` }}
         >
           <p className="text-[11px] font-semibold text-tx-2">
             Enter your T212 API key — generate one at <span className="text-tx-1">app.trading212.com → Settings → API</span>
@@ -1020,13 +1023,13 @@ export default function InvestmentsPage() {
         {[
           {
             label: "Total Value", value: fmtGBP(stats.totalValue), sub: "T212 + manual",
-            color: "#1dd4b4", bg: "rgba(14,184,154,0.06)", border: "rgba(14,184,154,0.18)",
-            icon: <BarChart3 size={13} style={{ color: "#1dd4b4", opacity: 0.7 }} />,
+            color: bwColor("#1dd4b4", isBW), bg: bwColor("rgba(14,184,154,0.06)", isBW), border: bwColor("rgba(14,184,154,0.18)", isBW),
+            icon: <BarChart3 size={13} style={{ color: bwColor("#1dd4b4", isBW), opacity: 0.7 }} />,
           },
           {
             label: "Cost Basis", value: fmtGBP(stats.totalInvested), sub: "Amount invested",
-            color: "#3b82f6", bg: "rgba(59,130,246,0.06)", border: "rgba(59,130,246,0.18)",
-            icon: <Layers size={13} style={{ color: "#3b82f6", opacity: 0.7 }} />,
+            color: bwColor("#3b82f6", isBW), bg: bwColor("rgba(59,130,246,0.06)", isBW), border: bwColor("rgba(59,130,246,0.18)", isBW),
+            icon: <Layers size={13} style={{ color: bwColor("#3b82f6", isBW), opacity: 0.7 }} />,
           },
           {
             label: "Unrealised P&L",
@@ -1095,7 +1098,7 @@ export default function InvestmentsPage() {
                 const maxAbsPct = Math.max(...filteredInvestments.map((i) => Math.abs(investmentPnlPct(i))), 1);
                 const barW = Math.min(100, (Math.abs(pnlP) / maxAbsPct) * 100);
                 const rank = idx + 1;
-                const rankColors = ["#f59e0b", "#94a3b8", "#c2763a"];
+                const rankColors = [bwColor("#f59e0b", isBW), bwColor("#94a3b8", isBW), bwColor("#c2763a", isBW)];
 
                 return (
                   <div
@@ -1208,7 +1211,7 @@ export default function InvestmentsPage() {
                     const maxAbsPct = Math.max(...filteredInvestments.map((i) => Math.abs(investmentPnlPct(i))), 1);
                     const barW = Math.min(100, (Math.abs(pnlP) / maxAbsPct) * 100);
                     const rank = idx + 1; // sorted by pnlPct desc
-                    const rankColors = ["#f59e0b", "#94a3b8", "#c2763a"];
+                    const rankColors = [bwColor("#f59e0b", isBW), bwColor("#94a3b8", isBW), bwColor("#c2763a", isBW)];
                     return (
                       <tr
                         key={inv.id}
@@ -1396,7 +1399,7 @@ export default function InvestmentsPage() {
                 <h2 className="font-semibold text-tx-1">Subscriptions</h2>
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(14,184,154,0.08)", color: "#1dd4b4", border: "1px solid rgba(14,184,154,0.15)" }}
+                  style={{ background: bwColor("rgba(14,184,154,0.08)", isBW), color: bwColor("#1dd4b4", isBW), border: `1px solid ${bwColor("rgba(14,184,154,0.15)", isBW)}` }}
                 >
                   {fmtGBP(totalMonthlySubs)}/mo
                 </span>

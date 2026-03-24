@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { fmtGBP, fmtUSD, fmtDate, toNum, pct, cn, getStatusBg, generateId } from "@/lib/utils";
+import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
 import StatCard from "@/components/StatCard";
 import type { Account, AccountStatus, Withdrawal, PassedChallenge } from "@/types";
@@ -302,6 +303,7 @@ function FirmAnalyticsChart({
   expenses: Expense[];
   withdrawals: Withdrawal[];
 }) {
+  const bw = useBWMode();
   const [sortBy, setSortBy] = useState<"net" | "spent" | "earned">("net");
 
   const firmData = useMemo(() => {
@@ -379,7 +381,7 @@ function FirmAnalyticsChart({
           const spentPct  = (f.spent  / maxVal) * 100;
           const earnPct   = (f.earned / maxVal) * 100;
           const isProfit  = f.net >= 0;
-          const firmCol   = getFirmColor(f.firm);
+          const firmCol   = bwColor(getFirmColor(f.firm), bw);
           return (
             <div key={f.firm} className="flex flex-col gap-1.5 rounded-xl px-3 py-2.5"
               style={{ background: `${firmCol}06`, border: `1px solid ${firmCol}14` }}>
@@ -444,6 +446,7 @@ function TradingInsightsSidebar({
   accounts: Account[];
   passedChallenges: PassedChallenge[];
 }) {
+  const bw = useBWMode();
   const [taxRate, setTaxRate] = useState(20);
   const firmData = useMemo(() => FIRMS.map((firm) => {
     const spent  = expenses.filter((e) => e.description === firm).reduce((s, e) => s + toNum(e.amount), 0);
@@ -1091,6 +1094,7 @@ function AccountCard({
   onDelete: () => void;
   onPayout: () => void;
 }) {
+  const bw = useBWMode();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const funded    = isFundedStatus(account.status);
@@ -1125,7 +1129,7 @@ function AccountCard({
 
   const statusColor = funded ? "#22c55e" : challenge ? "#f59e0b" : "#ef4444";
   const statusBg    = funded ? "rgba(34,197,94,0.06)" : challenge ? "rgba(245,158,11,0.06)" : "rgba(239,68,68,0.04)";
-  const firmColor   = getFirmColor(account.firm);
+  const firmColor   = bwColor(getFirmColor(account.firm), bw);
 
   return (
     <div
@@ -1164,25 +1168,19 @@ function AccountCard({
           {!breached && (
             <>
               {funded && (
-                <button onClick={onPayout} className="p-1.5 rounded-lg transition-all" style={{ color: "#4b5563" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#22c55e")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "#4b5563")}
+                <button onClick={onPayout} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-profit"
                   title="Record Payout">
                   <PoundSterling size={12} />
                 </button>
               )}
-              <button onClick={onEdit} className="p-1.5 rounded-lg transition-all" style={{ color: "#4b5563" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#f1f5f9")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#4b5563")}
+              <button onClick={onEdit} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-tx-1"
                 title="Edit">
                 <Edit2 size={12} />
               </button>
             </>
           )}
           {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg transition-all" style={{ color: "#4b5563" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "#ef4444")}
-              onMouseLeave={e => (e.currentTarget.style.color = "#4b5563")}
+            <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-loss"
               title="Delete">
               <Trash2 size={12} />
             </button>
@@ -1338,7 +1336,8 @@ export default function PropAccounts() {
   const [deleteChallengeConfirm, setDeleteChallengeConfirm] = useState<string | null>(null);
 
   /* ---- Page theme + filter state ---- */
-  const theme = PAGE_THEMES.prop;
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.prop, isBW);
   const [filters, setFilters] = useState({ status: "all", sort: "balance" });
 
   /* ---- Detect if selected firm has plan rules ---- */
@@ -1784,7 +1783,7 @@ export default function PropAccounts() {
                     runningMap[w.id] = running;
                   }
                   return sorted.map((w, idx) => {
-                    const wFirmCol = getFirmColor(w.firm);
+                    const wFirmCol = bwColor(getFirmColor(w.firm), isBW);
                     const amount = toNum(w.gross);
                     const isTop = amount === maxPayout;
                     const isFirst = idx === sorted.length - 1;
@@ -1889,7 +1888,7 @@ export default function PropAccounts() {
                         runningMap[w.id] = running;
                       }
                       return sorted.map((w, idx) => {
-                        const wFirmCol = getFirmColor(w.firm);
+                        const wFirmCol = bwColor(getFirmColor(w.firm), isBW);
                         const amount = toNum(w.gross);
                         const isTop = amount === maxPayout;
                         const isFirst = idx === sorted.length - 1;
@@ -1976,7 +1975,7 @@ export default function PropAccounts() {
               </div>
               <div className="flex flex-col gap-2">
                 {[...(data.passedChallenges ?? [])].sort((a, b) => b.passedDate.localeCompare(a.passedDate)).map((c) => {
-                  const firmCol = getFirmColor(c.firm);
+                  const firmCol = bwColor(getFirmColor(c.firm), isBW);
                   const profit  = c.finalBalance - c.initialBalance;
                   const isDeleting = deleteChallengeConfirm === c.id;
                   return (
@@ -2168,7 +2167,7 @@ export default function PropAccounts() {
           {payoutForm.accountId && (() => {
             const linkedAcc = data.accounts.find((a) => a.id === payoutForm.accountId);
             if (!linkedAcc) return null;
-            const col = getFirmColor(linkedAcc.firm);
+            const col = bwColor(getFirmColor(linkedAcc.firm), isBW);
             return (
               <div className="flex items-center gap-2 rounded-xl px-3 py-2"
                 style={{ background: `${col}10`, border: `1px solid ${col}22` }}>

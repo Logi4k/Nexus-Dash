@@ -20,6 +20,7 @@ import {
   Building2,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import { fmtGBP, toNum, cn, daysUntil } from "@/lib/utils";
 import { UK_TAX } from "@/lib/utils";
 import { PAGE_THEMES } from "@/lib/theme";
@@ -127,6 +128,7 @@ function buildTaxDates(
 // ─── Band bar ─────────────────────────────────────────────────────────────────
 
 function BandBar({ salary, tradingProfit }: { salary: number; tradingProfit: number }) {
+  const bw = useBWMode();
   const totalIncome = salary + tradingProfit;
   const maxBar = Math.max(totalIncome, UK_TAX.BASIC_RATE_LIMIT) * 1.15;
 
@@ -166,7 +168,7 @@ function BandBar({ salary, tradingProfit }: { salary: number; tradingProfit: num
 
         {/* Salary fill */}
         <div className="absolute top-1.5 bottom-1.5 left-1.5 rounded-lg transition-all duration-700"
-          style={{ width: `calc(${salaryPct}% - 6px)`, background: "rgba(59,130,246,0.7)" }} />
+          style={{ width: `calc(${salaryPct}% - 6px)`, background: bwColor("rgba(59,130,246,0.7)", bw) }} />
         {/* Trading fill */}
         {tradingPct > 0 && (
           <div className="absolute top-1.5 bottom-1.5 rounded-lg transition-all duration-700"
@@ -189,7 +191,7 @@ function BandBar({ salary, tradingProfit }: { salary: number; tradingProfit: num
 
       <div className="flex items-center gap-4 text-[10px] text-tx-3">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(59,130,246,0.7)" }} />
+          <span className="w-2 h-2 rounded-sm inline-block" style={{ background: bwColor("rgba(59,130,246,0.7)", bw) }} />
           Employment salary
         </span>
         <span className="flex items-center gap-1.5">
@@ -264,7 +266,8 @@ function BRow({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TaxPage() {
-  const theme = PAGE_THEMES.tax;
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.tax, isBW);
   const { data, update } = useAppData();
   const taxYear = useMemo(() => getCurrentTaxYear(), []);
 
@@ -409,12 +412,12 @@ export default function TaxPage() {
           {/* ── Income inputs row ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Salary */}
-            <div className="card p-4 flex flex-col gap-3" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 100%)", borderColor: "rgba(59,130,246,0.15)" }}>
+            <div className="card p-4 flex flex-col gap-3" style={{ background: bwColor("linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 100%)", isBW), borderColor: bwColor("rgba(59,130,246,0.15)", isBW) }}>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-tx-3 flex items-center gap-1.5">
                   <Building2 size={10} className="text-blue-400" />Employment Salary
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.2)" }}>PAYE</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: bwColor("rgba(59,130,246,0.12)", isBW), color: bwColor("#60a5fa", isBW), border: `1px solid ${bwColor("rgba(59,130,246,0.2)", isBW)}` }}>PAYE</span>
               </div>
               <EditableAmount label="Annual Salary" value={salary} onSave={setSalary} />
               <p className="text-[11px] text-tx-4">Click to edit your gross annual salary</p>
@@ -803,9 +806,9 @@ export default function TaxPage() {
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                     style={{
-                      background: "rgba(14,184,154,0.1)",
-                      color: "#10f5a4",
-                      border: "1px solid rgba(14,184,154,0.2)",
+                      background: bwColor("rgba(14,184,154,0.1)", isBW),
+                      color: bwColor("#10f5a4", isBW),
+                      border: `1px solid ${bwColor("rgba(14,184,154,0.2)", isBW)}`,
                     }}
                   >
                     Fully saved ✓
@@ -833,7 +836,7 @@ export default function TaxPage() {
                       width: `${savingsProgress}%`,
                       background:
                         savingsProgress >= 100
-                          ? "linear-gradient(90deg,#0eb898,#10f5a4)"
+                          ? bwColor("linear-gradient(90deg,#0eb898,#10f5a4)", isBW)
                           : savingsProgress >= 50
                           ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
                           : "linear-gradient(90deg,#ff3d5a99,#ff3d5a)",
@@ -902,7 +905,7 @@ export default function TaxPage() {
                     {savingsGoalOverride !== null && (
                       <span
                         className="text-[10px] px-1 rounded font-medium shrink-0"
-                        style={{ background: "rgba(14,184,154,0.1)", color: "#1dd4b4" }}
+                        style={{ background: bwColor("rgba(14,184,154,0.1)", isBW), color: bwColor("#1dd4b4", isBW) }}
                       >
                         custom
                       </span>
@@ -948,7 +951,7 @@ export default function TaxPage() {
                 const days = daysUntil(entry.date);
                 const isPast = days < 0;
                 const isSoon = days >= 0 && days <= 30;
-                const accentColor = isPast ? "#4b5563" : isSoon ? "#f59e0b" : "#3b82f6";
+                const accentColor = isPast ? "#4b5563" : isSoon ? "#f59e0b" : bwColor("#3b82f6", isBW);
                 const [yyyy, mm, dd] = entry.date.split("-");
                 const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
                 const monthLabel = monthNames[parseInt(mm) - 1];
@@ -1008,9 +1011,9 @@ export default function TaxPage() {
             </h3>
             <div className="flex flex-col gap-2">
               {[
-                { tip: "Trading income must be declared even if under your personal allowance — HMRC requires disclosure.", icon: <FileText size={11} />, color: "#3b82f6" },
+                { tip: "Trading income must be declared even if under your personal allowance — HMRC requires disclosure.", icon: <FileText size={11} />, color: bwColor("#3b82f6", isBW) },
                 { tip: "Platform fees, subscriptions, and challenge costs are allowable trading expenses.", icon: <CheckCircle size={11} />, color: "#22c55e" },
-                { tip: "Keep records of all payouts and expenses for at least 5 years after the SA deadline.", icon: <Clock size={11} />, color: "#8b5cf6" },
+                { tip: "Keep records of all payouts and expenses for at least 5 years after the SA deadline.", icon: <Clock size={11} />, color: bwColor("#8b5cf6", isBW) },
                 { tip: "If your SA tax exceeds £1,000, you'll need Payments on Account for the following year.", icon: <AlertCircle size={11} />, color: "#f59e0b" },
               ].map((t, i) => (
                 <div key={i}

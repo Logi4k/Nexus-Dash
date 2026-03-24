@@ -24,6 +24,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import {
   cn,
   formatMinutesAsLabel,
@@ -1641,7 +1642,8 @@ function MarketSidebar() {
 // ---------------------------------------------------------------------------
 
 export default function Market() {
-  const theme = PAGE_THEMES.market;
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.market, isBW);
   return (
     <div className="space-y-5 w-full page-enter">
       {/* Header */}
