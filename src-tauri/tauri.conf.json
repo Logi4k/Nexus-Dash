@@ -1,11 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Nexus",
-  "version": "1.0.0",
+  "version": "1.0.8",
   "identifier": "com.nexus.trader",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:1420"
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev"
   },
   "app": {
     "windows": [

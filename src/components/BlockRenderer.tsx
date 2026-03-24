@@ -15,7 +15,7 @@ const baseInputStyle: React.CSSProperties = {
   width: "100%",
   background: "transparent",
   outline: "none",
-  color: "#f8fafc",
+  color: "var(--tx-1)",
   resize: "none",
   fontFamily: "inherit",
   textAlign: "left",
@@ -66,7 +66,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
   const bodyStyle: React.CSSProperties = {
     fontSize: 15,
     lineHeight: 1.75,
-    color: "rgba(255,255,255,0.82)",
+    color: "var(--tx-2)",
   };
 
   switch (block.type) {
@@ -78,7 +78,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
           onChange={onChange}
           onKeyDown={onKeyDown}
           onFocus={onFocus}
-          style={{ fontSize: 31, fontWeight: 800, lineHeight: 1.15, letterSpacing: "-0.04em", color: "#f8fafc" }}
+          style={{ fontSize: 31, fontWeight: 800, lineHeight: 1.15, letterSpacing: "-0.04em", color: "var(--tx-1)" }}
           placeholder="Heading 1"
         />
       );
@@ -91,7 +91,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
           onChange={onChange}
           onKeyDown={onKeyDown}
           onFocus={onFocus}
-          style={{ fontSize: 23, fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.03em", color: "#f8fafc" }}
+          style={{ fontSize: 23, fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.03em", color: "var(--tx-1)" }}
           placeholder="Heading 2"
         />
       );
@@ -104,7 +104,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
           onChange={onChange}
           onKeyDown={onKeyDown}
           onFocus={onFocus}
-          style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.35, color: "#f8fafc" }}
+          style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.35, color: "var(--tx-1)" }}
           placeholder="Heading 3"
         />
       );
@@ -128,7 +128,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
     case "numbered":
       return (
         <div className="flex gap-3 items-start">
-          <span className="mt-[3px] text-[13px] font-semibold flex-shrink-0 w-6 text-right" style={{ color: "rgba(255,255,255,0.45)" }}>
+          <span className="mt-[3px] text-[13px] font-semibold flex-shrink-0 w-6 text-right" style={{ color: "var(--tx-4)" }}>
             {blockIndex + 1}.
           </span>
           <TextArea
@@ -151,7 +151,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
             style={
               block.checked
                 ? { background: theme.accent, border: `1px solid ${theme.accent}` }
-                : { border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.03)" }
+                : { border: "1px solid rgba(var(--border-rgb),0.2)", background: "rgba(var(--surface-rgb),0.03)" }
             }
             onClick={() => onChange(block.content, { checked: !block.checked })}
           >
@@ -165,7 +165,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
             onFocus={onFocus}
             style={{
               ...bodyStyle,
-              color: block.checked ? "rgba(255,255,255,0.38)" : bodyStyle.color,
+              color: block.checked ? "var(--tx-4)" : bodyStyle.color,
               textDecoration: block.checked ? "line-through" : "none",
             }}
             placeholder="To-do"
@@ -175,14 +175,14 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
 
     case "quote":
       return (
-        <div className="pl-4" style={{ borderLeft: "2px solid rgba(255,255,255,0.14)" }}>
+        <div className="pl-4" style={{ borderLeft: "2px solid rgba(var(--border-rgb),0.14)" }}>
           <TextArea
             value={block.content}
             autoFocus={autoFocus}
             onChange={onChange}
             onKeyDown={onKeyDown}
             onFocus={onFocus}
-            style={{ ...bodyStyle, fontStyle: "italic", color: "rgba(255,255,255,0.68)" }}
+            style={{ ...bodyStyle, fontStyle: "italic", color: "var(--tx-3)" }}
             placeholder="Quote"
           />
         </div>
@@ -192,7 +192,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
       return (
         <div
           className="flex gap-3 items-start px-4 py-3 rounded-2xl"
-          style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${theme.border}` }}
+          style={{ background: "rgba(var(--surface-rgb),0.04)", border: `1px solid ${theme.border}` }}
         >
           <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: theme.accent }}>
             Note
@@ -211,8 +211,8 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
 
     case "code":
       return (
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#090b12", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="px-4 py-2 text-[11px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-base)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
+          <div className="px-4 py-2 text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--tx-4)", borderBottom: "1px solid rgba(var(--border-rgb),0.06)" }}>
             {block.language || "Code"}
           </div>
           <TextArea
@@ -224,7 +224,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
             style={{
               fontSize: 13,
               lineHeight: 1.7,
-              color: "#93f5b2",
+              color: "var(--color-profit)",
               fontFamily: "'JetBrains Mono', monospace",
               padding: "14px 16px",
             }}
@@ -236,7 +236,7 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
     case "divider":
       return (
         <div className="py-3">
-          <div className="w-full h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+          <div className="w-full h-px" style={{ background: "rgba(var(--border-rgb),0.08)" }} />
         </div>
       );
 
@@ -244,9 +244,9 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
       return (
         <div
           className="flex items-center justify-center px-6 py-12 rounded-2xl"
-          style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.12)" }}
+          style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px dashed rgba(var(--border-rgb),0.12)" }}
         >
-          <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <span className="text-[12px]" style={{ color: "var(--tx-4)" }}>
             Image placeholder
           </span>
         </div>
@@ -254,12 +254,12 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
 
     case "link-bookmark":
       return (
-        <div className="px-4 py-3 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="px-4 py-3 rounded-2xl" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
           {block.meta?.title ? (
             <div>
-              <div className="text-[13px] font-semibold" style={{ color: "#f8fafc" }}>{block.meta.title}</div>
+              <div className="text-[13px] font-semibold" style={{ color: "var(--tx-1)" }}>{block.meta.title}</div>
               {block.meta.description && (
-                <div className="text-[12px] mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <div className="text-[12px] mt-1" style={{ color: "var(--tx-4)" }}>
                   {block.meta.description}
                 </div>
               )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { MotionConfig } from "framer-motion";
 import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
@@ -27,6 +28,9 @@ function ThemeApplier() {
 
 function AppRoutes() {
   return (
+    // reducedMotion="user" makes all Framer Motion animations in the app
+    // automatically respect the OS prefers-reduced-motion preference.
+    <MotionConfig reducedMotion="user">
     <HashRouter>
       <ThemeApplier />
       <Routes>
@@ -58,6 +62,7 @@ function AppRoutes() {
         offset="5.5rem"
       />
     </HashRouter>
+    </MotionConfig>
   );
 }
 

@@ -31,6 +31,7 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
     try { return localStorage.getItem("sidebarCollapsed") === "true"; } catch { return false; }
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const isMac = typeof navigator !== "undefined" && /mac/i.test(navigator.platform);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
@@ -77,14 +78,14 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
         className="flex flex-col h-full select-none flex-shrink-0 transition-all duration-200"
         style={{
           width: isCollapsed ? 64 : 240,
-          background: "#07080f",
-          borderRight: "1px solid rgba(255,255,255,0.07)",
+          background: "var(--bg-base)",
+          borderRight: "1px solid rgba(var(--border-rgb),0.07)",
           overflow: "hidden",
         }}
       >
         {/* ── Logo + Toggle ── */}
         <div className="px-3 pt-4 pb-3 flex items-center justify-between flex-shrink-0"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", minHeight: 56 }}>
+          style={{ borderBottom: "1px solid rgba(var(--border-rgb),0.06)", minHeight: 56 }}>
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: activeTheme.dim, border: `1px solid ${activeTheme.border}` }}>
@@ -92,39 +93,41 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
-                <div className="font-black text-sm tracking-[0.18em] leading-none whitespace-nowrap" style={{ color: "#f8fafc" }}>
+                <div className="font-black text-sm tracking-[0.18em] leading-none whitespace-nowrap" style={{ color: "var(--tx-1)" }}>
                   NEXUS
                 </div>
-                <div className="text-[9px] font-medium mt-0.5 whitespace-nowrap" style={{ color: "rgba(255,255,255,0.35)" }}>
+                <div className="text-[9px] font-medium mt-0.5 whitespace-nowrap" style={{ color: "var(--tx-4)" }}>
                   Trader Dashboard
                 </div>
               </div>
             )}
           </div>
-          <button onClick={toggleCollapse}
-            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg transition-all"
-            style={{ color: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <button
+            onClick={toggleCollapse}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+            style={{ color: "var(--tx-4)", background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
             {isCollapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
           </button>
         </div>
 
         {/* ── Net Worth Card (expanded only) ── */}
         {!isCollapsed && (
-          <div className="px-3 py-2.5 flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="px-3 py-2.5 flex-shrink-0" style={{ borderBottom: "1px solid rgba(var(--border-rgb),0.06)" }}>
             <div className="rounded-xl p-3" style={{ background: activeTheme.dim, border: `1px solid ${activeTheme.border}` }}>
-              <div className="text-[10px] font-medium mb-1" style={{ color: "rgba(255,255,255,0.45)" }}>Net Worth</div>
-              <div className="text-[22px] font-extrabold tabular-nums leading-tight tracking-tight"
-                style={{ color: netWorth >= 0 ? "#f8fafc" : "#f87171" }}>
+              <div className="text-[10px] font-medium mb-1" style={{ color: activeTheme.accent }}>Net Worth</div>
+              <div className="text-[28px] font-black tabular-nums leading-tight tracking-tight"
+                style={{ color: netWorth >= 0 ? "var(--tx-1)" : "var(--color-loss)" }}>
                 {fmtGBP(netWorth)}
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1.5">
                 <div className="rounded-lg p-2" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.18)" }}>
-                  <div className="text-[9px] font-medium mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Funded</div>
-                  <div className="text-base font-black leading-none" style={{ color: "#4ade80" }}>{activeFunded}</div>
+                  <div className="text-[9px] font-medium mb-0.5" style={{ color: "rgba(34,197,94,0.65)" }}>Funded</div>
+                  <div className="text-base font-black leading-none" style={{ color: "var(--color-profit)" }}>{activeFunded}</div>
                 </div>
                 <div className="rounded-lg p-2" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.16)" }}>
-                  <div className="text-[9px] font-medium mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Challenges</div>
-                  <div className="text-base font-black leading-none" style={{ color: "#fbbf24" }}>{activeChallenges}</div>
+                  <div className="text-[9px] font-medium mb-0.5" style={{ color: "rgba(245,158,11,0.65)" }}>Challenges</div>
+                  <div className="text-base font-black leading-none" style={{ color: "var(--color-warn)" }}>{activeChallenges}</div>
                 </div>
               </div>
             </div>
@@ -141,16 +144,16 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
               "mb-2 w-full rounded-xl transition-all",
               isCollapsed ? "px-0 py-2.5 flex justify-center" : "px-3 py-2.5 flex items-center gap-2.5"
             )}
-            style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.62)" }}
+            style={{ background: "rgba(var(--surface-rgb),0.035)", border: "1px solid rgba(var(--border-rgb),0.06)", color: "var(--tx-2)" }}
           >
-            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg" style={{ background: "rgba(var(--surface-rgb),0.04)" }}>
               <Search size={14} />
             </div>
             {!isCollapsed && (
               <>
                 <span className="flex-1 text-left text-[13px] font-medium">Quick Find</span>
-                <span className="text-[10px] font-semibold px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)" }}>
-                  Ctrl K
+                <span className="text-[10px] font-semibold px-2 py-1 rounded-lg" style={{ background: "rgba(var(--surface-rgb),0.05)", color: "var(--tx-4)" }}>
+                  {isMac ? "⌘ K" : "Ctrl K"}
                 </span>
               </>
             )}
@@ -170,7 +173,7 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
                 )}
                 style={isActive
                   ? { background: theme.dim, color: theme.accent, border: `1px solid ${theme.border}` }
-                  : { color: "rgba(255,255,255,0.4)", border: "1px solid transparent" }
+                  : { color: "var(--tx-4)", border: "1px solid transparent" }
                 }
               >
                 {/* Active left bar */}
@@ -181,7 +184,7 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
                 {/* Icon */}
                 <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg"
                   style={isActive ? { background: theme.glow } : {}}>
-                  <Icon size={14} style={{ color: isActive ? theme.accent : "rgba(255,255,255,0.4)" }} strokeWidth={isActive ? 2 : 1.75} />
+                  <Icon size={14} style={{ color: isActive ? theme.accent : "var(--tx-4)" }} strokeWidth={isActive ? 2 : 1.75} />
                 </div>
                 {!isCollapsed && (
                   <span className="flex-1 truncate text-[13px]">{label}</span>
@@ -192,7 +195,7 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
         </nav>
 
         {/* ── Footer ── */}
-        <div className="px-3 py-2.5 flex flex-col gap-2 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="px-3 py-2.5 flex flex-col gap-2 flex-shrink-0" style={{ borderTop: "1px solid rgba(var(--border-rgb),0.06)" }}>
           {!isCollapsed ? (
             <div className="flex items-center gap-2">
               {/* Avatar */}
@@ -201,14 +204,16 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
                 {avatarUrl ? <img src={avatarUrl} alt={username} className="w-full h-full object-cover" /> : initials}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate" style={{ color: "#f8fafc" }}>{username}</p>
-                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{dateStr} | {timeStr}</p>
+                <p className="text-xs font-semibold truncate" style={{ color: "var(--tx-1)" }}>{username}</p>
+                <p className="text-[10px]" style={{ color: "var(--tx-4)" }}>{dateStr} | {timeStr}</p>
               </div>
               <div className="flex items-center gap-1">
                 <NotificationBell collapsed={false} />
-                <button onClick={() => setSettingsOpen(true)}
-                  className="w-6 h-6 flex items-center justify-center rounded-lg"
-                  style={{ color: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  aria-label="Open settings"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg"
+                  style={{ color: "var(--tx-4)", background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
                   <Settings size={11} />
                 </button>
               </div>
@@ -222,8 +227,9 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
               </div>
               <NotificationBell collapsed={true} />
               <button onClick={() => setSettingsOpen(true)}
-                className="w-6 h-6 flex items-center justify-center rounded-lg"
-                style={{ color: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                aria-label="Open settings"
+                className="w-7 h-7 flex items-center justify-center rounded-lg"
+                style={{ color: "var(--tx-4)", background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
                 <Settings size={11} />
               </button>
             </div>

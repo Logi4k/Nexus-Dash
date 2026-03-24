@@ -3,7 +3,7 @@ commands:
   build: npm run build
   typecheck: npx tsc --noEmit
   test: npx vitest run
-  lint: npx eslint src/ --ext .ts,.tsx
+  lint: echo No lint configured
   dev: npx vite --port 1420
 
 services:

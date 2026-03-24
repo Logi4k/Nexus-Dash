@@ -22,10 +22,10 @@ export default {
         },
         // ── Borders ──────────────────────────────────────────────────
         border: {
-          subtle:   "rgba(255,255,255,0.05)",
-          DEFAULT:  "rgba(255,255,255,0.09)",
-          strong:   "rgba(255,255,255,0.16)",
-          accent:   "rgba(255,255,255,0.20)",
+          subtle:   "rgba(var(--border-rgb),0.07)",
+          DEFAULT:  "rgba(var(--border-rgb),0.09)",
+          strong:   "rgba(var(--border-rgb),0.16)",
+          accent:   "rgba(var(--border-rgb),0.20)",
         },
         // ── Text ─────────────────────────────────────────────────────
         tx: {
@@ -39,8 +39,8 @@ export default {
           DEFAULT: "var(--accent)",
           bright:  "var(--accent-bright)",
           dim:     "var(--accent-dim)",
-          muted:   "rgba(255,255,255,0.08)",
-          glow:    "rgba(255,255,255,0.10)",
+          muted:   "rgba(var(--surface-rgb),0.08)",
+          glow:    "rgba(var(--surface-rgb),0.10)",
         },
         // ── Semantic ─────────────────────────────────────────────────
         profit: "#22c55e",

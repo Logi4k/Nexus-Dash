@@ -149,12 +149,12 @@ export default function NoteEditor({
   ];
 
   return (
-    <div className="flex flex-col h-full bg-[#0b0d14]">
-      <div className="flex items-center gap-3 px-4 md:px-6 py-3 flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg-base)" }}>
+      <div className="flex items-center gap-3 px-4 md:px-6 py-3 flex-shrink-0" style={{ borderBottom: "1px solid rgba(var(--border-rgb),0.06)" }}>
         <button onClick={onBack} className="md:hidden flex-shrink-0">
-          <ArrowLeft size={16} style={{ color: "rgba(255,255,255,0.5)" }} />
+          <ArrowLeft size={16} style={{ color: "var(--tx-3)" }} />
         </button>
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em]" style={{ color: "rgba(255,255,255,0.38)" }}>
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em]" style={{ color: "var(--tx-4)" }}>
           <Sparkles size={12} />
           Document
         </div>
@@ -167,7 +167,7 @@ export default function NoteEditor({
               style={
                 zenMode
                   ? { background: theme.dim, border: `1px solid ${theme.border}`, color: theme.accent }
-                  : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.55)" }
+                  : { background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--tx-3)" }
               }
             >
               <Columns2 size={13} />
@@ -181,8 +181,8 @@ export default function NoteEditor({
         <div
           className="md:hidden sticky top-0 z-20 px-4 py-1.5"
           style={{
-            background: "linear-gradient(180deg, rgba(11,13,20,0.98) 0%, rgba(11,13,20,0.92) 100%)",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            background: "linear-gradient(180deg, rgba(var(--bg-card-rgb),0.98) 0%, rgba(var(--bg-card-rgb),0.92) 100%)",
+            borderBottom: "1px solid rgba(var(--border-rgb),0.06)",
             backdropFilter: "blur(14px)",
           }}
         >
@@ -196,7 +196,7 @@ export default function NoteEditor({
                     type="button"
                     onClick={() => focusedBlockId && insertBlock(focusedBlockId, item.type)}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold whitespace-nowrap"
-                    style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.76)" }}
+                    style={{ background: "rgba(var(--surface-rgb),0.05)", color: "var(--tx-2)" }}
                   >
                     <Icon size={12} />
                     {item.label}
@@ -223,7 +223,7 @@ export default function NoteEditor({
               onChange={(e) => onUpdate({ title: e.target.value })}
               placeholder="Untitled"
               className="w-full bg-transparent outline-none text-[30px] md:text-[50px] font-black tracking-[-0.05em] leading-[1.02]"
-              style={{ color: "#f8fafc" }}
+              style={{ color: "var(--tx-1)" }}
             />
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -261,7 +261,7 @@ export default function NoteEditor({
                 <button
                   onClick={() => setAddingTag(true)}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] transition-all"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.42)" }}
+                  style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px dashed rgba(var(--border-rgb),0.1)", color: "var(--tx-4)" }}
                 >
                   <Hash size={10} />
                   Add tag
@@ -275,7 +275,7 @@ export default function NoteEditor({
                   key={item.type}
                   onClick={() => focusedBlockId && insertBlock(focusedBlockId, item.type)}
                   className="px-2.5 py-1 rounded-xl text-[11px] font-medium transition-all"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}
+                  style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.07)", color: "var(--tx-3)" }}
                 >
                   {item.label}
                 </button>
@@ -290,7 +290,7 @@ export default function NoteEditor({
                   <button
                     onClick={() => insertBlock(block.id)}
                     className="w-5 h-5 rounded-md flex items-center justify-center"
-                    style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.45)" }}
+                    style={{ background: "rgba(var(--surface-rgb),0.04)", color: "var(--tx-3)" }}
                     title="Add block"
                   >
                     <Plus size={11} />
@@ -300,14 +300,14 @@ export default function NoteEditor({
                   <div className="hidden md:flex w-6 pt-2 justify-center">
                     <div
                       className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: "rgba(255,255,255,0.38)" }}
+                      style={{ color: "var(--tx-4)" }}
                     >
                       <button
                         type="button"
                         onClick={() => moveBlock(block.id, "up")}
                         disabled={index === 0}
                         className="w-5 h-5 rounded-md flex items-center justify-center disabled:opacity-30"
-                        style={{ background: "rgba(255,255,255,0.025)" }}
+                        style={{ background: "rgba(var(--surface-rgb),0.025)" }}
                         title="Move up"
                       >
                         <ChevronUp size={10} />
@@ -317,14 +317,14 @@ export default function NoteEditor({
                         onClick={() => moveBlock(block.id, "down")}
                         disabled={index === note.blocks.length - 1}
                         className="w-5 h-5 rounded-md flex items-center justify-center disabled:opacity-30"
-                        style={{ background: "rgba(255,255,255,0.025)" }}
+                        style={{ background: "rgba(var(--surface-rgb),0.025)" }}
                         title="Move down"
                       >
                         <ChevronDown size={10} />
                       </button>
                       <div
                         className="w-5 h-5 rounded-md flex items-center justify-center"
-                        style={{ background: "rgba(255,255,255,0.025)" }}
+                        style={{ background: "rgba(var(--surface-rgb),0.025)" }}
                         title="Block handle"
                       >
                         <GripVertical size={10} />
@@ -359,7 +359,7 @@ export default function NoteEditor({
                           type="button"
                           onClick={() => insertBlock(block.id)}
                           className="w-7 h-7 rounded-lg flex items-center justify-center"
-                          style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.62)" }}
+                          style={{ background: "rgba(var(--surface-rgb),0.04)", color: "var(--tx-2)" }}
                           title="Add block"
                         >
                           <Plus size={12} />
@@ -369,7 +369,7 @@ export default function NoteEditor({
                           onClick={() => moveBlock(block.id, "up")}
                           disabled={index === 0}
                           className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30"
-                          style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.62)" }}
+                          style={{ background: "rgba(var(--surface-rgb),0.04)", color: "var(--tx-2)" }}
                           title="Move up"
                         >
                           <ChevronUp size={12} />
@@ -379,7 +379,7 @@ export default function NoteEditor({
                           onClick={() => moveBlock(block.id, "down")}
                           disabled={index === note.blocks.length - 1}
                           className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30"
-                          style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.62)" }}
+                          style={{ background: "rgba(var(--surface-rgb),0.04)", color: "var(--tx-2)" }}
                           title="Move down"
                         >
                           <ChevronDown size={12} />
@@ -405,8 +405,8 @@ export default function NoteEditor({
               <div
                 className="absolute z-50 rounded-2xl overflow-hidden shadow-xl"
                 style={{
-                  background: "#10131d",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--bg-card)",
+                  border: "1px solid rgba(var(--border-rgb),0.08)",
                   minWidth: 220,
                   maxHeight: 260,
                   overflowY: "auto",
@@ -417,8 +417,8 @@ export default function NoteEditor({
                     key={item.type}
                     onClick={() => replaceBlockType(slashMenu.blockId, item.type)}
                     className="w-full flex items-center justify-between px-4 py-3 text-left transition-all"
-                    style={{ color: "rgba(255,255,255,0.76)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+                    style={{ color: "var(--tx-2)" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(var(--surface-rgb),0.04)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     <span className="text-[13px] font-medium">{item.label}</span>
