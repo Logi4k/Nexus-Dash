@@ -34,7 +34,7 @@ function NoteDeleteButton({
           e.stopPropagation();
           onRequest();
         }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity"
+        className="md:opacity-0 md:group-hover:opacity-100 transition-opacity"
       >
         <Trash2 size={12} style={{ color: "var(--tx-4)" }} />
       </button>
@@ -84,7 +84,7 @@ function TopicDeleteButton({
           e.stopPropagation();
           onRequest();
         }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity"
+        className="md:opacity-0 md:group-hover:opacity-100 transition-opacity"
       >
         <Trash2 size={12} style={{ color: "var(--tx-4)" }} />
       </button>

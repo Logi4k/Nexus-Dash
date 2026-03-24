@@ -193,7 +193,7 @@ function TradeImageGallery({
             </div>
             <button
               onClick={() => onDelete(id)}
-              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-loss text-tx-1 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
+              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-loss text-tx-1 flex items-center justify-center md:opacity-0 md:group-hover/img:opacity-100 transition-opacity z-10"
             >
               <X size={9} />
             </button>
@@ -228,7 +228,7 @@ function PendingImageList({
           />
           <button
             onClick={() => onRemove(img.id)}
-            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-loss text-tx-1 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
+            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-loss text-tx-1 flex items-center justify-center md:opacity-0 md:group-hover/img:opacity-100 transition-opacity z-10"
           >
             <X size={9} />
           </button>
