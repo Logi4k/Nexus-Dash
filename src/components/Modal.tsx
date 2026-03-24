@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, type ReactNode } from "react";
+import { useEffect, useRef, useCallback, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,26 +24,85 @@ const panelVariants = {
   },
 };
 
+const sheetVariants = {
+  hidden: { y: "100%" },
+  visible: {
+    y: 0,
+    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+  },
+  exit: {
+    y: "100%",
+    transition: { duration: 0.24, ease: [0.4, 0, 1, 1] },
+  },
+};
+
 const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 export default function Modal({ open, onClose, title, children, size = "md" }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
-  // Store onClose in a ref so the effect never needs it as a dependency
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; });
 
-  // Focus management: only re-run when open state changes, not on every render
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 768);
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Swipe-to-dismiss state
+  const touchStartYRef = useRef<number | null>(null);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0].clientY;
+    setIsDragging(true);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (touchStartYRef.current === null) return;
+    const delta = e.touches[0].clientY - touchStartYRef.current;
+    if (delta > 0) {
+      setDragY(delta);
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+    if (dragY > 80) {
+      onCloseRef.current();
+      setDragY(0);
+    } else {
+      setDragY(0);
+    }
+    touchStartYRef.current = null;
+  }, [dragY]);
+
+  // Reset drag state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setDragY(0);
+      setIsDragging(false);
+      touchStartYRef.current = null;
+    }
+  }, [open]);
+
+  // Focus trap + keyboard navigation
   useEffect(() => {
     if (!open) return;
     prevFocusRef.current = document.activeElement as HTMLElement;
-
     const panel = panelRef.current;
     if (panel) {
       const focusable = panel.querySelectorAll<HTMLElement>(FOCUSABLE);
       (focusable[0] ?? panel).focus();
     }
-
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") { onCloseRef.current(); return; }
       if (e.key !== "Tab" || !panelRef.current) return;
@@ -56,7 +115,6 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
         (e.shiftKey ? last : first).focus();
       }
     }
-
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
@@ -70,6 +128,71 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
     lg: "max-w-2xl",
   }[size];
 
+  if (isMobile) {
+    return createPortal(
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="modal-backdrop"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.2 } }}
+            exit={{ opacity: 0, transition: { duration: 0.18 } }}
+          >
+            <motion.div
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={title ? "modal-title" : undefined}
+              tabIndex={-1}
+              className={cn(
+                "absolute bottom-0 left-0 right-0 w-full",
+                "bg-bg-card border border-border border-b-0",
+                "rounded-t-[28px]",
+                "max-h-[85vh] flex flex-col shadow-modal",
+                "pb-[env(safe-area-inset-bottom)]"
+              )}
+              style={{
+                transform: `translateY(${dragY}px)`,
+                transition: isDragging ? "none" : "transform 0.2s ease",
+              }}
+              variants={sheetVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing">
+                <div className="w-10 h-1 rounded-full bg-border-strong" />
+              </div>
+
+              {title && (
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle flex-shrink-0">
+                  <h2 id="modal-title" className="font-semibold text-tx-1">{title}</h2>
+                  <button
+                    onClick={onClose}
+                    aria-label="Close"
+                    className="p-1.5 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-bg-hover transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              <div className="px-5 py-5 overflow-y-auto flex-1 min-h-0">{children}</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>,
+      document.body
+    );
+  }
+
+  // Desktop: centered dialog (unchanged)
   return createPortal(
     <AnimatePresence>
       {open && (
