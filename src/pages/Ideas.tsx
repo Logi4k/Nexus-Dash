@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, FolderPen, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, FolderPen, Lightbulb, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { PAGE_THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -344,6 +344,22 @@ export default function Ideas() {
           </div>
 
           <div className="p-3 space-y-1 overflow-y-auto h-full">
+            {(data.ideaTopics ?? []).length === 0 && !addingTopic && (
+              <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
+                <Lightbulb size={28} style={{ color: "var(--tx-4)" }} />
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--tx-2)" }}>No topics yet</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--tx-4)" }}>Create a topic to start organizing your ideas.</p>
+                </div>
+                <button
+                  onClick={() => setAddingTopic(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[12px] font-semibold"
+                  style={{ background: theme.dim, border: `1px solid ${theme.border}`, color: theme.accent }}
+                >
+                  <Plus size={13} /> New Topic
+                </button>
+              </div>
+            )}
             {topics.map((topic) => {
               const topicCount = notes.filter((note) => note.topicId === topic.id).length;
               const isActive = topic.id === activeTopicId;

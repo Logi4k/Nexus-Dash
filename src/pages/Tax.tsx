@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calculator,
   Calendar,
@@ -18,6 +19,7 @@ import {
   FileText,
   Wallet,
   Building2,
+  Plus,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
@@ -269,6 +271,7 @@ export default function TaxPage() {
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.tax, isBW);
   const { data, update } = useAppData();
+  const navigate = useNavigate();
   const taxYear = useMemo(() => getCurrentTaxYear(), []);
 
   // ── Income sources ──
@@ -448,6 +451,17 @@ export default function TaxPage() {
                   <p className="text-[11px] text-tx-4">
                     {withdrawalsThisYear.length} payout{withdrawalsThisYear.length !== 1 ? "s" : ""} · {taxYear.start} → {taxYear.end}
                   </p>
+                  {withdrawalsThisYear.length === 0 && (
+                    <div className="mt-1 flex flex-col gap-2">
+                      <p className="text-xs text-tx-4">No payouts recorded this tax year.</p>
+                      <button
+                        className="btn-primary btn-sm self-start"
+                        onClick={() => navigate("/prop-accounts", { state: { action: "logPayout" } })}
+                      >
+                        <Plus size={14} /> Record Payout
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <input

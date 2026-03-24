@@ -20,6 +20,7 @@ import {
   Activity,
   Award,
   Trophy,
+  Briefcase,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { fmtGBP, fmtUSD, fmtDate, toNum, pct, cn, getStatusBg, generateId } from "@/lib/utils";
@@ -1776,7 +1777,26 @@ export default function PropAccounts() {
                 />
               </div>
             ))}
-            {filtered.length === 0 && (
+            {filtered.length === 0 && data.accounts.length === 0 && (
+              <div className="col-span-full card p-10 text-center flex flex-col items-center gap-3">
+                <Briefcase size={32} className="text-tx-4" />
+                <div>
+                  <p className="text-sm font-semibold text-tx-2">No prop accounts yet</p>
+                  <p className="text-xs text-tx-4 mt-1">Add a challenge or funded account to track your progress.</p>
+                </div>
+                <button
+                  className="btn-primary btn-sm"
+                  onClick={() => {
+                    setEditAccount(null);
+                    setForm(emptyAccountForm());
+                    setAddOpen(true);
+                  }}
+                >
+                  <Plus size={14} /> Add Account
+                </button>
+              </div>
+            )}
+            {filtered.length === 0 && data.accounts.length > 0 && (
               <div className="col-span-full py-16 text-center text-tx-3 text-sm">No accounts match this filter.</div>
             )}
           </div>

@@ -22,6 +22,7 @@ import {
   Trophy,
   Sigma,
   Activity,
+  NotebookPen,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, Cell,
@@ -1120,7 +1121,28 @@ export default function Journal() {
         </div>
       )}
 
-      {/* ── Main 2-column layout ── */}
+      {/* ── Empty state / Main layout (mutually exclusive) ── */}
+      {allTrades.length === 0 && entries.length === 0 ? (
+        <div className="card p-10 text-center flex flex-col items-center gap-3">
+          <NotebookPen size={32} className="text-tx-4" />
+          <div>
+            <p className="text-sm font-semibold text-tx-2">No trades logged yet</p>
+            <p className="text-xs text-tx-4 mt-1">Start logging your trades to track your performance.</p>
+          </div>
+          <button
+            className="btn-primary btn-sm"
+            onClick={() => {
+              setEditTradeId(null);
+              setPendingImages([]);
+              setOriginalImageIds([]);
+              setTradeForm({ ...emptyTradeForm(), date: selectedDate });
+              setAddTradeOpen(true);
+            }}
+          >
+            <Plus size={14} /> Log First Trade
+          </button>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5 items-start">
 
         {/* ── Left: Date nav + Day content ── */}
@@ -1709,6 +1731,7 @@ export default function Journal() {
           )}
         </div>
       </div>
+      )}
 
       {/* ── Add / Edit Trade Modal ── */}
       <Modal

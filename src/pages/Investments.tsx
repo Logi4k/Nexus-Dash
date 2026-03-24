@@ -26,6 +26,8 @@ import {
   ArrowDownRight,
   PauseCircle,
   PlayCircle,
+  PieChart,
+  Receipt,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
@@ -1134,7 +1136,19 @@ export default function InvestmentsPage() {
             </div>
 
             <div className="flex flex-col gap-3 md:hidden">
-              {filteredInvestments.length === 0 && (
+              {filteredInvestments.length === 0 && investments.length === 0 && (
+                <div className="card p-10 text-center flex flex-col items-center gap-3">
+                  <PieChart size={32} className="text-tx-4" />
+                  <div>
+                    <p className="text-sm font-semibold text-tx-2">No investments tracked</p>
+                    <p className="text-xs text-tx-4 mt-1">Add your first holding to track portfolio value.</p>
+                  </div>
+                  <button className="btn-primary btn-sm" onClick={() => setShowAddInv(true)}>
+                    <Plus size={14} /> Add Investment
+                  </button>
+                </div>
+              )}
+              {filteredInvestments.length === 0 && investments.length > 0 && (
                 <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-6 text-center text-sm text-tx-3">
                   No holdings found
                 </div>
@@ -1247,7 +1261,23 @@ export default function InvestmentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredInvestments.length === 0 && (
+                  {filteredInvestments.length === 0 && investments.length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="py-10">
+                        <div className="flex flex-col items-center gap-3 text-center">
+                          <PieChart size={32} className="text-tx-4" />
+                          <div>
+                            <p className="text-sm font-semibold text-tx-2">No investments tracked</p>
+                            <p className="text-xs text-tx-4 mt-1">Add your first holding to track portfolio value.</p>
+                          </div>
+                          <button className="btn-primary btn-sm" onClick={() => setShowAddInv(true)}>
+                            <Plus size={14} /> Add Investment
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {filteredInvestments.length === 0 && investments.length > 0 && (
                     <tr>
                       <td colSpan={10} className="text-center py-6 text-tx-3">No holdings found</td>
                     </tr>
@@ -1468,7 +1498,16 @@ export default function InvestmentsPage() {
             )}
             <div className="flex flex-col gap-2">
               {subscriptions.length === 0 && (
-                <p className="text-xs text-tx-3 text-center py-4">No subscriptions added.</p>
+                <div className="card p-10 text-center flex flex-col items-center gap-3">
+                  <Receipt size={32} className="text-tx-4" />
+                  <div>
+                    <p className="text-sm font-semibold text-tx-2">No subscriptions</p>
+                    <p className="text-xs text-tx-4 mt-1">Track your recurring costs here.</p>
+                  </div>
+                  <button className="btn-primary btn-sm" onClick={() => setShowAddSub(true)}>
+                    <Plus size={14} /> Add Subscription
+                  </button>
+                </div>
               )}
               {/* Active subscriptions */}
               {activeSubs.map((sub) => {
