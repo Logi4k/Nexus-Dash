@@ -173,39 +173,19 @@ export default function MobileNav({
 
   function NavItem({
     path,
-    label,
     Icon,
     theme,
   }: {
     path: string;
-    label: string;
     Icon: ElementType;
     theme: PageTheme;
   }) {
     const isActive = path === "/" ? loc.pathname === "/" : loc.pathname.startsWith(path);
 
     return (
-      <NavLink to={path} className="flex flex-col items-center gap-1 min-w-0 flex-1 py-1.5">
-        <div
-          className="w-11 h-11 flex items-center justify-center rounded-2xl transition-all"
-          style={
-            isActive
-              ? {
-                  background: theme.dim,
-                  border: `1px solid ${theme.border}`,
-                  boxShadow: `0 0 0 1px ${theme.border}20 inset`,
-                }
-              : { background: "transparent" }
-          }
-        >
-          <Icon size={16} style={{ color: isActive ? theme.accent : "var(--tx-3)" }} />
-        </div>
-        <span
-          className="text-[10px] font-semibold truncate"
-          style={{ color: isActive ? theme.accent : "var(--tx-3)" }}
-        >
-          {label}
-        </span>
+      <NavLink to={path} className="flex flex-col items-center gap-0.5 min-w-[44px] min-h-[44px] justify-center">
+        <Icon size={18} style={{ color: isActive ? theme.accent : "var(--tx-3)" }} />
+        <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: isActive ? theme.accent : 'transparent' }} />
       </NavLink>
     );
   }
@@ -253,12 +233,11 @@ export default function MobileNav({
           </div>
 
           <div
-            className="mx-auto flex items-center gap-1 px-2 h-16 rounded-[24px]"
+            className="mx-auto flex items-center gap-1 px-2 py-2 rounded-[24px] w-fit"
             style={{
-              maxWidth: 430,
               background: `rgba(var(--bg-card-rgb),0.95)`,
               border: "1px solid rgba(var(--border-rgb),0.08)",
-              boxShadow: "0 18px 48px rgba(0,0,0,0.45)",
+              boxShadow: "0 12px 32px rgba(0,0,0,0.35)",
               backdropFilter: "blur(20px)",
             }}
           >
@@ -268,28 +247,18 @@ export default function MobileNav({
 
             {leftItems.length < 2 &&
               Array.from({ length: 2 - leftItems.length }, (_, index) => (
-                <div key={`left-empty-${index}`} className="flex-1" />
+                <div key={`left-empty-${index}`} className="min-w-[44px]" />
               ))}
 
             {/* More / All Pages Button */}
             <button
               type="button"
               onClick={() => setMoreOpen(true)}
-              className="flex flex-col items-center gap-1 min-w-0 flex-1 py-1.5"
+              className="flex flex-col items-center gap-0.5 min-w-[44px] min-h-[44px] justify-center"
               aria-label="All pages"
             >
-              <div
-                className="w-11 h-11 rounded-[18px] flex items-center justify-center"
-                style={{
-                  background: "rgba(var(--surface-rgb),0.06)",
-                  border: "1px solid rgba(var(--border-rgb),0.1)",
-                }}
-              >
-                <MoreHorizontal size={17} style={{ color: "var(--tx-3)" }} />
-              </div>
-              <span className="text-[10px] font-semibold text-tx-4">
-                More
-              </span>
+              <MoreHorizontal size={18} style={{ color: moreOpen ? "var(--tx-1)" : "var(--tx-3)" }} />
+              <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: moreOpen ? "var(--tx-1)" : 'transparent' }} />
             </button>
 
             {rightItems.map((item) => (
@@ -298,7 +267,7 @@ export default function MobileNav({
 
             {rightItems.length < 2 &&
               Array.from({ length: 2 - rightItems.length }, (_, index) => (
-                <div key={`right-empty-${index}`} className="flex-1" />
+                <div key={`right-empty-${index}`} className="min-w-[44px]" />
               ))}
           </div>
 
