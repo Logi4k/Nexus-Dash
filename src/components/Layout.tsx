@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Briefcase,
@@ -17,11 +17,74 @@ import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import CommandPalette, { type CommandPaletteItem } from "./CommandPalette";
 
+const PAGE_ORDER = [
+  "/",
+  "/market",
+  "/journal",
+  "/prop",
+  "/expenses",
+  "/debt",
+  "/investments",
+  "/tax",
+  "/ideas",
+];
+
 export default function Layout() {
   const loc = useLocation();
   const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
+  const mainRef = useRef<HTMLElement>(null);
+  const lastScrollTop = useRef(0);
+  const peakScrollTop = useRef(0);
 
+  // Reset scroll position and nav visibility on route change
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+    lastScrollTop.current = 0;
+    peakScrollTop.current = 0;
+    setNavVisible(true);
+  }, [loc.pathname]);
+
+  // Scroll direction tracking for nav hide/show
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+
+    function onScroll() {
+      const st = el!.scrollTop;
+
+      // Always show nav when near top
+      if (st < 10) {
+        setNavVisible(true);
+        peakScrollTop.current = 0;
+        lastScrollTop.current = st;
+        return;
+      }
+
+      if (st < lastScrollTop.current) {
+        // Scrolling up — show immediately
+        peakScrollTop.current = st;
+        setNavVisible(true);
+      } else {
+        // Scrolling down — update peak and hide after 60px threshold
+        if (st > peakScrollTop.current) {
+          if (st - peakScrollTop.current > 60) {
+            setNavVisible(false);
+          }
+        } else {
+          peakScrollTop.current = st;
+        }
+      }
+
+      lastScrollTop.current = st;
+    }
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -37,6 +100,49 @@ export default function Layout() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // Touch state refs for swipe navigation
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchStartTime = useRef(0);
+
+  function handleTouchStart(e: React.TouchEvent<HTMLElement>) {
+    const t = e.touches[0];
+    touchStartX.current = t.clientX;
+    touchStartY.current = t.clientY;
+    touchStartTime.current = Date.now();
+  }
+
+  function handleTouchEnd(e: React.TouchEvent<HTMLElement>) {
+    const t = e.changedTouches[0];
+    const deltaX = t.clientX - touchStartX.current;
+    const deltaY = t.clientY - touchStartY.current;
+    const elapsed = Date.now() - touchStartTime.current;
+
+    // Must be more horizontal than vertical
+    if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.5) return;
+    // Minimum swipe distance
+    if (Math.abs(deltaX) <= 50) return;
+    // Must be fast enough
+    if (elapsed >= 400) return;
+
+    const currentIndex = PAGE_ORDER.indexOf(loc.pathname);
+    if (currentIndex === -1) return;
+
+    if (deltaX < 0) {
+      // Swipe left → next page
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < PAGE_ORDER.length) {
+        navigate(PAGE_ORDER[nextIndex]);
+      }
+    } else {
+      // Swipe right → previous page
+      const prevIndex = currentIndex - 1;
+      if (prevIndex >= 0) {
+        navigate(PAGE_ORDER[prevIndex]);
+      }
+    }
+  }
 
   const commandItems = useMemo<CommandPaletteItem[]>(
     () => [
@@ -176,7 +282,12 @@ export default function Layout() {
         <Sidebar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
       </div>
 
-      <main className="flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div
           key={loc.pathname}
           className="page-enter min-h-full p-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] md:p-6 md:pb-12"
@@ -185,7 +296,10 @@ export default function Layout() {
         </div>
       </main>
 
-      <MobileNav onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
+      <MobileNav
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        navVisible={navVisible}
+      />
 
       <CommandPalette
         open={commandPaletteOpen}

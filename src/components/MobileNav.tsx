@@ -47,6 +47,8 @@ const FAB_ACTIONS = [
   { label: "Add Account", path: "/prop",     state: { action: "addAccount" },  color: "#3b82f6", Icon: Briefcase },
 ] as const;
 
+const SLIDE_TRANSITION = { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
+
 function Avatar({ avatarUrl, username, avatarColor, size }: {
   avatarUrl?: string;
   username: string;
@@ -75,7 +77,13 @@ function Avatar({ avatarUrl, username, avatarColor, size }: {
   );
 }
 
-export default function MobileNav({ onOpenCommandPalette }: { onOpenCommandPalette?: () => void }) {
+export default function MobileNav({
+  onOpenCommandPalette,
+  navVisible = true,
+}: {
+  onOpenCommandPalette?: () => void;
+  navVisible?: boolean;
+}) {
   const loc = useLocation();
   const navigate = useNavigate();
   const { data } = useAppData();
@@ -204,167 +212,237 @@ export default function MobileNav({ onOpenCommandPalette }: { onOpenCommandPalet
 
   return (
     <>
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(env(safe-area-inset-bottom)+0.7rem)] pt-2 md:hidden"
-        style={{
-          background: `linear-gradient(180deg, rgba(var(--bg-base-rgb),0.6) 0%, rgba(var(--bg-base-rgb),0.95) 40%, rgb(var(--bg-base-rgb)) 100%)`,
-        }}
+      {/* Nav bar + FAB wrapped in a single animated container */}
+      <motion.div
+        animate={{ y: navVisible ? 0 : 120 }}
+        transition={SLIDE_TRANSITION}
+        className="md:hidden"
+        style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50 }}
       >
-        <div className="mx-auto mb-2 flex justify-end" style={{ maxWidth: 430 }}>
-          <div className="flex items-center gap-2">
-            <NotificationBell collapsed={false} />
-          <button
-            type="button"
-            onClick={() => setPanelOpen((o) => !o)}
-            style={{
-              width: 34, height: 34,
-              borderRadius: "50%",
-              border: "2px solid rgba(99,102,241,0.45)",
-              padding: 0, overflow: "hidden",
-              background: "transparent", cursor: "pointer",
-              boxShadow: panelOpen ? "0 0 0 3px rgba(99,102,241,0.25)" : "none",
-              flexShrink: 0,
-            }}
-            aria-label="Open account panel"
-          >
-            <Avatar
-              avatarUrl={data.userProfile?.avatarUrl}
-              username={data.userProfile?.username ?? "Trader"}
-              avatarColor={data.userProfile?.avatarColor}
-              size={30}
-            />
-          </button>
-          </div>
-        </div>
-
-        <div
-          className="mx-auto flex items-center gap-1 px-2 h-16 rounded-[24px]"
+        <nav
+          className="px-3 pb-[calc(env(safe-area-inset-bottom)+0.7rem)] pt-2"
           style={{
-            maxWidth: 430,
-            background: `rgba(var(--bg-card-rgb),0.95)`,
-            border: "1px solid rgba(var(--border-rgb),0.08)",
-            boxShadow: "0 18px 48px rgba(0,0,0,0.45)",
-            backdropFilter: "blur(20px)",
+            background: `linear-gradient(180deg, rgba(var(--bg-base-rgb),0.6) 0%, rgba(var(--bg-base-rgb),0.95) 40%, rgb(var(--bg-base-rgb)) 100%)`,
           }}
         >
-          {leftItems.map((item) => (
-            <NavItem key={item.id} {...item} />
-          ))}
-
-          {leftItems.length < 2 &&
-            Array.from({ length: 2 - leftItems.length }, (_, index) => (
-              <div key={`left-empty-${index}`} className="flex-1" />
-            ))}
-
-          {/* More / All Pages Button */}
-          <button
-            type="button"
-            onClick={() => setMoreOpen(true)}
-            className="flex flex-col items-center gap-1 min-w-0 flex-1 py-1.5"
-            aria-label="All pages"
-          >
-            <div
-              className="w-11 h-11 rounded-[18px] flex items-center justify-center"
-              style={{
-                background: "rgba(var(--surface-rgb),0.06)",
-                border: "1px solid rgba(var(--border-rgb),0.1)",
-              }}
-            >
-              <MoreHorizontal size={17} style={{ color: "var(--tx-3)" }} />
-            </div>
-            <span className="text-[10px] font-semibold text-tx-4">
-              More
-            </span>
-          </button>
-
-          {rightItems.map((item) => (
-            <NavItem key={item.id} {...item} />
-          ))}
-
-          {rightItems.length < 2 &&
-            Array.from({ length: 2 - rightItems.length }, (_, index) => (
-              <div key={`right-empty-${index}`} className="flex-1" />
-            ))}
-        </div>
-        <AnimatePresence>
-          {panelOpen && (
-            <motion.div
-              ref={panelRef}
-              initial={{ opacity: 0, y: 8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
-              exit={{ opacity: 0, y: 6, scale: 0.97, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } }}
-              style={{
-                position: "fixed",
-                bottom: "calc(env(safe-area-inset-bottom) + 5.5rem)",
-                right: "0.75rem",
-                width: 210,
-                background: `rgba(var(--bg-card-rgb),0.98)`,
-                border: "1px solid rgba(var(--border-rgb),0.1)",
-                borderRadius: 16,
-                padding: "12px 10px",
-                boxShadow: "0 16px 40px rgba(0,0,0,0.7)",
-                zIndex: 60,
-              }}
-            >
-              {/* Avatar + name/email */}
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                paddingBottom: 10,
-                borderBottom: "1px solid rgba(var(--border-rgb),0.06)",
-                marginBottom: 6,
-              }}>
+          <div className="mx-auto mb-2 flex justify-end" style={{ maxWidth: 430 }}>
+            <div className="flex items-center gap-2">
+              <NotificationBell collapsed={false} />
+              <button
+                type="button"
+                onClick={() => setPanelOpen((o) => !o)}
+                style={{
+                  width: 34, height: 34,
+                  borderRadius: "50%",
+                  border: "2px solid rgba(99,102,241,0.45)",
+                  padding: 0, overflow: "hidden",
+                  background: "transparent", cursor: "pointer",
+                  boxShadow: panelOpen ? "0 0 0 3px rgba(99,102,241,0.25)" : "none",
+                  flexShrink: 0,
+                }}
+                aria-label="Open account panel"
+              >
                 <Avatar
                   avatarUrl={data.userProfile?.avatarUrl}
                   username={data.userProfile?.username ?? "Trader"}
                   avatarColor={data.userProfile?.avatarColor}
-                  size={36}
+                  size={30}
                 />
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--tx-1)" }}>
-                    {data.userProfile?.username ?? "Trader"}
-                  </div>
-                  {userEmail && (
-                    <div style={{ fontSize: 10, color: "var(--tx-4)", marginTop: 1 }}>
-                      {userEmail}
-                    </div>
-                  )}
-                </div>
+              </button>
+            </div>
+          </div>
+
+          <div
+            className="mx-auto flex items-center gap-1 px-2 h-16 rounded-[24px]"
+            style={{
+              maxWidth: 430,
+              background: `rgba(var(--bg-card-rgb),0.95)`,
+              border: "1px solid rgba(var(--border-rgb),0.08)",
+              boxShadow: "0 18px 48px rgba(0,0,0,0.45)",
+              backdropFilter: "blur(20px)",
+            }}
+          >
+            {leftItems.map((item) => (
+              <NavItem key={item.id} {...item} />
+            ))}
+
+            {leftItems.length < 2 &&
+              Array.from({ length: 2 - leftItems.length }, (_, index) => (
+                <div key={`left-empty-${index}`} className="flex-1" />
+              ))}
+
+            {/* More / All Pages Button */}
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              className="flex flex-col items-center gap-1 min-w-0 flex-1 py-1.5"
+              aria-label="All pages"
+            >
+              <div
+                className="w-11 h-11 rounded-[18px] flex items-center justify-center"
+                style={{
+                  background: "rgba(var(--surface-rgb),0.06)",
+                  border: "1px solid rgba(var(--border-rgb),0.1)",
+                }}
+              >
+                <MoreHorizontal size={17} style={{ color: "var(--tx-3)" }} />
               </div>
+              <span className="text-[10px] font-semibold text-tx-4">
+                More
+              </span>
+            </button>
 
-              {/* Settings */}
-              <button
-                type="button"
-                style={rowStyle}
-                onClick={() => { setPanelOpen(false); setSettingsOpen(true); }}
-              >
-                <Settings size={13} /> Settings
-              </button>
+            {rightItems.map((item) => (
+              <NavItem key={item.id} {...item} />
+            ))}
 
-              {/* Change Photo */}
-              <button
-                type="button"
-                style={rowStyle}
-                onClick={() => { setPanelOpen(false); setSettingsOpen(true); }}
-              >
-                <Camera size={13} /> Change Photo
-              </button>
+            {rightItems.length < 2 &&
+              Array.from({ length: 2 - rightItems.length }, (_, index) => (
+                <div key={`right-empty-${index}`} className="flex-1" />
+              ))}
+          </div>
 
-              {/* Sign Out */}
-              <button
-                type="button"
-                style={{ ...rowStyle, color: "var(--color-loss)" }}
-                onClick={async () => { await signOut(); window.location.reload(); }}
+          <AnimatePresence>
+            {panelOpen && (
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+                exit={{ opacity: 0, y: 6, scale: 0.97, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } }}
+                style={{
+                  position: "fixed",
+                  bottom: "calc(env(safe-area-inset-bottom) + 5.5rem)",
+                  right: "0.75rem",
+                  width: 210,
+                  background: `rgba(var(--bg-card-rgb),0.98)`,
+                  border: "1px solid rgba(var(--border-rgb),0.1)",
+                  borderRadius: 16,
+                  padding: "12px 10px",
+                  boxShadow: "0 16px 40px rgba(0,0,0,0.7)",
+                  zIndex: 60,
+                }}
               >
-                <LogOut size={13} /> Sign Out
-              </button>
+                {/* Avatar + name/email */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  paddingBottom: 10,
+                  borderBottom: "1px solid rgba(var(--border-rgb),0.06)",
+                  marginBottom: 6,
+                }}>
+                  <Avatar
+                    avatarUrl={data.userProfile?.avatarUrl}
+                    username={data.userProfile?.username ?? "Trader"}
+                    avatarColor={data.userProfile?.avatarColor}
+                    size={36}
+                  />
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--tx-1)" }}>
+                      {data.userProfile?.username ?? "Trader"}
+                    </div>
+                    {userEmail && (
+                      <div style={{ fontSize: 10, color: "var(--tx-4)", marginTop: 1 }}>
+                        {userEmail}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Settings */}
+                <button
+                  type="button"
+                  style={rowStyle}
+                  onClick={() => { setPanelOpen(false); setSettingsOpen(true); }}
+                >
+                  <Settings size={13} /> Settings
+                </button>
+
+                {/* Change Photo */}
+                <button
+                  type="button"
+                  style={rowStyle}
+                  onClick={() => { setPanelOpen(false); setSettingsOpen(true); }}
+                >
+                  <Camera size={13} /> Change Photo
+                </button>
+
+                {/* Sign Out */}
+                <button
+                  type="button"
+                  style={{ ...rowStyle, color: "var(--color-loss)" }}
+                  onClick={async () => { await signOut(); window.location.reload(); }}
+                >
+                  <LogOut size={13} /> Sign Out
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </nav>
+
+        {/* FAB — inside the animated wrapper so it slides with the nav */}
+        <div ref={fabRef}>
+          {/* Action items stacked above FAB */}
+          <AnimatePresence>
+            {fabOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed right-4 z-50 flex flex-col items-end gap-2 md:hidden"
+                style={{ bottom: "calc(env(safe-area-inset-bottom) + 9.5rem)" }}
+              >
+                {FAB_ACTIONS.map((action, i) => (
+                  <motion.button
+                    key={action.label}
+                    initial={{ opacity: 0, y: 16, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ delay: i * 0.05, duration: 0.2 }}
+                    onClick={() => handleFabAction(action)}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
+                    style={{
+                      background: `${action.color}20`,
+                      border: `1px solid ${action.color}35`,
+                      boxShadow: `0 4px 12px ${action.color}25`,
+                      minWidth: 160,
+                    }}
+                  >
+                    <action.Icon size={16} style={{ color: action.color }} />
+                    <span className="text-sm font-semibold text-tx-1 whitespace-nowrap">{action.label}</span>
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* FAB button */}
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setFabOpen((o) => !o)}
+            aria-label={fabOpen ? "Close quick actions" : "Open quick actions"}
+            className="fixed right-4 z-[51] flex items-center justify-center rounded-full md:hidden"
+            style={{
+              bottom: "calc(env(safe-area-inset-bottom) + 8rem)",
+              width: 52,
+              height: 52,
+              background: "var(--tx-1)",
+              color: "var(--bg-base)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+            }}
+          >
+            <motion.div
+              animate={{ rotate: fabOpen ? 45 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Plus size={22} strokeWidth={2.5} />
             </motion.div>
-          )}
-        </AnimatePresence>
-      </nav>
+          </motion.button>
+        </div>
+      </motion.div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {/* ── More / All Pages Drawer ── */}
+      {/* More / All Pages Drawer — fixed positioned, unaffected by nav visibility */}
       <AnimatePresence>
         {moreOpen && (
           <>
@@ -456,67 +534,6 @@ export default function MobileNav({ onOpenCommandPalette }: { onOpenCommandPalet
           </>
         )}
       </AnimatePresence>
-
-      {/* Quick-Add FAB */}
-      <div ref={fabRef} className="md:hidden">
-        {/* Action items stacked above FAB */}
-        <AnimatePresence>
-          {fabOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed right-4 z-50 flex flex-col items-end gap-2 md:hidden"
-              style={{ bottom: "calc(env(safe-area-inset-bottom) + 9.5rem)" }}
-            >
-              {FAB_ACTIONS.map((action, i) => (
-                <motion.button
-                  key={action.label}
-                  initial={{ opacity: 0, y: 16, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ delay: i * 0.05, duration: 0.2 }}
-                  onClick={() => handleFabAction(action)}
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
-                  style={{
-                    background: `${action.color}20`,
-                    border: `1px solid ${action.color}35`,
-                    boxShadow: `0 4px 12px ${action.color}25`,
-                    minWidth: 160,
-                  }}
-                >
-                  <action.Icon size={16} style={{ color: action.color }} />
-                  <span className="text-sm font-semibold text-tx-1 whitespace-nowrap">{action.label}</span>
-                </motion.button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* FAB button */}
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.92 }}
-          onClick={() => setFabOpen((o) => !o)}
-          aria-label={fabOpen ? "Close quick actions" : "Open quick actions"}
-          className="fixed right-4 z-[51] flex items-center justify-center rounded-full md:hidden"
-          style={{
-            bottom: "calc(env(safe-area-inset-bottom) + 8rem)",
-            width: 52,
-            height: 52,
-            background: "var(--tx-1)",
-            color: "var(--bg-base)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-          }}
-        >
-          <motion.div
-            animate={{ rotate: fabOpen ? 45 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Plus size={22} strokeWidth={2.5} />
-          </motion.div>
-        </motion.button>
-      </div>
     </>
   );
 }
