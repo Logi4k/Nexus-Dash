@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
 import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Market from "@/pages/Market";
@@ -42,6 +43,20 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            background: 'rgba(var(--bg-card-rgb), 0.97)',
+            border: '1px solid rgba(var(--border-rgb), 0.12)',
+            color: 'var(--tx-1)',
+            borderRadius: '12px',
+            fontSize: '13px',
+            fontFamily: 'var(--font-sans)',
+          },
+        }}
+        offset="5.5rem"
+      />
     </HashRouter>
   );
 }
