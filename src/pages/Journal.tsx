@@ -388,7 +388,7 @@ function TradeRow({
               )}
               <button
                 onClick={onEdit}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded transition-all"
+                className="md:opacity-0 md:group-hover:opacity-100 p-1 rounded transition-all"
                 style={{ color: "var(--tx-4)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "var(--tx-1)")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "var(--tx-4)")}
@@ -397,7 +397,7 @@ function TradeRow({
               </button>
               <button
                 onClick={() => setConfirm(true)}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded transition-all"
+                className="md:opacity-0 md:group-hover:opacity-100 p-1 rounded transition-all"
                 style={{ color: "var(--tx-4)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "var(--tx-4)")}

@@ -1287,7 +1287,7 @@ export default function InvestmentsPage() {
                           </div>
                         </td>
                         <td className="py-2.5 px-2">
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button className="p-1 text-tx-3 hover:text-tx-1 transition-colors" onClick={() => setEditInv(inv)}>
                               <Edit2 size={11} />
                             </button>
@@ -1345,7 +1345,7 @@ export default function InvestmentsPage() {
                             {wt.desc && <div className="text-xs text-tx-3">{wt.desc}</div>}
                           </div>
                         </div>
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button
                             className="p-1.5 rounded-lg text-tx-4 hover:text-tx-1 hover:bg-white/[0.06] transition-colors"
                             onClick={() => openEditTarget(wt.id)}
@@ -1481,7 +1481,7 @@ export default function InvestmentsPage() {
                             <div className="text-xs text-tx-3">{fmtGBP(sub.amount)}/{sub.frequency === "yearly" ? "yr" : "wk"}</div>
                           )}
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                           <button className="p-1.5 text-tx-3 hover:text-tx-1 transition-colors" title="Edit" onClick={() => setEditSub(sub)}><Edit2 size={12} /></button>
                           <button className="p-1.5 text-tx-3 hover:text-warn transition-colors" title="Stop subscription" onClick={() => handleCancelSub(sub.id)}><PauseCircle size={12} /></button>
                           <button className="p-1.5 text-tx-3 hover:text-loss transition-colors" title="Delete" onClick={() => setDeleteSubId(sub.id)}><Trash2 size={12} /></button>
@@ -1520,7 +1520,7 @@ export default function InvestmentsPage() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="text-xs text-tx-4 tabular-nums">{fmtGBP(monthlySubCost(sub))}/mo</span>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                             <button className="p-1.5 text-tx-4 hover:text-profit transition-colors" title="Reactivate" onClick={() => handleReactivateSub(sub.id)}><PlayCircle size={12} /></button>
                             <button className="p-1.5 text-tx-4 hover:text-loss transition-colors" title="Delete" onClick={() => setDeleteSubId(sub.id)}><Trash2 size={12} /></button>
                           </div>

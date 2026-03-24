@@ -1930,7 +1930,7 @@ export default function PropAccounts() {
                                   >No</button>
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                                <div className="flex items-center justify-end gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                   <button
                                     onClick={() => openEditPayout(w)}
                                     className="p-1.5 rounded text-tx-3 hover:text-tx-1 hover:bg-white/[0.07] transition-all"
@@ -2017,7 +2017,7 @@ export default function PropAccounts() {
                           >Cancel</button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => setEditChallengeId(c.id)}
                             className="p-1.5 rounded hover:bg-white/[0.07] text-tx-3 hover:text-tx-1 transition-all"

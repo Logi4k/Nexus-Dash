@@ -234,7 +234,7 @@ function EditableAmount({
   ) : (
     <div className="flex items-center gap-1 group cursor-pointer" onClick={start}>
       <span className="text-xl font-bold text-tx-1 tabular-nums">{fmtGBP(value, 0)}</span>
-      <Edit2 size={11} className="text-tx-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <Edit2 size={11} className="text-tx-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity" />
     </div>
   );
 }

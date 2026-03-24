@@ -1169,7 +1169,7 @@ function EconomicCalendar() {
                               </span>
                               <button
                                 onClick={() => handleDelete(ev.id)}
-                                className="opacity-0 group-hover:opacity-100 p-1 text-tx-3 hover:text-loss transition-all"
+                                className="md:opacity-0 md:group-hover:opacity-100 p-1 text-tx-3 hover:text-loss transition-all"
                               >
                                 <Trash2 size={12} />
                               </button>

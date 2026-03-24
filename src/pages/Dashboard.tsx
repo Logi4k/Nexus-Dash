@@ -1502,7 +1502,7 @@ export default function Dashboard() {
                         <span className="text-[10px] font-mono tabular-nums text-tx-4 shrink-0">
                           {fmtGBP(t.saved)}
                         </span>
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <div className="flex gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                           <button onClick={() => openEditTarget(t.id)} className="p-1 rounded hover:bg-white/10 text-tx-4 hover:text-tx-2 transition-colors">
                             <Pencil size={11} />
                           </button>
@@ -1546,7 +1546,7 @@ export default function Dashboard() {
                           border: "1px solid rgba(var(--border-rgb),0.09)",
                         }}
                       >
-                        <div className="absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-2.5 right-2.5 flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button onClick={() => openEditTarget(t.id)} className="p-1.5 rounded-lg hover:bg-white/10 text-tx-4 hover:text-tx-2 transition-colors">
                             <Pencil size={12} />
                           </button>
