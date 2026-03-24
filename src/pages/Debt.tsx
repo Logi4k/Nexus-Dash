@@ -250,6 +250,10 @@ function DebtRow({
   const days = daysUntil(debt.nextPayment);
   const network = debt.network || accent.network;
 
+  const totalPaid = (debt.payments ?? []).reduce((s, p) => s + p.amount, 0);
+  const originalBalance = debt.currentBalance + totalPaid;
+  const paidOffPct = originalBalance > 0 ? (totalPaid / originalBalance) * 100 : 0;
+
   return (
     <div className="card overflow-hidden">
       {/* Compact header row */}
@@ -332,6 +336,22 @@ function DebtRow({
           )}
         </div>
       </div>
+
+      {/* Payoff progress bar */}
+      {totalPaid > 0 && (
+        <div className="px-4 pb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] text-tx-4">Paid off</span>
+            <span className="text-[10px] font-semibold text-tx-3">{Math.min(paidOffPct, 100).toFixed(0)}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-surface-1 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${Math.min(paidOffPct, 100)}%`, background: paidOffPct >= 75 ? "#22c55e" : paidOffPct >= 40 ? "#f59e0b" : "#ef4444" }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Mobile stats row */}
       <div className="sm:hidden flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-3 border-t border-white/[0.05] pt-2">
