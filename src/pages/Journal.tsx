@@ -155,6 +155,7 @@ function emptyTradeForm() {
     setup: "",
     session: "New York",
     notes: "",
+    tags: [] as string[],
     firm: "" as "" | "lucid" | "tradeify", // UI-only: used for auto-calc, not persisted
   };
 }
@@ -367,12 +368,24 @@ function TradeRow({
         {/* Exit */}
         <span className="text-[11px] text-tx-3 font-mono tabular-nums">{(trade.exitPrice ?? 0).toFixed(2)}</span>
 
-        {/* Setup + Session */}
+        {/* Setup + Session + Tags */}
         <div className="flex flex-col gap-0.5 min-w-0">
           <span className="text-[11px] text-tx-3 truncate">{trade.setup || trade.notes || "—"}</span>
-          {trade.session && (
-            <span className="text-[10px] font-medium truncate" style={{ color: "var(--tx-4)" }}>{trade.session}</span>
-          )}
+          <div className="flex items-center gap-1 flex-wrap">
+            {trade.session && (
+              <span className="text-[10px] font-medium truncate" style={{ color: "var(--tx-4)" }}>{trade.session}</span>
+            )}
+            {trade.tags && trade.tags.length > 0 && (
+              <>
+                {trade.tags.slice(0, 3).map(tag => (
+                  <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent-muted text-tx-3">#{tag}</span>
+                ))}
+                {trade.tags.length > 3 && (
+                  <span className="text-[9px] text-tx-4">+{trade.tags.length - 3} more</span>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Net P&L */}
@@ -468,6 +481,16 @@ function TradeRow({
               <span>{trade.contracts} contracts</span>
               {trade.setup && <span className="truncate">{trade.setup}</span>}
               {trade.session && <span>{trade.session}</span>}
+              {trade.tags && trade.tags.length > 0 && (
+                <>
+                  {trade.tags.slice(0, 3).map(tag => (
+                    <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent-muted text-tx-3">#{tag}</span>
+                  ))}
+                  {trade.tags.length > 3 && (
+                    <span className="text-[9px] text-tx-4">+{trade.tags.length - 3} more</span>
+                  )}
+                </>
+              )}
             </div>
           </div>
           <div className="shrink-0 text-right">
@@ -543,12 +566,13 @@ export default function Journal() {
   const [originalImageIds, setOriginalImageIds] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [tagInput, setTagInput] = useState("");
 
   // ── Page theme + filter state ──
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.journal, isBW);
   const getInstrColor = (s: string) => bwColor(getInstrumentColor(s), isBW);
-  const [filters, setFilters] = useState({ direction: "all", outcome: "all", sort: "date" });
+  const [filters, setFilters] = useState({ direction: "all", outcome: "all", sort: "date", tag: "" });
 
   useEffect(() => {
     const action = (location.state as { action?: string } | null)?.action;
@@ -603,6 +627,13 @@ export default function Journal() {
 
   // ── Trades for selected date ──
   const allTrades: TradeEntry[] = data.tradeJournal ?? [];
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    allTrades.forEach(t => t.tags?.forEach(tag => set.add(tag)));
+    return Array.from(set).sort();
+  }, [allTrades]);
+
   const dayTrades = allTrades
     .filter((t) => t.date === selectedDate)
     .sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
@@ -612,6 +643,7 @@ export default function Journal() {
     if (filters.direction !== "all" && t.direction?.toLowerCase() !== filters.direction) return false;
     if (filters.outcome === "win" && t.pnl <= 0) return false;
     if (filters.outcome === "loss" && t.pnl >= 0) return false;
+    if (filters.tag && !t.tags?.includes(filters.tag)) return false;
     return true;
   });
 
@@ -842,10 +874,23 @@ export default function Journal() {
     setPendingImages((prev) => prev.filter((img) => img.id !== id));
   }
 
+  // ── Tag helpers ──
+
+  function addTag(raw: string) {
+    const tag = raw.replace(/,/g, "").trim();
+    if (!tag || tradeForm.tags.includes(tag) || tradeForm.tags.length >= 10) return;
+    setTradeForm((p) => ({ ...p, tags: [...p.tags, tag] }));
+    setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    setTradeForm((p) => ({ ...p, tags: p.tags.filter((t) => t !== tag) }));
+  }
+
   // ── Add / Edit trade ──
 
   async function handleSaveTrade() {
-    const { date, time, instrument, direction, entryPrice, stopLoss, exitPrice, contracts, pnl, fees, setup, session, notes: tradeNotes } = tradeForm;
+    const { date, time, instrument, direction, entryPrice, stopLoss, exitPrice, contracts, pnl, fees, setup, session, notes: tradeNotes, tags } = tradeForm;
     if (!entryPrice || !exitPrice) return;
 
     // Persist any newly added images to IndexedDB
@@ -873,6 +918,7 @@ export default function Journal() {
       setup,
       session,
       notes: tradeNotes,
+      tags: tags.length > 0 ? tags : undefined,
       imageIds: newImageIds,
     };
 
@@ -904,6 +950,7 @@ export default function Journal() {
     setAddTradeOpen(false);
     setPendingImages([]);
     setOriginalImageIds([]);
+    setTagInput("");
     setTradeForm({ ...emptyTradeForm(), date: selectedDate });
   }
 
@@ -922,8 +969,10 @@ export default function Journal() {
       setup:      trade.setup   ?? "",
       session:    trade.session ?? "New York",
       notes:      trade.notes   ?? "",
+      tags:       trade.tags    ?? [],
       firm:       "" as "" | "lucid" | "tradeify",
     });
+    setTagInput("");
 
     // Load existing images as "pending" so they appear in the modal
     const existingIds = trade.imageIds ?? [];
@@ -980,6 +1029,7 @@ export default function Journal() {
     setEditTradeId(null);
     setPendingImages([]);
     setOriginalImageIds([]);
+    setTagInput("");
     setTradeForm({ ...emptyTradeForm(), date: selectedDate });
     setAddTradeOpen(true);
   }
@@ -989,6 +1039,7 @@ export default function Journal() {
     // If cancelling a new trade, discard any pending (not yet saved to IndexedDB)
     setPendingImages([]);
     setOriginalImageIds([]);
+    setTagInput("");
     setEditTradeId(null);
     setAddTradeOpen(false);
   }
@@ -1268,6 +1319,60 @@ export default function Journal() {
                 <Plus size={13} />Log Trade
               </button>
             </div>
+
+            {/* Filters row */}
+            {dayTrades.length > 0 && (
+              <div className="px-5 py-2.5 border-b border-border flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase tracking-wider text-tx-4 font-semibold mr-1">Filter</span>
+                {/* Direction filter */}
+                {(["all", "long", "short"] as const).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setFilters((f) => ({ ...f, direction: d }))}
+                    className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors border",
+                      filters.direction === d
+                        ? "bg-accent-muted border-accent text-accent"
+                        : "border-border text-tx-4 hover:text-tx-2"
+                    )}
+                  >
+                    {d === "all" ? "All" : d === "long" ? "Long" : "Short"}
+                  </button>
+                ))}
+                <span className="w-px h-3 bg-border mx-1" />
+                {/* Outcome filter */}
+                {(["all", "win", "loss"] as const).map((o) => (
+                  <button
+                    key={o}
+                    onClick={() => setFilters((f) => ({ ...f, outcome: o }))}
+                    className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors border",
+                      filters.outcome === o
+                        ? "bg-accent-muted border-accent text-accent"
+                        : "border-border text-tx-4 hover:text-tx-2"
+                    )}
+                  >
+                    {o === "all" ? "All" : o === "win" ? "Wins" : "Losses"}
+                  </button>
+                ))}
+                {/* Tag filter */}
+                {allTags.length > 0 && (
+                  <>
+                    <span className="w-px h-3 bg-border mx-1" />
+                    <select
+                      className="text-[10px] px-2 py-0.5 rounded-full font-semibold border border-border bg-transparent text-tx-3 appearance-none cursor-pointer"
+                      value={filters.tag}
+                      onChange={(e) => setFilters((f) => ({ ...f, tag: e.target.value }))}
+                    >
+                      <option value="">All Tags</option>
+                      {allTags.map((tag) => (
+                        <option key={tag} value={tag}>#{tag}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+              </div>
+            )}
 
             {filteredDayTrades.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2">
@@ -1989,6 +2094,37 @@ export default function Journal() {
             </div>
           </div>
 
+          {/* ── Tags ── */}
+          <div>
+            <label className="text-tx-3 text-[10px] block mb-1.5">Tags</label>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {tradeForm.tags.map(tag => (
+                <span key={tag} className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent-muted border border-border text-tx-2">
+                  #{tag}
+                  <button type="button" onClick={() => removeTag(tag)} className="text-tx-4 hover:text-tx-1 transition-colors">
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <input
+              type="text"
+              className="nx-input"
+              placeholder="Add tag (press Enter or comma)"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                  e.preventDefault();
+                  addTag(tagInput);
+                }
+              }}
+            />
+            {tradeForm.tags.length >= 10 && (
+              <p className="text-[10px] text-tx-4 mt-1">Maximum 10 tags reached</p>
+            )}
+          </div>
+
           {/* ── Screenshot / Chart upload ── */}
           <div>
             <label className="text-tx-3 text-xs block mb-2 flex items-center gap-1.5">
@@ -2115,6 +2251,17 @@ export default function Journal() {
                   style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.07)" }}>
                   <p className="text-[10px] text-tx-4 uppercase tracking-wider mb-1">Notes</p>
                   <p className="text-xs text-tx-2 leading-relaxed">{vt.notes}</p>
+                </div>
+              )}
+
+              {/* Tags */}
+              {vt.tags && vt.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {vt.tags.map(tag => (
+                    <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent-muted border border-border text-tx-3">
+                      #{tag}
+                    </span>
+                  ))}
                 </div>
               )}
 
