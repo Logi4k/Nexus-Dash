@@ -305,6 +305,7 @@ function TradeRow({
   const isWin   = trade.pnl > 0;
   const isLoss  = trade.pnl < 0;
   const netPnl  = trade.pnl - (trade.fees ?? 0);
+  const rrLabel = calcRR(trade);
   const hasImages = (trade.imageIds?.length ?? 0) > 0;
 
   const accentColor  = isWin ? "#22c55e" : isLoss ? "#ef4444" : "var(--tx-3)";
@@ -382,9 +383,9 @@ function TradeRow({
           >
             {netPnl >= 0 ? "+" : ""}{fmtUSD(netPnl)}
           </span>
-          {calcRR(trade) && (
+          {rrLabel && (
             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-accent-muted text-tx-3">
-              {calcRR(trade)}
+              {rrLabel}
             </span>
           )}
         </div>
@@ -473,10 +474,10 @@ function TradeRow({
             <div className="text-[13px] font-black tabular-nums font-mono" style={{ color: accentColor }}>
               {netPnl >= 0 ? "+" : ""}{fmtUSD(netPnl)}
             </div>
-            {calcRR(trade) && (
+            {rrLabel && (
               <div className="mt-0.5 flex justify-end">
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-accent-muted text-tx-3">
-                  {calcRR(trade)}
+                  {rrLabel}
                 </span>
               </div>
             )}

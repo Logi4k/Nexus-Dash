@@ -456,7 +456,7 @@ export default function TaxPage() {
                       <p className="text-xs text-tx-4">No payouts recorded this tax year.</p>
                       <button
                         className="btn-primary btn-sm self-start"
-                        onClick={() => navigate("/prop-accounts", { state: { action: "logPayout" } })}
+                        onClick={() => navigate("/prop", { state: { action: "logPayout" } })}
                       >
                         <Plus size={14} /> Record Payout
                       </button>
