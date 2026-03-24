@@ -9,14 +9,10 @@ import {
   Moon,
   Sun,
   Smartphone,
-  CloudDownload,
-  CloudUpload,
-  RefreshCw,
 } from "lucide-react";
 import Modal from "@/components/Modal";
-import { useAppData, forcePullFromCloud, forcePushToCloud } from "@/lib/store";
-import { uploadAvatar, deleteAvatar } from "@/lib/avatarStorage";
-import { getVersion } from "@tauri-apps/api/app";
+import { useAppData } from "@/lib/store";
+import { deleteAvatar } from "@/lib/avatarStorage";
 import { cn } from "@/lib/utils";
 import { DEFAULT_MOBILE_NAV_ITEMS, MOBILE_NAV_OPTIONS, sanitizeMobileNavItems } from "@/lib/mobileNav";
 import type { MobileNavItemId } from "@/types";
@@ -74,14 +70,6 @@ export default function SettingsModal({ open, onClose }: Props) {
       : DEFAULT_MOBILE_NAV_ITEMS
   );
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "ok" | "err">("idle");
-  const [appVersion, setAppVersion] = useState("1.0.7");
-
-  useEffect(() => {
-    getVersion().then(setAppVersion).catch(() => {});
-  }, []);
-
   // Re-sync draft state each time the modal opens
   useEffect(() => {
     if (!open) return;
@@ -135,24 +123,13 @@ export default function SettingsModal({ open, onClose }: Props) {
     deleteAvatar().catch(() => {});
   }
 
-  async function handleSave() {
-    // Upload avatar to Supabase Storage if it's a new base64 image
-    let finalAvatarUrl = avatarUrl;
-    if (avatarUrl && avatarUrl.startsWith("data:")) {
-      setUploading(true);
-      const url = await uploadAvatar(avatarUrl);
-      if (url) {
-        finalAvatarUrl = url;
-      }
-      setUploading(false);
-    }
-
+  function handleSave() {
     update((prev) => ({
       ...prev,
       userProfile: {
         username:    username.trim() || "Trader",
         avatarColor,
-        avatarUrl: finalAvatarUrl,
+        avatarUrl: avatarUrl,
       },
       userSettings: {
         ...(prev.userSettings ?? {}),
@@ -203,7 +180,7 @@ export default function SettingsModal({ open, onClose }: Props) {
               </div>
               {/* Camera overlay */}
               <div
-                className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer bg-black/55"
+                className="absolute inset-0 rounded-2xl flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer bg-black/55"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Camera size={16} className="text-tx-1" />
@@ -258,7 +235,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                   <button
                     key={color}
                     onClick={() => setAvatarColor(color)}
-                    className="w-6 h-6 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
+                    className="w-11 h-11 rounded-xl transition-all flex items-center justify-center flex-shrink-0"
                     style={{
                       background: color,
                       transform: avatarColor === color ? "scale(1.2)" : "scale(1)",
@@ -420,71 +397,10 @@ export default function SettingsModal({ open, onClose }: Props) {
         </div>
         )}
 
-        {/* ── Data Sync Section ── */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <RefreshCw size={11} className="text-accent" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-tx-3">Data Sync</span>
-          </div>
-          <div className="rounded-xl p-3 mb-2.5 bg-accent-muted border border-border-subtle">
-            <p className="text-[10px] font-semibold text-tx-2 mb-0.5">Sync with cloud</p>
-            <p className="text-[9px] text-tx-4">
-              Data syncs automatically when you save. Use these if your devices are out of sync.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={async () => {
-                setSyncStatus("loading");
-                const ok = await forcePullFromCloud();
-                setSyncStatus(ok ? "ok" : "err");
-                setTimeout(() => setSyncStatus("idle"), 3000);
-              }}
-              disabled={syncStatus === "loading"}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[11px] font-semibold transition-all disabled:opacity-50 bg-info/10 border border-info/25 text-info"
-            >
-              <CloudDownload size={13} />
-              Pull from cloud
-            </button>
-            <button
-              onClick={async () => {
-                setSyncStatus("loading");
-                const ok = await forcePushToCloud();
-                setSyncStatus(ok ? "ok" : "err");
-                setTimeout(() => setSyncStatus("idle"), 3000);
-              }}
-              disabled={syncStatus === "loading"}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[11px] font-semibold transition-all disabled:opacity-50 bg-profit/10 border border-profit/25 text-profit"
-            >
-              <CloudUpload size={13} />
-              Push to cloud
-            </button>
-          </div>
-          {syncStatus === "ok" && (
-            <p className="text-[9px] mt-2 text-center text-profit">Sync successful</p>
-          )}
-          {syncStatus === "err" && (
-            <p className="text-[9px] mt-2 text-center text-loss">Sync failed — check your connection</p>
-          )}
-          {syncStatus === "loading" && (
-            <p className="text-[9px] mt-2 text-center text-tx-4">Syncing…</p>
-          )}
-        </div>
-
-        <div className="rounded-xl p-3 flex items-center justify-between bg-accent-muted border border-border-subtle">
-          <div>
-            <p className="text-[10px] font-bold text-tx-3">Nexus</p>
-            <p className="text-[9px] text-tx-4">Synced across devices via Supabase</p>
-          </div>
-          <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-accent-muted text-tx-3">
-            v{appVersion}
-          </span>
-        </div>
-
         {/* ── Actions ── */}
         <div className="flex gap-2 pt-1">
-          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={uploading}>
-            <Save size={12} />{uploading ? "Uploading…" : "Save Settings"}
+          <button className="btn-primary btn flex-1" onClick={handleSave}>
+            <Save size={12} />Save Settings
           </button>
           <button className="btn-ghost btn" onClick={onClose}>Cancel</button>
         </div>
