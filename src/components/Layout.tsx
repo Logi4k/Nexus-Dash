@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Briefcase,
   HandCoins,
@@ -308,12 +309,18 @@ export default function Layout() {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div
-          key={loc.pathname}
-          className="page-enter min-h-full p-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] md:p-6 md:pb-12"
-        >
-          <Outlet />
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={loc.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="min-h-full p-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] md:p-6 md:pb-12"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <MobileNav
