@@ -145,6 +145,7 @@ function emptyTradeForm() {
     instrument: "ES",
     direction: "long" as "long" | "short",
     entryPrice: "",
+    stopLoss: "",
     exitPrice: "",
     contracts: "1",
     pnl: "",
@@ -272,6 +273,15 @@ function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
 
 // ─── Trade Row ────────────────────────────────────────────────────────────────
 
+function calcRR(trade: TradeEntry): string | null {
+  if (!trade.stopLoss || trade.stopLoss <= 0) return null;
+  const risk = Math.abs(trade.entryPrice - trade.stopLoss);
+  if (risk === 0) return null;
+  const reward = Math.abs(trade.exitPrice - trade.entryPrice);
+  const rr = reward / risk;
+  return rr.toFixed(1) + "R";
+}
+
 function TradeRow({
   trade,
   onDelete,
@@ -363,12 +373,19 @@ function TradeRow({
         </div>
 
         {/* Net P&L */}
-        <span
-          className="text-[12px] font-black tabular-nums font-mono text-right"
-          style={{ color: accentColor }}
-        >
-          {netPnl >= 0 ? "+" : ""}{fmtUSD(netPnl)}
-        </span>
+        <div className="flex flex-col items-end gap-0.5">
+          <span
+            className="text-[12px] font-black tabular-nums font-mono text-right"
+            style={{ color: accentColor }}
+          >
+            {netPnl >= 0 ? "+" : ""}{fmtUSD(netPnl)}
+          </span>
+          {calcRR(trade) && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-accent-muted text-tx-3">
+              {calcRR(trade)}
+            </span>
+          )}
+        </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
@@ -454,6 +471,13 @@ function TradeRow({
             <div className="text-[13px] font-black tabular-nums font-mono" style={{ color: accentColor }}>
               {netPnl >= 0 ? "+" : ""}{fmtUSD(netPnl)}
             </div>
+            {calcRR(trade) && (
+              <div className="mt-0.5 flex justify-end">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-accent-muted text-tx-3">
+                  {calcRR(trade)}
+                </span>
+              </div>
+            )}
             <div className="mt-2 flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
               {hasImages && (
                 <button onClick={() => setShowImages((v) => !v)} className="p-1 rounded text-tx-4">
@@ -818,7 +842,7 @@ export default function Journal() {
   // ── Add / Edit trade ──
 
   async function handleSaveTrade() {
-    const { date, time, instrument, direction, entryPrice, exitPrice, contracts, pnl, fees, setup, session, notes: tradeNotes } = tradeForm;
+    const { date, time, instrument, direction, entryPrice, stopLoss, exitPrice, contracts, pnl, fees, setup, session, notes: tradeNotes } = tradeForm;
     if (!entryPrice || !exitPrice) return;
 
     // Persist any newly added images to IndexedDB
@@ -831,12 +855,14 @@ export default function Journal() {
 
     const newImageIds = pendingImages.map((img) => img.id);
 
+    const stopLossVal = stopLoss ? parseFloat(stopLoss) : undefined;
     const tradeData = {
       date,
       time,
       instrument,
       direction,
       entryPrice: parseFloat(entryPrice) || 0,
+      stopLoss: (stopLossVal !== undefined && stopLossVal > 0) ? stopLossVal : undefined,
       exitPrice:  parseFloat(exitPrice)  || 0,
       contracts:  parseInt(contracts)    || 1,
       pnl:        parseFloat(pnl)        || 0,
@@ -883,6 +909,7 @@ export default function Journal() {
       instrument: trade.instrument,
       direction:  trade.direction,
       entryPrice: String(trade.entryPrice),
+      stopLoss:   trade.stopLoss ? String(trade.stopLoss) : "",
       exitPrice:  String(trade.exitPrice),
       contracts:  String(trade.contracts),
       pnl:        String(trade.pnl),
@@ -1783,7 +1810,7 @@ export default function Journal() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
               <label className="text-tx-3 text-xs block mb-1">Entry Price</label>
               <input
@@ -1793,6 +1820,17 @@ export default function Journal() {
                 placeholder="0.00"
                 value={tradeForm.entryPrice}
                 onChange={(e) => setTradeForm((p) => ({ ...p, entryPrice: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-tx-3 text-xs block mb-1">Stop (opt.)</label>
+              <input
+                type="number"
+                step="0.25"
+                className="nx-input"
+                placeholder="0.00"
+                value={tradeForm.stopLoss}
+                onChange={(e) => setTradeForm((p) => ({ ...p, stopLoss: e.target.value }))}
               />
             </div>
             <div>

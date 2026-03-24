@@ -183,6 +183,7 @@ export interface TradeEntry {
   instrument: string;
   direction: "long" | "short";
   entryPrice: number;
+  stopLoss?: number;
   exitPrice: number;
   contracts: number;
   pnl: number;
