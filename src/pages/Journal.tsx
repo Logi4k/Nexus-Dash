@@ -889,12 +889,14 @@ export default function Journal() {
         ),
       }));
       setEditTradeId(null);
+      toast.success('Trade updated');
     } else {
       const trade: TradeEntry = { id: generateId(), ...tradeData };
       update((prev) => ({
         ...prev,
         tradeJournal: [...(prev.tradeJournal ?? []), trade],
       }));
+      toast.success('Trade logged');
     }
 
     setAddTradeOpen(false);

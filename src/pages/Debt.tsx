@@ -607,11 +607,13 @@ export default function DebtPage() {
           : d
       ),
     }));
+    toast.success('Payment logged');
   }
 
   function handleAddDebt(form: Omit<Debt, "id" | "payments">) {
     const newDebt: Debt = { ...form, id: generateId(), payments: [] };
     update((prev) => ({ ...prev, debts: [...prev.debts, newDebt] }));
+    toast.success('Debt added');
   }
 
   function handleEditDebt(debtId: string, form: Omit<Debt, "id" | "payments">) {

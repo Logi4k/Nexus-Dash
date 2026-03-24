@@ -468,6 +468,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
       amount: parseFloat(form.amount),
     };
     update((prev) => ({ ...prev, expenses: [expense, ...prev.expenses] }));
+    toast.success('Expense added');
     setAddOpen(false);
     setForm({
       date: new Date().toISOString().slice(0, 10),
@@ -940,6 +941,7 @@ function OtherExpensesTab() {
       amount: parseFloat(form.amount),
     };
     update((prev) => ({ ...prev, genExpenses: [expense, ...prev.genExpenses] }));
+    toast.success('Expense added');
     setAddOpen(false);
     setForm({
       date: new Date().toISOString().slice(0, 10),

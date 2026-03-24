@@ -1509,6 +1509,7 @@ export default function PropAccounts() {
         pnlHistory:     [],
       }));
       update((prev) => ({ ...prev, accounts: [...newAccounts, ...prev.accounts] }));
+      toast.success('Account added');
     }
 
     setAddOpen(false);
@@ -1620,6 +1621,7 @@ export default function PropAccounts() {
             )
           : prev.accounts,
       }));
+      toast.success('Payout logged');
     }
     setPayoutOpen(false);
     setEditPayoutId(null);

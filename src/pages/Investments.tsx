@@ -834,6 +834,7 @@ export default function InvestmentsPage() {
       ...prev,
       investments: [...prev.investments, { ...form, id: generateId() }],
     }));
+    toast.success('Investment added');
   }
 
   function handleEditInvestment(id: string, form: Omit<Investment, "id">) {
@@ -878,6 +879,7 @@ export default function InvestmentsPage() {
       ...prev,
       subscriptions: [...prev.subscriptions, { ...form, id: generateId() }],
     }));
+    toast.success('Subscription added');
   }
 
   function handleEditSub(id: string, form: Omit<Subscription, "id">) {
