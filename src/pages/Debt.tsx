@@ -145,13 +145,23 @@ function DebtFormModal({
   initial?: Omit<Debt, "id" | "payments">; title: string;
 }) {
   const [form, setForm] = useState<Omit<Debt, "id" | "payments">>(initial ?? emptyDebtForm());
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const key = initial ? JSON.stringify(initial) : "new";
 
   function setField<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
   }
   function handleSave() {
-    if (!form.name.trim()) return;
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = 'Required';
+    if (toNum(form.currentBalance) <= 0) newErrors.currentBalance = 'Must be > 0';
+    if (toNum(form.rate) < 0) newErrors.rate = 'Must be >= 0';
+    if (toNum(form.monthly) <= 0) newErrors.monthly = 'Must be > 0';
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
     onSave({
       ...form,
       creditLimit: toNum(form.creditLimit),
@@ -163,12 +173,13 @@ function DebtFormModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={title} size="md" key={key}>
+    <Modal open={open} onClose={() => { onClose(); setErrors({}); }} title={title} size="md" key={key}>
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2 flex flex-col gap-1.5">
           <label className="text-xs text-tx-3">Card Name</label>
           <input className="nx-input" placeholder="e.g. Barclaycard Avios" value={form.name}
-            onChange={(e) => setField("name", e.target.value)} />
+            onChange={(e) => { setField("name", e.target.value); setErrors((prev) => ({ ...prev, name: '' })); }} />
+          {errors.name && <p className="text-[10px] text-loss mt-1">{errors.name}</p>}
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-tx-3">Credit Limit (GBP)</label>
@@ -178,17 +189,20 @@ function DebtFormModal({
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-tx-3">Current Balance (GBP)</label>
           <input type="number" className="nx-input" value={form.currentBalance || ""}
-            onChange={(e) => setField("currentBalance", parseFloat(e.target.value) || 0)} min="0" step="0.01" />
+            onChange={(e) => { setField("currentBalance", parseFloat(e.target.value) || 0); setErrors((prev) => ({ ...prev, currentBalance: '' })); }} min="0" step="0.01" />
+          {errors.currentBalance && <p className="text-[10px] text-loss mt-1">{errors.currentBalance}</p>}
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-tx-3">APR (%)</label>
           <input type="number" className="nx-input" value={form.rate || ""}
-            onChange={(e) => setField("rate", parseFloat(e.target.value) || 0)} min="0" step="0.1" />
+            onChange={(e) => { setField("rate", parseFloat(e.target.value) || 0); setErrors((prev) => ({ ...prev, rate: '' })); }} min="0" step="0.1" />
+          {errors.rate && <p className="text-[10px] text-loss mt-1">{errors.rate}</p>}
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-tx-3">Monthly Payment (GBP)</label>
           <input type="number" className="nx-input" value={form.monthly || ""}
-            onChange={(e) => setField("monthly", parseFloat(e.target.value) || 0)} min="0" step="0.01" />
+            onChange={(e) => { setField("monthly", parseFloat(e.target.value) || 0); setErrors((prev) => ({ ...prev, monthly: '' })); }} min="0" step="0.01" />
+          {errors.monthly && <p className="text-[10px] text-loss mt-1">{errors.monthly}</p>}
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-tx-3">Next Payment Date</label>
@@ -211,7 +225,7 @@ function DebtFormModal({
           </select>
         </div>
         <div className="col-span-2 flex gap-2 pt-1">
-          <button className="btn-ghost flex-1 btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn-ghost flex-1 btn-sm" onClick={() => { onClose(); setErrors({}); }}>Cancel</button>
           <button className="btn-primary flex-1 btn-sm" onClick={handleSave}>Save Card</button>
         </div>
       </div>

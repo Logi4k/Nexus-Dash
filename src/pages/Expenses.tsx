@@ -373,6 +373,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
     amount: "",
     customFirm: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   /* ---- Stats ---- */
   const stats = useMemo(() => {
@@ -459,7 +460,14 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
 
   const handleAdd = () => {
     const firmName = form.firm === "__other__" ? form.customFirm.trim() : form.firm;
-    if (!form.amount || !firmName || !form.cat) return;
+    const newErrors: Record<string, string> = {};
+    if (!form.amount || parseFloat(form.amount) <= 0) newErrors.amount = 'Must be > 0';
+    if (!form.cat) newErrors.cat = 'Required';
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
     const expense: Expense = {
       id: generateId(),
       date: form.date,
@@ -804,7 +812,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
       </div>{/* end 2-col grid */}
 
       {/* Add Expense Modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Expense" size="sm">
+      <Modal open={addOpen} onClose={() => { setAddOpen(false); setErrors({}); }} title="Add Expense" size="sm">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -821,7 +829,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
               <select
                 className="nx-select"
                 value={form.cat}
-                onChange={(e) => setForm((p) => ({ ...p, cat: e.target.value as ExpenseCat | "" }))}
+                onChange={(e) => { setForm((p) => ({ ...p, cat: e.target.value as ExpenseCat | "" })); setErrors((prev) => ({ ...prev, cat: '' })); }}
               >
                 <option value="" disabled>Select...</option>
                 {EXPENSE_CATS.map((c) => (
@@ -830,6 +838,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
                   </option>
                 ))}
               </select>
+              {errors.cat && <p className="text-[10px] text-loss mt-1">{errors.cat}</p>}
             </div>
           </div>
 
@@ -863,8 +872,9 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
               step="0.01"
               placeholder="0.00"
               value={form.amount}
-              onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+              onChange={(e) => { setForm((p) => ({ ...p, amount: e.target.value })); setErrors((prev) => ({ ...prev, amount: '' })); }}
             />
+            {errors.amount && <p className="text-[10px] text-loss mt-1">{errors.amount}</p>}
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -873,7 +883,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
               style={(!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false)) ? { opacity: 0.5 } : undefined}>
               Add Expense
             </button>
-            <button className="btn-ghost btn" onClick={() => setAddOpen(false)}>
+            <button className="btn-ghost btn" onClick={() => { setAddOpen(false); setErrors({}); }}>
               Cancel
             </button>
           </div>

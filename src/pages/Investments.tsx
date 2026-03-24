@@ -267,19 +267,27 @@ function SubscriptionFormModal({
   const [form, setForm] = useState<Omit<Subscription, "id">>(
     initial ?? emptySubscription()
   );
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   function setField<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
   }
 
   function handleSave() {
-    if (!form.name.trim()) return;
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = 'Required';
+    if (toNum(form.amount) <= 0) newErrors.amount = 'Must be > 0';
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
     onSave({ ...form, amount: toNum(form.amount) });
     onClose();
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={title} size="sm">
+    <Modal open={open} onClose={() => { onClose(); setErrors({}); }} title={title} size="sm">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-tx-3">Name</label>
@@ -287,8 +295,9 @@ function SubscriptionFormModal({
             className="nx-input"
             placeholder="e.g. TradingView"
             value={form.name}
-            onChange={(e) => setField("name", e.target.value)}
+            onChange={(e) => { setField("name", e.target.value); setErrors((prev) => ({ ...prev, name: '' })); }}
           />
+          {errors.name && <p className="text-[10px] text-loss mt-1">{errors.name}</p>}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
@@ -297,10 +306,11 @@ function SubscriptionFormModal({
               type="number"
               className="nx-input"
               value={form.amount || ""}
-              onChange={(e) => setField("amount", parseFloat(e.target.value) || 0)}
+              onChange={(e) => { setField("amount", parseFloat(e.target.value) || 0); setErrors((prev) => ({ ...prev, amount: '' })); }}
               min="0"
               step="0.01"
             />
+            {errors.amount && <p className="text-[10px] text-loss mt-1">{errors.amount}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-tx-3">Frequency</label>
@@ -336,7 +346,7 @@ function SubscriptionFormModal({
           />
         </div>
         <div className="flex gap-2 pt-1">
-          <button className="btn-ghost flex-1 btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn-ghost flex-1 btn-sm" onClick={() => { onClose(); setErrors({}); }}>Cancel</button>
           <button className="btn-primary flex-1 btn-sm" onClick={handleSave}>Save</button>
         </div>
       </div>
