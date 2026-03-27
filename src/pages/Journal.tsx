@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from 'sonner';
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { PAGE_THEMES } from "@/lib/theme";
 import {
   ChevronLeft,
@@ -13,7 +13,6 @@ import {
   Zap,
   Target,
   BarChart3,
-  Clock,
   ArrowUpRight,
   ArrowDownRight,
   Image as ImageIcon,
@@ -30,12 +29,19 @@ import {
   XAxis, ReferenceLine,
 } from "recharts";
 import { useAppData } from "@/lib/store";
+import { getQuickActionState } from "@/lib/quickActions";
+import { getPropAccountSnapshot } from "@/lib/propRules";
+import {
+  formatAccountOptionLabel,
+  getAccountPhaseLabel,
+  isActiveAccount,
+  normalizeAccountStatus,
+} from "@/lib/accountStatus";
 import { cn, fmtUSD, generateId, FUTURES_CONTRACTS } from "@/lib/utils";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
 import {
   saveImage,
-  getImages,
   getImagesWithCloudFallback,
   deleteImage,
   deleteImages,
@@ -138,6 +144,8 @@ function lastNDays(anchor: string, n: number): string[] {
 // ─── Mood & Bias config ───────────────────────────────────────────────────────
 
 
+const DRAFT_KEY = "nexus_trade_draft";
+
 // ─── Trade Form defaults ──────────────────────────────────────────────────────
 
 function emptyTradeForm() {
@@ -157,6 +165,7 @@ function emptyTradeForm() {
     notes: "",
     tags: [] as string[],
     firm: "" as "" | "lucid" | "tradeify", // UI-only: used for auto-calc, not persisted
+    accountId: undefined as string | undefined,
   };
 }
 
@@ -544,12 +553,102 @@ function TradeRow({
   );
 }
 
+// ─── Custom Select ────────────────────────────────────────────────────────────
+interface SelectOption { value: string; label: string; }
+function CustomSelect({
+  value, onChange, options, placeholder = "Select…", small = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: SelectOption[];
+  placeholder?: string;
+  small?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find(o => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={small
+          ? "text-[10px] px-2 py-0.5 rounded-full font-semibold border border-border text-tx-3 flex items-center gap-1"
+          : "w-full text-left px-3 py-2 rounded-xl text-sm border border-border text-tx-1 flex items-center justify-between gap-2"
+        }
+        style={{ background: "rgba(var(--surface-rgb),0.04)", minWidth: small ? undefined : "100%" }}
+      >
+        <span style={{ color: selected ? (small ? "var(--tx-3)" : "var(--tx-1)") : "var(--tx-4)" }}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <svg width="10" height="10" viewBox="0 0 10 10" style={{ color: "var(--tx-4)", flexShrink: 0, transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
+          <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            minWidth: "100%",
+            maxWidth: "min(90vw, 320px)",
+            background: "var(--bg-elevated)",
+            border: "1px solid rgba(var(--border-rgb),0.12)",
+            borderRadius: 12,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            zIndex: 300,
+            maxHeight: 300,
+            overflowY: "auto",
+          }}
+        >
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm transition-colors"
+              style={{
+                background: opt.value === value ? "rgba(var(--surface-rgb),0.08)" : "transparent",
+                color: opt.value === value ? "var(--tx-1)" : "var(--tx-2)",
+                fontSize: small ? 11 : 13,
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(var(--surface-rgb),0.06)")}
+              onMouseLeave={e => (e.currentTarget.style.background = opt.value === value ? "rgba(var(--surface-rgb),0.08)" : "transparent")}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Journal Page ────────────────────────────────────────────────────────
+
+function getAccountPhaseColor(status: string | undefined): string {
+  const phase = normalizeAccountStatus(status);
+  if (phase === "funded") return "#3b82f6";
+  if (phase === "challenge") return "#eab308";
+  if (phase === "breached") return "#ef4444";
+  return "var(--tx-3)";
+}
 
 export default function Journal() {
   const { data, update } = useAppData();
   const location = useLocation();
-  const navigate = useNavigate();
   const handledLocationAction = useRef<string | null>(null);
 
   const [selectedDate, setSelectedDate] = useState(todayISO());
@@ -572,25 +671,50 @@ export default function Journal() {
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.journal, isBW);
   const getInstrColor = (s: string) => bwColor(getInstrumentColor(s), isBW);
-  const [filters, setFilters] = useState({ direction: "all", outcome: "all", sort: "date", tag: "" });
+  const [filters, setFilters] = useState({ direction: "all", outcome: "all", sort: "date", tag: "", accountId: undefined as string | undefined });
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
 
   useEffect(() => {
-    const action = (location.state as { action?: string } | null)?.action;
-    if (!action) {
+    const quickAction = getQuickActionState(location.state);
+    const requestKey = quickAction?.quickActionId ?? null;
+
+    if (!quickAction?.action) {
       handledLocationAction.current = null;
       return;
     }
-    if (handledLocationAction.current === action) return;
-    if (action === "addTrade") {
-      handledLocationAction.current = action;
+    if (handledLocationAction.current === requestKey) return;
+    if (quickAction.action === "addTrade") {
+      handledLocationAction.current = requestKey;
       setEditTradeId(null);
       setPendingImages([]);
       setOriginalImageIds([]);
-      setTradeForm({ ...emptyTradeForm(), date: selectedDate });
+      const draft = localStorage.getItem(DRAFT_KEY);
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          setTradeForm({ ...parsed, date: selectedDate });
+          toast("Draft restored", { duration: 2000 });
+        } catch {
+          setTradeForm({ ...emptyTradeForm(), date: selectedDate });
+        }
+      } else {
+        setTradeForm({ ...emptyTradeForm(), date: selectedDate });
+      }
       setAddTradeOpen(true);
-      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.pathname, location.state, navigate, selectedDate]);
+  }, [location.state, selectedDate]);
+
+  // ── Auto-save trade form draft to localStorage (new trades only) ──
+  useEffect(() => {
+    if (!addTradeOpen || editTradeId) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(tradeForm));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [tradeForm, addTradeOpen, editTradeId]);
 
   // ── Auto-calculate P&L + fees when firm / prices / contracts / instrument / direction change ──
   useEffect(() => {
@@ -627,6 +751,18 @@ export default function Journal() {
 
   // ── Trades for selected date ──
   const allTrades: TradeEntry[] = data.tradeJournal ?? [];
+  const activeAccounts = useMemo(
+    () => (data.accounts ?? []).filter((account) => isActiveAccount(account)),
+    [data.accounts]
+  );
+  const journalAccountOptions = useMemo(
+    () =>
+      activeAccounts.map((account) => ({
+        value: account.id,
+        label: formatAccountOptionLabel(account, { includeFirm: false }),
+      })),
+    [activeAccounts]
+  );
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -638,12 +774,13 @@ export default function Journal() {
     .filter((t) => t.date === selectedDate)
     .sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
 
-  // ── Filtered day trades (direction + outcome filters) ──
+  // ── Filtered day trades (direction + outcome + account filters) ──
   const filteredDayTrades = dayTrades.filter((t) => {
     if (filters.direction !== "all" && t.direction?.toLowerCase() !== filters.direction) return false;
     if (filters.outcome === "win" && t.pnl <= 0) return false;
     if (filters.outcome === "loss" && t.pnl >= 0) return false;
     if (filters.tag && !t.tags?.includes(filters.tag)) return false;
+    if (filters.accountId && t.accountId !== filters.accountId) return false;
     return true;
   });
 
@@ -659,14 +796,32 @@ export default function Journal() {
     return { wins, losses, total, gross, fees, net, winRate };
   }, [dayTrades]);
 
-  // ── Recent dates that have entries ──
-  const recentDates = useMemo(() => {
-    const withEntries = new Set([
-      ...entries.map((e) => e.date),
-      ...allTrades.map((t) => t.date),
-    ]);
-    return [...withEntries].sort((a, b) => b.localeCompare(a)).slice(0, 10);
-  }, [entries, allTrades]);
+  // ── P&L by account for the selected day ──
+  const dayPnlByAccount = useMemo(() => {
+    const byAccount: Record<string, { wins: number; losses: number; net: number; gross: number; fees: number }> = {};
+    dayTrades.forEach((t) => {
+      const accId = t.accountId || "Unknown";
+      if (!byAccount[accId]) {
+        byAccount[accId] = { wins: 0, losses: 0, net: 0, gross: 0, fees: 0 };
+      }
+      byAccount[accId].gross += t.pnl;
+      byAccount[accId].fees += t.fees ?? 0;
+      byAccount[accId].net = byAccount[accId].gross - byAccount[accId].fees;
+      if (t.pnl > 0) byAccount[accId].wins += 1;
+      else if (t.pnl < 0) byAccount[accId].losses += 1;
+    });
+    return Object.entries(byAccount)
+      .map(([accId, stats]) => {
+        const matchedAcc = data.accounts?.find((a) => a.id === accId);
+        return {
+          accId,
+          accountName: matchedAcc?.name || matchedAcc?.type || accId,
+          ...stats,
+        };
+      })
+      .sort((a, b) => b.net - a.net);
+  }, [dayTrades, data.accounts]);
+
 
   // ── All-time stats ──
   const allStats = useMemo(() => {
@@ -738,35 +893,6 @@ export default function Journal() {
       }));
   }, [allTrades]);
 
-  // ── This week's day-by-day breakdown (Mon–Fri) ──
-  const thisWeekStats = useMemo(() => {
-    const anchor = new Date(today + "T00:00:00");
-    const dow = anchor.getDay(); // 0=Sun
-    const mondayOffset = dow === 0 ? -6 : 1 - dow;
-    const monday = new Date(anchor);
-    monday.setDate(anchor.getDate() + mondayOffset);
-    return Array.from({ length: 5 }, (_, i) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const iso = d.toISOString().slice(0, 10);
-      const trades = allTrades.filter((t) => t.date === iso);
-      const net = trades.length > 0
-        ? trades.reduce((s, t) => s + t.pnl - (t.fees ?? 0), 0)
-        : null;
-      return {
-        iso,
-        dayLabel: ["Mon", "Tue", "Wed", "Thu", "Fri"][i],
-        net,
-        tradeCount: trades.length,
-        isToday: iso === today,
-        isFuture: iso > today,
-      };
-    });
-  }, [allTrades, today]);
-
-  const weekNetPnL = thisWeekStats.reduce((s, d) => s + (d.net ?? 0), 0);
-  const weekHasData = thisWeekStats.some((d) => d.net !== null);
-
   // ── Instrument breakdown ──
   const instrStats = useMemo(() => {
     const map: Record<string, { net: number; count: number; wins: number }> = {};
@@ -783,48 +909,39 @@ export default function Journal() {
       .map(([label, v]) => ({ label, net: v.net, count: v.count, wr: v.count > 0 ? (v.wins / v.count) * 100 : 0 }));
   }, [allTrades]);
 
-  // ── 52-week P&L calendar heatmap data ──
-  const calendarHeatmap = useMemo(() => {
-    const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const anchor = new Date(today + "T00:00:00");
-    // Roll back to the most recent Sunday so columns align Sun–Sat
-    const dayOfWeek = anchor.getDay(); // 0=Sun
-    const startDate = new Date(anchor);
-    startDate.setDate(anchor.getDate() - dayOfWeek - (53 * 7 - 7)); // 53 weeks back, land on Sunday
-    const days: {
-      date: string;
-      net: number | null;
-      hasTrades: boolean;
-      hasNote: boolean;
-      dow: number;
-      weekIndex: number;
-      monthLabel?: string;
-    }[] = [];
-    let seenMonths = new Set<string>();
-    for (let i = 0; i < 371; i++) {
-      const d = new Date(startDate);
-      d.setDate(startDate.getDate() + i);
-      const iso = d.toISOString().slice(0, 10);
-      const trades = allTrades.filter((t) => t.date === iso);
-      const hasNote = entries.some((e) => e.date === iso);
-      const net = trades.length > 0
-        ? trades.reduce((s, t) => s + t.pnl - (t.fees ?? 0), 0)
-        : null;
-      const weekIndex = Math.floor(i / 7);
-      const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
-      const monthLabel = (d.getDate() === 1 || (i === 0)) && !seenMonths.has(monthKey)
-        ? MONTH_NAMES[d.getMonth()]
-        : undefined;
-      if (monthLabel) seenMonths.add(monthKey);
-      // Skip days that are in the future
-      if (iso > today) {
-        days.push({ date: iso, net: null, hasTrades: false, hasNote: false, dow: d.getDay(), weekIndex, monthLabel });
-      } else {
-        days.push({ date: iso, net, hasTrades: trades.length > 0, hasNote, dow: d.getDay(), weekIndex, monthLabel });
-      }
-    }
-    return days;
-  }, [allTrades, entries, today]);
+  // ── Per-account stats ──
+  const accountStats = useMemo(() => {
+    return activeAccounts.map(acc => {
+      const accTrades = allTrades.filter(t => t.accountId === acc.id);
+      const wins = accTrades.filter(t => t.pnl > 0).length;
+      const losses = accTrades.filter(t => t.pnl < 0).length;
+      const total = accTrades.length;
+      const gross = accTrades.reduce((s, t) => s + t.pnl, 0);
+      const fees = accTrades.reduce((s, t) => s + (t.fees ?? 0), 0);
+      const net = gross - fees;
+      const winRate = total > 0 ? (wins / total) * 100 : 0;
+      const winPnls = accTrades.filter(t => t.pnl > 0).map(t => t.pnl);
+      const lossPnls = accTrades.filter(t => t.pnl < 0).map(t => t.pnl);
+      const bestWin = winPnls.length > 0 ? Math.max(...winPnls) : null;
+      const worstLoss = lossPnls.length > 0 ? Math.min(...lossPnls) : null;
+      const grossWins = winPnls.reduce((sum, value) => sum + value, 0);
+      const grossLoss = Math.abs(lossPnls.reduce((sum, value) => sum + value, 0));
+      const profitFactor = grossLoss > 0 ? grossWins / grossLoss : (grossWins > 0 ? Number.POSITIVE_INFINITY : null);
+      const avgNet = total > 0 ? net / total : null;
+      const avgWin = winPnls.length > 0 ? grossWins / winPnls.length : null;
+      const avgLoss = lossPnls.length > 0 ? lossPnls.reduce((sum, value) => sum + value, 0) / lossPnls.length : null;
+      const recentTrades = [...accTrades]
+        .sort((a, b) => `${b.date}${b.time ?? ""}`.localeCompare(`${a.date}${a.time ?? ""}`))
+        .slice(0, 5);
+      const recentNet = recentTrades.reduce((sum, trade) => sum + trade.pnl - (trade.fees ?? 0), 0);
+      return { acc, wins, losses, total, net, winRate, bestWin, worstLoss, profitFactor, avgNet, avgWin, avgLoss, recentNet, trades: accTrades };
+    }).sort((a, b) => {
+      const phaseDelta =
+        Number(normalizeAccountStatus(a.acc.status) !== "funded") -
+        Number(normalizeAccountStatus(b.acc.status) !== "funded");
+      return phaseDelta || b.total - a.total || b.net - a.net;
+    });
+  }, [activeAccounts, allTrades]);
 
   // ── Updater helper ──
   function patchEntry(patch: Partial<Omit<JournalEntry, "id" | "date">>) {
@@ -895,7 +1012,7 @@ export default function Journal() {
   // ── Add / Edit trade ──
 
   async function handleSaveTrade() {
-    const { date, time, instrument, direction, entryPrice, stopLoss, exitPrice, contracts, pnl, fees, setup, session, notes: tradeNotes, tags } = tradeForm;
+    const { date, time, instrument, direction, entryPrice, stopLoss, exitPrice, contracts, pnl, fees, setup, session, notes: tradeNotes, tags, accountId } = tradeForm;
     if (!entryPrice || !exitPrice) return;
 
     // Persist any newly added images to IndexedDB
@@ -925,6 +1042,7 @@ export default function Journal() {
       notes: tradeNotes,
       tags: tags.length > 0 ? tags : undefined,
       imageIds: newImageIds,
+      accountId: accountId || undefined,
     };
 
     if (editTradeId) {
@@ -952,6 +1070,7 @@ export default function Journal() {
       toast.success('Trade logged');
     }
 
+    localStorage.removeItem(DRAFT_KEY);
     setAddTradeOpen(false);
     setPendingImages([]);
     setOriginalImageIds([]);
@@ -976,6 +1095,7 @@ export default function Journal() {
       notes:      trade.notes   ?? "",
       tags:       trade.tags    ?? [],
       firm:       "" as "" | "lucid" | "tradeify",
+      accountId:  trade.accountId ?? undefined,
     });
     setTagInput("");
 
@@ -1035,13 +1155,25 @@ export default function Journal() {
     setPendingImages([]);
     setOriginalImageIds([]);
     setTagInput("");
-    setTradeForm({ ...emptyTradeForm(), date: selectedDate });
+    const draft = localStorage.getItem(DRAFT_KEY);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        setTradeForm({ ...parsed, date: selectedDate });
+        toast("Draft restored", { duration: 2000 });
+      } catch {
+        setTradeForm({ ...emptyTradeForm(), date: selectedDate });
+      }
+    } else {
+      setTradeForm({ ...emptyTradeForm(), date: selectedDate });
+    }
     setAddTradeOpen(true);
   }
 
   function closeTradeModal() {
     // If cancelling an edit, don't delete the images – they already existed
     // If cancelling a new trade, discard any pending (not yet saved to IndexedDB)
+    localStorage.removeItem(DRAFT_KEY);
     setPendingImages([]);
     setOriginalImageIds([]);
     setTagInput("");
@@ -1050,7 +1182,7 @@ export default function Journal() {
   }
 
   return (
-    <div className="space-y-5 w-full page-enter">
+    <div className="space-y-5 w-full">
       {/* ── Header ── */}
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Journal</div>
@@ -1101,103 +1233,152 @@ export default function Journal() {
         </div>
       </div>
 
-      {/* ── This Week Strip ── */}
-      {weekHasData && (
-        <div
-          className="card px-4 py-3 flex items-center gap-4"
-          style={{ background: "rgba(var(--surface-rgb),0.03)" }}
-        >
-          <div className="flex-shrink-0">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-tx-4 mb-0.5">This Week</p>
-            <p
-              className="text-sm font-black tabular-nums leading-none"
-              style={{ color: weekNetPnL >= 0 ? "#22c55e" : "#ef4444" }}
-            >
-              {weekNetPnL >= 0 ? "+" : ""}{fmtUSD(weekNetPnL)}
-            </p>
-          </div>
+      {/* ── Monthly P&L Calendar ── */}
+      {(() => {
+        const year = calendarMonth.year;
+        const month = calendarMonth.month;
+        const monthName = new Date(year, month, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+        const firstDay = new Date(year, month, 1);
+        // Start from Monday of the week containing the 1st
+        const startDow = firstDay.getDay(); // 0=Sun
+        const mondayOffset = startDow === 0 ? -6 : 1 - startDow;
+        const calStart = new Date(firstDay);
+        calStart.setDate(firstDay.getDate() + mondayOffset);
 
-          <div className="h-8 w-px flex-shrink-0" style={{ background: "rgba(var(--border-rgb),0.09)" }} />
+        const weeks: string[][] = [];
+        let current = new Date(calStart);
+        while (current.getMonth() <= month || weeks.length === 0) {
+          if (current.getFullYear() > year) break;
+          const week: string[] = [];
+          for (let d = 0; d < 5; d++) { // Mon-Fri only
+            const iso = current.toISOString().slice(0, 10);
+            week.push(iso);
+            current.setDate(current.getDate() + 1);
+          }
+          current.setDate(current.getDate() + 2); // skip Sat+Sun
+          weeks.push(week);
+          if (weeks.length > 6) break;
+        }
 
-          <div className="flex items-end gap-1.5 flex-1 min-w-0">
-            {thisWeekStats.map((day) => {
-              const hasData = day.net !== null;
-              const isPos   = (day.net ?? 0) >= 0;
-              const barColor = !hasData
-                ? "rgba(var(--surface-rgb),0.1)"
-                : isPos ? "#22c55e" : "#ef4444";
-              const maxAbs = Math.max(...thisWeekStats.map((d) => Math.abs(d.net ?? 0)), 1);
-              const barH   = hasData ? Math.max(4, (Math.abs(day.net ?? 0) / maxAbs) * 28) : 4;
+        const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
-              return (
+        return (
+          <div className="card px-4 py-3">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-tx-4">P&L Calendar</p>
+              <div className="flex items-center gap-2">
                 <button
-                  key={day.iso}
-                  onClick={() => setSelectedDate(day.iso)}
-                  className="flex flex-col items-center gap-1 flex-1 group transition-opacity"
-                  style={{ opacity: day.isFuture ? 0.3 : 1 }}
-                  title={day.iso}
+                  onClick={() => setCalendarMonth(prev => {
+                    const d = new Date(prev.year, prev.month - 1, 1);
+                    return { year: d.getFullYear(), month: d.getMonth() };
+                  })}
+                  className="w-6 h-6 rounded-lg flex items-center justify-center text-tx-3 hover:text-tx-1 transition-colors"
+                  style={{ background: "rgba(var(--surface-rgb),0.04)" }}
                 >
-                  {/* bar */}
-                  <div className="flex items-end justify-center w-full" style={{ height: 32 }}>
-                    <div
-                      className="w-full max-w-[24px] rounded-t-sm transition-all duration-300"
-                      style={{
-                        height: barH,
-                        background: barColor,
-                        boxShadow: hasData ? `0 0 6px ${barColor}55` : "none",
-                        outline: day.iso === selectedDate ? `1.5px solid ${barColor}` : day.isToday ? `1px solid rgba(var(--border-rgb),0.35)` : "none",
-                        outlineOffset: "2px",
-                      }}
-                    />
-                  </div>
-                  <span
-                    className="text-[10px] font-mono font-semibold"
-                    style={{ color: day.isToday ? "var(--tx-1)" : "var(--tx-4)" }}
-                  >{day.dayLabel}</span>
-                  {hasData && (
-                    <span
-                      className="text-[10px] font-mono tabular-nums leading-none"
-                      style={{ color: isPos ? "#4ade80" : "#f87171" }}
-                    >
-                      {isPos ? "+" : ""}{fmtUSD(day.net!)}
-                    </span>
-                  )}
+                  <ChevronLeft size={12} />
                 </button>
-              );
-            })}
+                <p className="text-xs font-semibold text-tx-2 min-w-[100px] text-center">{monthName}</p>
+                <button
+                  onClick={() => setCalendarMonth(prev => {
+                    const d = new Date(prev.year, prev.month + 1, 1);
+                    return { year: d.getFullYear(), month: d.getMonth() };
+                  })}
+                  disabled={calendarMonth.year === new Date(today + "T00:00:00").getFullYear() && calendarMonth.month === new Date(today + "T00:00:00").getMonth()}
+                  className="w-6 h-6 rounded-lg flex items-center justify-center text-tx-3 hover:text-tx-1 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ background: "rgba(var(--surface-rgb),0.04)" }}
+                >
+                  <ChevronRight size={12} />
+                </button>
+              </div>
+            </div>
+            {/* Day headers */}
+            <div className="grid grid-cols-5 gap-1 mb-1">
+              {DAY_LABELS.map(d => (
+                <div key={d} className="text-center text-[9px] font-bold uppercase tracking-wider text-tx-4">{d}</div>
+              ))}
+            </div>
+            {/* Weeks */}
+            <div className="flex flex-col gap-1">
+              {weeks.map((week, wi) => (
+                <div key={wi} className="grid grid-cols-5 gap-1">
+                  {week.map((iso) => {
+                    const trades = allTrades.filter(t => t.date === iso);
+                    const net = trades.length > 0 ? trades.reduce((s, t) => s + t.pnl - (t.fees ?? 0), 0) : null;
+                    const isCurrentMonth = new Date(iso + "T00:00:00").getMonth() === month;
+                    const isFuture = iso > today;
+                    const isSelected3 = iso === selectedDate;
+                    const isToday3 = iso === today;
+                    let bg = "rgba(var(--surface-rgb),0.04)";
+                    let textCol = "var(--tx-4)";
+                    if (!isFuture && isCurrentMonth && net !== null) {
+                      bg = net >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)";
+                      textCol = net >= 0 ? "#4ade80" : "#f87171";
+                    }
+                    return (
+                      <button
+                        key={iso}
+                        onClick={() => setSelectedDate(iso)}
+                        disabled={isFuture}
+                        className="flex flex-col items-center justify-center rounded-lg py-1.5 px-1 transition-all disabled:cursor-not-allowed"
+                        style={{
+                          background: isSelected3 ? (net !== null && net >= 0 ? "rgba(34,197,94,0.2)" : net !== null ? "rgba(239,68,68,0.2)" : "rgba(var(--surface-rgb),0.1)") : bg,
+                          border: isToday3 ? "1px solid rgba(var(--border-rgb),0.35)" : isSelected3 ? "1px solid rgba(var(--surface-rgb),0.4)" : "1px solid transparent",
+                          opacity: (!isCurrentMonth || isFuture) ? 0.35 : 1,
+                        }}
+                      >
+                        <span className="text-[9px] text-tx-4 tabular-nums">{new Date(iso + "T00:00:00").getDate()}</span>
+                        {net !== null && !isFuture && (
+                          <span className="text-[8px] font-bold tabular-nums leading-none mt-0.5" style={{ color: textCol }}>
+                            {net >= 0 ? "+" : ""}{net >= 1000 || net <= -1000 ? `${(net/1000).toFixed(1)}k` : net.toFixed(0)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
-
-          <div className="h-8 w-px flex-shrink-0" style={{ background: "rgba(var(--border-rgb),0.09)" }} />
-
-          <div className="flex-shrink-0 flex flex-col gap-1 text-right">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-tx-4">Trades</p>
-            <p className="text-sm font-black text-tx-1">
-              {thisWeekStats.reduce((s, d) => s + d.tradeCount, 0)}
-            </p>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Empty state / Main layout (mutually exclusive) ── */}
       {allTrades.length === 0 && entries.length === 0 ? (
-        <div className="card p-10 text-center flex flex-col items-center gap-3">
-          <NotebookPen size={32} className="text-tx-4" />
-          <div>
-            <p className="text-sm font-semibold text-tx-2">No trades logged yet</p>
-            <p className="text-xs text-tx-4 mt-1">Start logging your trades to track your performance.</p>
+        <div className="task-empty">
+          <div className="task-empty-copy">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-tx-4">
+              <NotebookPen size={12} />
+              Journal Setup
+            </div>
+            <div>
+              <p className="text-base font-semibold text-tx-1">Start the journal with one recorded trade.</p>
+              <p className="mt-1 text-sm text-tx-3">
+                The first entry unlocks W/L, profit factor, recent-session stats, and account-level performance.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[
+                "Tag setups and sessions",
+                "Link trades to funded or challenge accounts",
+                "Attach screenshots for review",
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-tx-3"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
-          <button
-            className="btn-primary btn-sm"
-            onClick={() => {
-              setEditTradeId(null);
-              setPendingImages([]);
-              setOriginalImageIds([]);
-              setTradeForm({ ...emptyTradeForm(), date: selectedDate });
-              setAddTradeOpen(true);
-            }}
-          >
-            <Plus size={14} /> Log First Trade
-          </button>
+          <div className="task-empty-actions mt-4">
+            <button className="btn-primary btn-sm" onClick={openNewTradeModal}>
+              <Plus size={14} /> Log First Trade
+            </button>
+            <button className="btn-ghost btn-sm" onClick={() => setSelectedDate(today)}>
+              <Calendar size={13} /> Focus Today
+            </button>
+          </div>
         </div>
       ) : (
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5 items-start">
@@ -1240,9 +1421,12 @@ export default function Journal() {
               </button>
             </div>
 
-            {/* 14-day activity strip */}
+            {/* 14-day activity strip (weekdays only) */}
             {(() => {
-              const strip = lastNDays(today, 14);
+              const strip = lastNDays(today, 14).filter(d => {
+                const dow = new Date(d + "T00:00:00").getDay();
+                return dow !== 0 && dow !== 6;
+              });
               const DOW = ["Su","Mo","Tu","We","Th","Fr","Sa"];
               return (
                 <div className="flex gap-1 mt-4 pt-3 border-t border-border">
@@ -1254,9 +1438,8 @@ export default function Journal() {
                     const isSelected2 = d === selectedDate;
                     const isToday2 = d === today;
                     const dow = new Date(d + "T00:00:00").getDay();
-                    const isWeekend = dow === 0 || dow === 6;
                     const noteBlue = bwColor("#3b82f6", isBW);
-                    const chipCol = trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : hasNote ? noteBlue : isWeekend ? "#1f2937" : "#1f2937";
+                    const chipCol = trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : hasNote ? noteBlue : "#1f2937";
                     const borderCol = isSelected2 ? (trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : noteBlue) : "transparent";
                     return (
                       <button
@@ -1266,13 +1449,13 @@ export default function Journal() {
                         style={{
                           background: isSelected2 ? `${borderCol}15` : "transparent",
                           border: `1px solid ${isSelected2 ? borderCol + "50" : "transparent"}`,
-                          opacity: isWeekend && !hasData ? 0.25 : 1,
+                          opacity: !hasData ? 0.4 : 1,
                         }}
                         title={d}
                       >
                         <span className="text-[10px] text-tx-3">{DOW[dow]}</span>
                         <div className="w-3.5 h-3.5 rounded-sm flex items-center justify-center"
-                          style={{ background: chipCol, opacity: !hasData && !isWeekend ? 0.3 : 1 }}>
+                          style={{ background: chipCol, opacity: !hasData ? 0.3 : 1 }}>
                           {isToday2 && <div className="w-1 h-1 rounded-full bg-tx-3" />}
                         </div>
                         <span className="text-[7px] tabular-nums text-tx-4">
@@ -1376,6 +1559,34 @@ export default function Journal() {
                     </select>
                   </>
                 )}
+                {/* Account filter */}
+                {journalAccountOptions.length > 0 && (
+                  <>
+                    <span className="w-px h-3 bg-border mx-1" />
+                    <CustomSelect
+                      small
+                      value={filters.accountId ?? ""}
+                      onChange={v => setFilters(f => ({ ...f, accountId: v || undefined }))}
+                      placeholder="All Accounts"
+                      options={[
+                        { value: "", label: "All Accounts" },
+                        ...journalAccountOptions
+                      ]}
+                    />
+                  </>
+                )}
+                {/* Clear filters button */}
+                {(filters.direction !== "all" || filters.outcome !== "all" || filters.tag !== "" || filters.accountId !== undefined) && (
+                  <>
+                    <span className="w-px h-3 bg-border mx-1" />
+                    <button
+                      onClick={() => setFilters({ direction: "all", outcome: "all", sort: "date", tag: "", accountId: undefined })}
+                      className="text-[10px] px-2 py-0.5 rounded-full font-semibold border border-border text-tx-4 hover:text-tx-2 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -1407,18 +1618,245 @@ export default function Journal() {
                     />
                   ))}
                 </div>
-                {/* Day summary footer */}
-                <div className="px-4 py-3 border-t border-border flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between bg-accent-subtle">
-                  <span className="text-[11px] text-tx-4">
-                    {dayStats.wins}W / {dayStats.losses}L · {fmtUSD(dayStats.fees)} fees
-                  </span>
-                  <span className={cn("text-sm font-black tabular-nums", dayStats.net >= 0 ? "text-profit" : "text-loss")}>
-                    {dayStats.net >= 0 ? "+" : ""}{fmtUSD(dayStats.net)} net
-                  </span>
-                </div>
+                {/* P&L by account breakdown */}
+                {dayPnlByAccount.length > 1 && (
+                  <div className="px-4 py-3 bg-surface-subtle border-t border-border">
+                    <p className="text-[10px] text-tx-4 uppercase tracking-wider font-semibold mb-2">P&L by Account</p>
+                    <div className="flex flex-col gap-1.5">
+                      {dayPnlByAccount.map((acc) => (
+                        <div key={acc.accId} className="flex items-center justify-between">
+                          <span className="text-[10px] text-tx-3">{acc.accountName}</span>
+                          <div className="flex items-center gap-2 text-[10px]">
+                            <span className="text-tx-4">{acc.wins}W/{acc.losses}L</span>
+                            <span className={cn("font-bold tabular-nums", acc.net >= 0 ? "text-profit" : "text-loss")}>
+                              {acc.net >= 0 ? "+" : ""}{fmtUSD(acc.net)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          {/* ── Active Accounts (below trade log) ── */}
+          {accountStats.length > 0 && (
+            <div className="card p-5">
+              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-semibold mb-3 flex items-center gap-1.5">
+                <Trophy size={10} className="text-accent" />Active Accounts
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                {accountStats.map((stat) => {
+                  const { acc, wins, losses, total, winRate, bestWin, worstLoss, profitFactor, avgNet, avgWin, avgLoss, recentNet } = stat;
+                  const phase = normalizeAccountStatus(acc.status);
+                  const phaseLabel = getAccountPhaseLabel(acc.status);
+                  const ruleSnapshot = getPropAccountSnapshot(acc);
+                  const phaseColor = getAccountPhaseColor(acc.status);
+                  const lowBuffer = ruleSnapshot && phase === "funded"
+                    ? ruleSnapshot.distanceToMll <= Math.max(ruleSnapshot.initialBalance * 0.02, 500)
+                    : false;
+                  const statusColor = lowBuffer ? "#ef4444" : phaseColor;
+                  const pfLabel = profitFactor === null
+                    ? "—"
+                    : Number.isFinite(profitFactor)
+                      ? profitFactor.toFixed(2)
+                      : "∞";
+                  const avgNetLabel = avgNet !== null ? `${avgNet >= 0 ? "+" : ""}${fmtUSD(avgNet)}` : "—";
+                  const recentNetLabel = `${recentNet >= 0 ? "+" : ""}${fmtUSD(recentNet)}`;
+                  const bestLabel = bestWin !== null ? fmtUSD(bestWin) : "—";
+                  const worstLabel = worstLoss !== null ? fmtUSD(worstLoss) : "—";
+                  
+                  return (
+                    <div key={acc.id} className="rounded-xl p-3" style={{ background: "rgba(var(--surface-rgb),0.04)", border: `1px solid rgba(var(--border-rgb),0.08)`, borderLeft: `3px solid ${statusColor}` }}>
+                      <div className="sm:hidden space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-bold truncate" style={{ color: statusColor }}>
+                                {acc.name || acc.type}
+                              </p>
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em]"
+                                style={{
+                                  background: `${statusColor}18`,
+                                  border: `1px solid ${statusColor}30`,
+                                  color: statusColor,
+                                }}
+                              >
+                                {phaseLabel}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-tx-4 truncate">{acc.firm} · {total} trades</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[10px] uppercase tracking-[0.14em] text-tx-4">Last 5</p>
+                            <p className={cn("text-sm font-bold tabular-nums", recentNet >= 0 ? "text-profit" : "text-loss")}>
+                              {recentNetLabel}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-[10px]">
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">W / L</p>
+                            <p className="text-sm font-bold tabular-nums text-tx-1">{wins}/{losses}</p>
+                          </div>
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">WR</p>
+                            <p className="text-sm font-bold tabular-nums text-tx-1">{winRate.toFixed(0)}%</p>
+                          </div>
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">PF</p>
+                            <p className="text-sm font-bold tabular-nums text-tx-1">{pfLabel}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 text-[10px]">
+                          <span className={cn("rounded-full px-2 py-1 font-medium", (avgNet ?? 0) >= 0 ? "text-profit" : "text-loss")} style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            Avg {avgNetLabel}
+                          </span>
+                          <span className="rounded-full px-2 py-1 font-medium text-profit" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            Best {bestLabel}
+                          </span>
+                          <span className="rounded-full px-2 py-1 font-medium text-loss" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            Worst {worstLabel}
+                          </span>
+                        </div>
+
+                        {ruleSnapshot && phase === "challenge" && ruleSnapshot.amountToPass !== null && (
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="text-[10px] text-tx-4 truncate">Need {fmtUSD(ruleSnapshot.amountToPass)} to pass</span>
+                              <span className="text-[10px] font-bold shrink-0">{(ruleSnapshot.progressPct ?? 0).toFixed(0)}%</span>
+                            </div>
+                            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.1)" }}>
+                              <div
+                                className="h-full transition-all duration-300"
+                                style={{
+                                  width: `${ruleSnapshot.progressPct ?? 0}%`,
+                                  background: "linear-gradient(90deg,#f59e0b,#fbbf24)",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {ruleSnapshot && phase === "funded" && (
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-tx-4">MLL buffer</span>
+                              <span className={cn("text-[10px] font-bold shrink-0", lowBuffer ? "text-loss" : "text-profit")}>
+                                {fmtUSD(ruleSnapshot.distanceToMll)}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-tx-4 mt-1 truncate">
+                              Lock {fmtUSD(ruleSnapshot.lockFloor)} · peak {fmtUSD(ruleSnapshot.peakBalance)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="hidden sm:block">
+                        <div className="mb-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs font-bold" style={{ color: statusColor }}>
+                              {acc.name || acc.type}
+                            </p>
+                            <span
+                              className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em]"
+                              style={{
+                                background: `${statusColor}18`,
+                                border: `1px solid ${statusColor}30`,
+                                color: statusColor,
+                              }}
+                            >
+                              {phaseLabel}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-tx-4">{acc.firm}</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2 text-[10px] mb-2">
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">W / L</p>
+                            <p className="text-sm font-bold tabular-nums text-tx-1">{wins} / {losses}</p>
+                          </div>
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">Win Rate</p>
+                            <p className="text-sm font-bold tabular-nums text-tx-1">{winRate.toFixed(0)}%</p>
+                          </div>
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">PF</p>
+                            <p className="text-sm font-bold tabular-nums text-tx-1">{pfLabel}</p>
+                          </div>
+                          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                            <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">Avg Net</p>
+                            <p className={cn("text-sm font-bold tabular-nums", (avgNet ?? 0) >= 0 ? "text-profit" : "text-loss")}>
+                              {avgNetLabel}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-tx-4">{total} trades logged</span>
+                            <span className={cn("font-semibold", recentNet >= 0 ? "text-profit" : "text-loss")}>
+                              Last 5: {recentNetLabel}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-profit">{bestWin !== null ? `Best ${fmtUSD(bestWin)}` : "Best —"}</span>
+                            <span className="text-loss">{worstLoss !== null ? `Worst ${fmtUSD(worstLoss)}` : "Worst —"}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-tx-4">Avg win {avgWin !== null ? fmtUSD(avgWin) : "—"}</span>
+                            <span className="text-tx-4">Avg loss {avgLoss !== null ? fmtUSD(avgLoss) : "—"}</span>
+                          </div>
+
+                          {ruleSnapshot && phase === "challenge" && ruleSnapshot.amountToPass !== null && (
+                            <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-tx-4">Pass target</span>
+                                <span className="text-[10px] font-bold">{(ruleSnapshot.progressPct ?? 0).toFixed(0)}%</span>
+                              </div>
+                              <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.1)" }}>
+                                <div
+                                  className="h-full transition-all duration-300"
+                                  style={{
+                                    width: `${ruleSnapshot.progressPct ?? 0}%`,
+                                    background: "linear-gradient(90deg,#f59e0b,#fbbf24)",
+                                  }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-tx-4 mt-1">Need {fmtUSD(ruleSnapshot.amountToPass)} to pass</p>
+                            </div>
+                          )}
+
+                          {ruleSnapshot && phase === "funded" && (
+                            <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-tx-4">MLL buffer</span>
+                                <span className={cn("text-[10px] font-bold", lowBuffer ? "text-loss" : "text-profit")}>
+                                  {fmtUSD(ruleSnapshot.distanceToMll)}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-tx-4 mt-1">
+                                Lock {fmtUSD(ruleSnapshot.lockFloor)} · peak {fmtUSD(ruleSnapshot.peakBalance)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
 
@@ -1613,134 +2051,6 @@ export default function Journal() {
             </div>
           )}
 
-          {/* 52-week P&L calendar heatmap */}
-          <div className="card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium flex items-center gap-1.5">
-                <Activity size={10} className="text-accent" />P&amp;L Calendar
-              </p>
-              <span className="text-[10px] text-tx-3">(last 12 months)</span>
-            </div>
-            <div className="overflow-x-auto">
-              <div style={{ minWidth: 580 }}>
-                {/* Month labels row */}
-                <div className="flex mb-0.5" style={{ paddingLeft: 16 }}>
-                  {Array.from({ length: 53 }, (_, wi) => {
-                    const weekCells = calendarHeatmap.filter((d) => d.weekIndex === wi);
-                    const monthLabelCell = weekCells.find((d) => d.monthLabel);
-                    return (
-                      <div
-                        key={wi}
-                        className="text-[8px] text-tx-4 flex-shrink-0"
-                        style={{ width: 11, marginRight: 2, overflow: "visible", whiteSpace: "nowrap" }}
-                      >
-                        {monthLabelCell?.monthLabel ?? ""}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Grid: DOW labels + 53 columns of 7 cells */}
-                <div className="flex gap-0">
-                  {/* Day-of-week labels */}
-                  <div className="flex flex-col gap-0.5 mr-1 flex-shrink-0" style={{ width: 14 }}>
-                    {["S","M","T","W","T","F","S"].map((label, idx) => (
-                      <div
-                        key={idx}
-                        className="text-[8px] text-tx-4 flex items-center justify-end pr-0.5"
-                        style={{ height: 11, opacity: idx === 1 || idx === 3 || idx === 5 ? 1 : 0 }}
-                      >
-                        {label}
-                      </div>
-                    ))}
-                  </div>
-                  {/* Week columns */}
-                  <div className="flex gap-0.5">
-                    {Array.from({ length: 53 }, (_, wi) => {
-                      const weekCells = calendarHeatmap.filter((d) => d.weekIndex === wi);
-                      return (
-                        <div key={wi} className="flex flex-col gap-0.5">
-                          {Array.from({ length: 7 }, (_, dow) => {
-                            const cell = weekCells.find((d) => d.dow === dow);
-                            if (!cell) {
-                              return <div key={dow} style={{ width: 11, height: 11 }} />;
-                            }
-                            const isFuture = cell.date > today;
-                            const isWknd = cell.dow === 0 || cell.dow === 6;
-                            const isToday2 = cell.date === today;
-                            const isSel = cell.date === selectedDate;
-                            let bg = "rgba(var(--surface-rgb),0.07)";
-                            if (!isFuture) {
-                              if (cell.hasNote && !cell.hasTrades) {
-                                bg = isWknd ? "rgba(59,130,246,0.18)" : "rgba(59,130,246,0.3)";
-                              } else if (cell.hasTrades && cell.net !== null) {
-                                const intensity = Math.min(1, Math.abs(cell.net) / 300);
-                                if (cell.net >= 0) {
-                                  const alpha = (0.2 + intensity * 0.7) * (isWknd ? 0.6 : 1);
-                                  bg = `rgba(34,197,94,${alpha.toFixed(2)})`;
-                                } else {
-                                  const alpha = (0.2 + intensity * 0.7) * (isWknd ? 0.6 : 1);
-                                  bg = `rgba(239,68,68,${alpha.toFixed(2)})`;
-                                }
-                              } else if (isWknd) {
-                                bg = "rgba(var(--surface-rgb),0.04)";
-                              }
-                            }
-                            let outline = "none";
-                            if (isSel) outline = "2px solid rgba(var(--surface-rgb),0.7)";
-                            else if (isToday2) outline = "1.5px solid rgba(var(--border-rgb),0.6)";
-                            const titleParts = [cell.date];
-                            if (cell.net !== null) titleParts.push(`${cell.net >= 0 ? "+" : ""}$${cell.net.toFixed(0)}`);
-                            if (cell.hasNote) titleParts.push("note");
-                            return (
-                              <button
-                                key={dow}
-                                title={titleParts.join(" · ")}
-                                onClick={() => !isFuture && setSelectedDate(cell.date)}
-                                className="rounded-sm transition-all duration-100 flex-shrink-0"
-                                style={{
-                                  width: 11,
-                                  height: 11,
-                                  background: bg,
-                                  outline,
-                                  outlineOffset: "1px",
-                                  cursor: isFuture ? "default" : "pointer",
-                                  opacity: isFuture ? 0.15 : 1,
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Legend */}
-            <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1 text-[10px] text-tx-3">
-                  <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(239,68,68,0.7)" }} />Loss
-                </span>
-                <span className="flex items-center gap-1 text-[10px] text-tx-3">
-                  <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(34,197,94,0.7)" }} />Profit
-                </span>
-                <span className="flex items-center gap-1 text-[10px] text-tx-3">
-                  <span className="w-2 h-2 rounded-sm inline-block" style={{ background: bwColor("rgba(59,130,246,0.5)", isBW) }} />Note only
-                </span>
-                <span className="flex items-center gap-1 text-[10px] text-tx-3">
-                  <span className="flex gap-px">
-                    {[0.2, 0.4, 0.6, 0.8, 1.0].map((a) => (
-                      <span key={a} className="w-2 h-2 rounded-sm inline-block" style={{ background: `rgba(34,197,94,${a})` }} />
-                    ))}
-                  </span>
-                  <span className="ml-0.5">Less → More</span>
-                </span>
-              </div>
-              <span className="text-[10px] text-tx-3">click to navigate</span>
-            </div>
-          </div>
-
           {/* Instrument breakdown */}
           {instrStats.length > 0 && (
             <div className="card p-4">
@@ -1790,56 +2100,7 @@ export default function Journal() {
             </div>
           )}
 
-          {/* Recent entries */}
-          {recentDates.length > 0 && (
-            <div className="card p-4">
-              <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
-                <Clock size={10} />Recent Days
-              </p>
-              <div className="flex flex-col gap-1">
-                {recentDates.map((date) => {
-                  const e      = entries.find((en) => en.date === date);
-                  const trades = allTrades.filter((t) => t.date === date);
-                  const dayNet = trades.reduce((s, t) => s + t.pnl - (t.fees ?? 0), 0);
-                  const isSelected = date === selectedDate;
-                  const rowCol = trades.length > 0 ? (dayNet >= 0 ? "#22c55e" : "#ef4444") : bwColor("#3b82f6", isBW);
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => setSelectedDate(date)}
-                      className="flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-all relative overflow-hidden"
-                      style={{
-                        background: isSelected ? `${rowCol}10` : "rgba(var(--surface-rgb),0.03)",
-                        border: `1px solid ${isSelected ? rowCol + "30" : "rgba(var(--border-rgb),0.06)"}`,
-                        borderLeft: `2px solid ${isSelected ? rowCol : rowCol + "40"}`,
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <p className="text-xs font-bold" style={{ color: isSelected ? rowCol : "var(--tx-1)" }}>
-                            {fmtShortDate(date)}
-                          </p>
-                          <p className="text-[10px] text-tx-3">journal</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {trades.length > 0 ? (
-                          <>
-                            <p className="text-xs font-bold tabular-nums" style={{ color: dayNet >= 0 ? "#22c55e" : "#ef4444" }}>
-                              {dayNet >= 0 ? "+" : ""}{fmtUSD(dayNet)}
-                            </p>
-                            <p className="text-[10px] text-tx-3">{trades.length} trade{trades.length !== 1 ? "s" : ""}</p>
-                          </>
-                        ) : (
-                          <p className="text-[10px] text-tx-3">{e?.notes ? "notes" : "—"}</p>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
       )}
@@ -1860,6 +2121,7 @@ export default function Journal() {
                 className="nx-input"
                 value={tradeForm.date}
                 onChange={(e) => setTradeForm((p) => ({ ...p, date: e.target.value }))}
+                style={{ background: "rgba(var(--surface-rgb),0.04)", colorScheme: "dark" }}
               />
             </div>
             <div>
@@ -1869,6 +2131,7 @@ export default function Journal() {
                 className="nx-input"
                 value={tradeForm.time}
                 onChange={(e) => setTradeForm((p) => ({ ...p, time: e.target.value }))}
+                style={{ background: "rgba(var(--surface-rgb),0.04)", colorScheme: "dark" }}
               />
             </div>
             <div>
@@ -1916,6 +2179,24 @@ export default function Journal() {
               />
             </div>
           </div>
+
+          {/* ── Account selector ── */}
+          {journalAccountOptions.length > 0 && (
+            <div>
+              <label className="text-[11px] font-semibold text-tx-3 uppercase tracking-wider">Account</label>
+              <div className="mt-1 w-full">
+                <CustomSelect
+                  value={tradeForm.accountId ?? ""}
+                  onChange={v => setTradeForm(p => ({ ...p, accountId: v || undefined }))}
+                  placeholder="No account"
+                  options={[
+                    { value: "", label: "No account" },
+                    ...journalAccountOptions
+                  ]}
+                />
+              </div>
+            </div>
+          )}
 
           {/* ── Prop Firm selector (drives auto-calculation) ── */}
           <div>
@@ -2166,7 +2447,7 @@ export default function Journal() {
             )}
           </div>
 
-          <div className="flex gap-2 pt-1">
+          <div className="modal-action-bar">
             <button
               className="btn-primary btn flex-1"
               onClick={handleSaveTrade}

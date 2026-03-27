@@ -10,6 +10,9 @@ let _realtimeSubscribed = false;           // guard: Realtime channel created at
 let _authSubscription: { unsubscribe: () => void } | null = null;
 let _reconnectHandlersSetup = false;
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let _syncOpCount = 0;
+let _lastSyncError: string | null = null;
+let _realtimeState: "idle" | "connecting" | "connected" | "error" = "idle";
 
 const STORAGE_KEY = "nexus_data";
 const SAVED_AT_KEY = "nexus_savedAt";
@@ -52,8 +55,11 @@ function localLoad(): AppData | null {
 
 function localSave(data: AppData): void {
   try {
+    const ts = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    localStorage.setItem(SAVED_AT_KEY, Date.now().toString());
+    localStorage.setItem(SAVED_AT_KEY, ts.toString());
+    _lastLocalSaveAt = ts;
+    notifySync();
   } catch {
     // storage full or unavailable
   }
@@ -67,6 +73,8 @@ function localSavedAt(): number {
     return 0;
   }
 }
+
+let _lastLocalSaveAt: number | null = localSavedAt() || null;
 
 // ── Merge helper: user data wins, seed fills missing keys ────────────────────
 function mergeWithSeed(parsed: Partial<AppData>): AppData {
@@ -82,17 +90,89 @@ let currentData: AppData = _localDataOnInit
   : (seedData as unknown as AppData);
 
 const listeners = new Set<() => void>();
+const syncListeners = new Set<() => void>();
+
+function buildSyncStatusSnapshot(): SyncStatusSnapshot {
+  return {
+    enabled: !!_currentUserId,
+    userId: _currentUserId,
+    localSavedAt: _lastLocalSaveAt,
+    syncedAt: _syncedAt,
+    syncInFlight: _syncOpCount > 0,
+    realtimeState: _realtimeState,
+    lastError: _lastSyncError,
+  };
+}
+
+let syncSnapshot: SyncStatusSnapshot = buildSyncStatusSnapshot();
 
 function notify(): void {
   listeners.forEach((fn) => fn());
 }
 
-// Restore device-local avatarUrl after a cloud merge (it's never synced).
+function notifySync(): void {
+  const next = buildSyncStatusSnapshot();
+  const changed =
+    syncSnapshot.enabled !== next.enabled ||
+    syncSnapshot.userId !== next.userId ||
+    syncSnapshot.localSavedAt !== next.localSavedAt ||
+    syncSnapshot.syncedAt !== next.syncedAt ||
+    syncSnapshot.syncInFlight !== next.syncInFlight ||
+    syncSnapshot.realtimeState !== next.realtimeState ||
+    syncSnapshot.lastError !== next.lastError;
+
+  if (!changed) return;
+  syncSnapshot = next;
+  syncListeners.forEach((fn) => fn());
+}
+
+function beginSyncOp(): void {
+  _syncOpCount += 1;
+  notifySync();
+}
+
+function endSyncOp(): void {
+  _syncOpCount = Math.max(0, _syncOpCount - 1);
+  notifySync();
+}
+
+function setSyncError(error: string | null): void {
+  if (_lastSyncError === error) return;
+  _lastSyncError = error;
+  notifySync();
+}
+
+function setSyncedAt(timestamp: number | null): void {
+  if (_syncedAt === timestamp) return;
+  _syncedAt = timestamp;
+  notifySync();
+}
+
+function setCurrentUserId(userId: string | null): void {
+  if (_currentUserId === userId) return;
+  _currentUserId = userId;
+  notifySync();
+}
+
+function setRealtimeState(state: "idle" | "connecting" | "connected" | "error"): void {
+  if (_realtimeState === state) return;
+  _realtimeState = state;
+  notifySync();
+}
+
+function isLocalAvatarDataUrl(avatarUrl: string | undefined): boolean {
+  return !!avatarUrl?.startsWith("data:");
+}
+
+// Restore a device-local draft avatar after a cloud merge.
+// Remote avatar URLs should not be restored here, otherwise a cloud-side delete
+// would be overwritten by a stale local copy.
 function withLocalAvatar(data: AppData, localAvatarUrl: string | undefined): AppData {
-  if (!localAvatarUrl || !data.userProfile || data.userProfile.avatarUrl) return data;
+  const userProfile = data.userProfile;
+  if (!isLocalAvatarDataUrl(localAvatarUrl) || !userProfile || userProfile.avatarUrl) return data;
   return {
     ...data,
-    userProfile: { ...data.userProfile, avatarUrl: localAvatarUrl },
+    userProfile: { ...userProfile, avatarUrl: localAvatarUrl },
   };
 }
 
@@ -101,10 +181,11 @@ function withLocalAvatar(data: AppData, localAvatarUrl: string | undefined): App
 // message size limit and cause the payload to arrive as null, wiping the store.
 // Regular URLs (from Supabase Storage) are small and safe to sync.
 function cloudPayload(data: AppData): AppData {
-  if (!data.userProfile?.avatarUrl || !data.userProfile.avatarUrl.startsWith("data:")) return data;
+  const userProfile = data.userProfile;
+  if (!userProfile || !isLocalAvatarDataUrl(userProfile.avatarUrl)) return data;
   return {
     ...data,
-    userProfile: { ...data.userProfile, avatarUrl: undefined },
+    userProfile: { ...userProfile, avatarUrl: undefined },
   };
 }
 
@@ -117,6 +198,8 @@ export function saveData(data: AppData): void {
   notify();
   // ── Supabase sync (fire and forget) ────────────────────────────────────────
   if (_currentUserId) {
+    beginSyncOp();
+    setSyncError(null);
     void Promise.resolve(
       supabase
         .from("user_data")
@@ -125,12 +208,16 @@ export function saveData(data: AppData): void {
         .single()
     ).then(({ data: row, error }) => {
       if (!error && row?.updated_at) {
-        _syncedAt = new Date(row.updated_at as string).getTime();
+        setSyncedAt(new Date(row.updated_at as string).getTime());
       } else if (error) {
         console.error("[store] Supabase upsert failed:", error.message, error.code);
+        setSyncError(error.message);
       }
     }).catch((err: unknown) => {
       console.error("[store] Supabase upsert threw:", err);
+      setSyncError(err instanceof Error ? err.message : "Cloud sync failed");
+    }).finally(() => {
+      endSyncOp();
     });
   }
 }
@@ -140,8 +227,27 @@ function subscribe(callback: () => void): () => void {
   return () => listeners.delete(callback);
 }
 
+function subscribeSync(callback: () => void): () => void {
+  syncListeners.add(callback);
+  return () => syncListeners.delete(callback);
+}
+
 function getSnapshot(): AppData {
   return currentData;
+}
+
+export interface SyncStatusSnapshot {
+  enabled: boolean;
+  userId: string | null;
+  localSavedAt: number | null;
+  syncedAt: number | null;
+  syncInFlight: boolean;
+  realtimeState: "idle" | "connecting" | "connected" | "error";
+  lastError: string | null;
+}
+
+function getSyncStatusSnapshot(): SyncStatusSnapshot {
+  return syncSnapshot;
 }
 
 // ── Async boot: seed from Tauri file store if localStorage is empty ──────────
@@ -168,9 +274,11 @@ function setupAuthListener(): void {
       // but re-init sync to be safe
       console.log("[store] Token refreshed, re-syncing");
     } else if (event === "SIGNED_OUT") {
-      _currentUserId = null;
+      setCurrentUserId(null);
       _realtimeSubscribed = false;
-      _syncedAt = null;
+      setSyncedAt(null);
+      setSyncError(null);
+      setRealtimeState("idle");
       // Unsubscribe from Realtime
       supabase.removeAllChannels();
       console.log("[store] Signed out, sync disabled");
@@ -212,14 +320,18 @@ export async function initSupabaseSync(): Promise<void> {
   setupAuthListener();
   setupReconnectionHandlers();
 
+  beginSyncOp();
+  setSyncError(null);
+
   const session = await getSession();
   if (!session) {
     console.warn("[store] initSupabaseSync: no session, skipping sync");
+    endSyncOp();
     return;
   }
   console.log("[store] initSupabaseSync: user", session.user.id);
 
-  _currentUserId = session.user.id;
+  setCurrentUserId(session.user.id);
 
   // ── Fetch latest row from Supabase ─────────────────────────────────────────
   try {
@@ -241,13 +353,13 @@ export async function initSupabaseSync(): Promise<void> {
           .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
           .select("updated_at")
           .single();
-        _syncedAt = pushRow?.updated_at ? new Date(pushRow.updated_at as string).getTime() : cloudTs;
+        setSyncedAt(pushRow?.updated_at ? new Date(pushRow.updated_at as string).getTime() : cloudTs);
       } else {
         // Cloud is newer or same — apply cloud data
         currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
         localSave(currentData);
         notify();
-        _syncedAt = cloudTs;
+        setSyncedAt(cloudTs);
       }
     } else {
       // No row yet — push local data to create the initial cloud record
@@ -257,18 +369,24 @@ export async function initSupabaseSync(): Promise<void> {
         .select("updated_at")
         .single();
       if (!error && newRow?.updated_at) {
-        _syncedAt = new Date(newRow.updated_at as string).getTime();
+        setSyncedAt(new Date(newRow.updated_at as string).getTime());
+      } else if (error) {
+        setSyncError(error.message);
       }
     }
   } catch (err) {
     console.error("[store] initSupabaseSync fetch error:", err);
     // Offline or network error — proceed with local data
-    _syncedAt = 0;
+    setSyncedAt(0);
+    setSyncError(err instanceof Error ? err.message : "Initial sync failed");
+  } finally {
+    endSyncOp();
   }
 
   // ── Subscribe to Realtime ──────────────────────────────────────────────────
   if (!_realtimeSubscribed) {
     _realtimeSubscribed = true;
+    setRealtimeState("connecting");
     supabase
       .channel("user_data_sync")
       .on(
@@ -290,7 +408,7 @@ export async function initSupabaseSync(): Promise<void> {
             const localAvatarUrl = currentData.userProfile?.avatarUrl;
             currentData = withLocalAvatar(mergeWithSeed(newRow.payload), localAvatarUrl);
             localSave(currentData);
-            _syncedAt = incomingTs;
+            setSyncedAt(incomingTs);
             notify();
           }
         }
@@ -298,15 +416,22 @@ export async function initSupabaseSync(): Promise<void> {
       .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
           console.log("[store] Realtime connected");
+          setRealtimeState("connected");
+          setSyncError(null);
         } else if (status === "CHANNEL_ERROR") {
           console.error("[store] Realtime channel error:", err);
           _realtimeSubscribed = false;
+          setRealtimeState("error");
+          setSyncError(err?.message ?? "Realtime channel error");
         } else if (status === "TIMED_OUT") {
           console.warn("[store] Realtime subscription timed out, will retry");
           _realtimeSubscribed = false;
+          setRealtimeState("error");
+          setSyncError("Realtime subscription timed out");
         } else if (status === "CLOSED") {
           console.warn("[store] Realtime channel closed");
           _realtimeSubscribed = false;
+          setRealtimeState("idle");
         }
       });
   }
@@ -315,6 +440,8 @@ export async function initSupabaseSync(): Promise<void> {
 // ── Force sync helpers ────────────────────────────────────────────────────────
 export async function forcePullFromCloud(): Promise<boolean> {
   if (!_currentUserId) return false;
+  beginSyncOp();
+  setSyncError(null);
   try {
     const { data: row } = await supabase
       .from("user_data")
@@ -325,18 +452,23 @@ export async function forcePullFromCloud(): Promise<boolean> {
       const localAvatarUrl = currentData.userProfile?.avatarUrl;
       currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
       localSave(currentData);
-      _syncedAt = new Date(row.updated_at as string).getTime();
+      setSyncedAt(new Date(row.updated_at as string).getTime());
       notify();
       return true;
     }
     return false;
-  } catch {
+  } catch (err) {
+    setSyncError(err instanceof Error ? err.message : "Pull from cloud failed");
     return false;
+  } finally {
+    endSyncOp();
   }
 }
 
 export async function forcePushToCloud(): Promise<boolean> {
   if (!_currentUserId) return false;
+  beginSyncOp();
+  setSyncError(null);
   try {
     const { data: pushRow, error } = await supabase
       .from("user_data")
@@ -344,16 +476,26 @@ export async function forcePushToCloud(): Promise<boolean> {
       .select("updated_at")
       .single();
     if (!error && pushRow?.updated_at) {
-      _syncedAt = new Date(pushRow.updated_at as string).getTime();
+      setSyncedAt(new Date(pushRow.updated_at as string).getTime());
       return true;
     }
     if (error) {
       console.error("[store] forcePushToCloud error:", error.message, error.code);
+      setSyncError(error.message);
     }
     return false;
-  } catch {
+  } catch (err) {
+    setSyncError(err instanceof Error ? err.message : "Push to cloud failed");
     return false;
+  } finally {
+    endSyncOp();
   }
+}
+
+export async function syncNow(): Promise<boolean> {
+  const pushed = await forcePushToCloud();
+  const pulled = await forcePullFromCloud();
+  return pushed || pulled;
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -369,4 +511,8 @@ export function useAppData() {
 
 export function loadData(): AppData {
   return currentData;
+}
+
+export function useSyncStatus() {
+  return useSyncExternalStore(subscribeSync, getSyncStatusSnapshot);
 }

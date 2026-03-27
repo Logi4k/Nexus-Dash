@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { ArrowLeft, BookOpen, FolderPen, Lightbulb, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { getQuickActionState } from "@/lib/quickActions";
 import { PAGE_THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { useBWMode, bwPageTheme } from "@/lib/useBWMode";
@@ -121,7 +122,6 @@ export default function Ideas() {
   const theme = bwPageTheme(PAGE_THEMES.ideas, isBW);
   const { data, update } = useAppData();
   const location = useLocation();
-  const navigate = useNavigate();
   const topics = data.ideaTopics ?? DEFAULT_TOPICS;
   const notes = data.ideaNotes ?? [];
   const handledLocationAction = useRef<string | null>(null);
@@ -162,14 +162,16 @@ export default function Ideas() {
   }, [topics, activeTopicId]);
 
   useEffect(() => {
-    const action = (location.state as { action?: string } | null)?.action;
-    if (!action) {
+    const quickAction = getQuickActionState(location.state);
+    const requestKey = quickAction?.quickActionId ?? null;
+
+    if (!quickAction?.action) {
       handledLocationAction.current = null;
       return;
     }
-    if (handledLocationAction.current === action) return;
-    if (action === "addNote" && activeTopicId) {
-      handledLocationAction.current = action;
+    if (handledLocationAction.current === requestKey) return;
+    if (quickAction.action === "addNote" && activeTopicId) {
+      handledLocationAction.current = requestKey;
       const note: IdeaNote = {
         id: newId(),
         topicId: activeTopicId,
@@ -183,9 +185,8 @@ export default function Ideas() {
       setActiveNoteId(note.id);
       setMobileView("editor");
       setNoteDeleteConfirmId(null);
-      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [activeTopicId, location.pathname, location.state, navigate, update]);
+  }, [activeTopicId, location.state, update]);
 
   const topicNotes = useMemo(
     () =>

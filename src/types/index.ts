@@ -12,6 +12,7 @@ export interface Withdrawal {
   date: string;
   firm: string;
   gross: number;
+  accountId?: string;
   notes?: string;
 }
 
@@ -51,8 +52,10 @@ export interface Account {
   type: string;
   name?: string;
   status: AccountStatus;
+  phaseHint?: "challenge" | "funded";
   balance: number;
   initialBalance?: number;
+  peakBalance?: number;
   sodBalance?: number;
   mll?: number;
   ddResetTime?: number;
@@ -193,6 +196,7 @@ export interface TradeEntry {
   notes?: string;
   tags?: string[];
   imageIds?: string[];   // keys into IndexedDB image store
+  accountId?: string;
 }
 
 export interface JournalEntry {
@@ -226,6 +230,7 @@ export interface UserSettings {
   theme?: "dark" | "bw";
   mobileNavItems?: MobileNavItemId[];
   t212ApiKey?: string;
+  dismissedNotificationIds?: string[];
 }
 
 export interface AppData {

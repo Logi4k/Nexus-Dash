@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -19,25 +19,19 @@ import {
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import CommandPalette, { type CommandPaletteItem } from "./CommandPalette";
+import QuickActionHost from "./QuickActionHost";
 import { useAppData } from "@/lib/store";
+import { navigateToQuickAction, type QuickAction } from "@/lib/quickActions";
 
-const PAGE_ORDER = [
-  "/",
-  "/market",
-  "/journal",
-  "/prop",
-  "/expenses",
-  "/debt",
-  "/investments",
-  "/tax",
-  "/ideas",
-];
+const MOBILE_SHELL_PAD_VISIBLE = "calc(env(safe-area-inset-bottom) + 5.5rem)";
+const MOBILE_SHELL_PAD_HIDDEN = "calc(env(safe-area-inset-bottom) + 1.2rem)";
 
 export default function Layout() {
   const loc = useLocation();
   const navigate = useNavigate();
   const { data } = useAppData();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [quickActionOpen, setQuickActionOpen] = useState<QuickAction | null>(null);
   const [navVisible, setNavVisible] = useState(true);
   const mainRef = useRef<HTMLElement>(null);
   const lastScrollTop = useRef(0);
@@ -49,6 +43,7 @@ export default function Layout() {
     lastScrollTop.current = 0;
     peakScrollTop.current = 0;
     setNavVisible(true);
+    setQuickActionOpen(null);
   }, [loc.pathname]);
 
   // Scroll direction tracking for nav hide/show
@@ -125,49 +120,6 @@ export default function Layout() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  // Touch state refs for swipe navigation
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const touchStartTime = useRef(0);
-
-  function handleTouchStart(e: React.TouchEvent<HTMLElement>) {
-    const t = e.touches[0];
-    touchStartX.current = t.clientX;
-    touchStartY.current = t.clientY;
-    touchStartTime.current = Date.now();
-  }
-
-  function handleTouchEnd(e: React.TouchEvent<HTMLElement>) {
-    const t = e.changedTouches[0];
-    const deltaX = t.clientX - touchStartX.current;
-    const deltaY = t.clientY - touchStartY.current;
-    const elapsed = Date.now() - touchStartTime.current;
-
-    // Must be more horizontal than vertical
-    if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.5) return;
-    // Minimum swipe distance
-    if (Math.abs(deltaX) <= 50) return;
-    // Must be fast enough
-    if (elapsed >= 400) return;
-
-    const currentIndex = PAGE_ORDER.indexOf(loc.pathname);
-    if (currentIndex === -1) return;
-
-    if (deltaX < 0) {
-      // Swipe left → next page
-      const nextIndex = currentIndex + 1;
-      if (nextIndex < PAGE_ORDER.length) {
-        navigate(PAGE_ORDER[nextIndex]);
-      }
-    } else {
-      // Swipe right → previous page
-      const prevIndex = currentIndex - 1;
-      if (prevIndex >= 0) {
-        navigate(PAGE_ORDER[prevIndex]);
-      }
-    }
-  }
 
   const commandItems = useMemo<CommandPaletteItem[]>(
     () => [
@@ -259,7 +211,7 @@ export default function Layout() {
         group: "Quick Actions",
         keywords: ["idea", "page", "brainstorm"],
         Icon: Plus,
-        run: () => navigate("/ideas", { state: { action: "addNote" } }),
+        run: () => navigateToQuickAction(navigate, "/ideas", "addNote"),
       },
       {
         id: "action-trade",
@@ -268,7 +220,7 @@ export default function Layout() {
         group: "Quick Actions",
         keywords: ["journal", "trade"],
         Icon: NotebookPen,
-        run: () => navigate("/journal", { state: { action: "addTrade" } }),
+        run: () => navigateToQuickAction(navigate, "/journal", "addTrade"),
       },
       {
         id: "action-expense",
@@ -277,7 +229,7 @@ export default function Layout() {
         group: "Quick Actions",
         keywords: ["cost", "receipt"],
         Icon: Wallet,
-        run: () => navigate("/expenses", { state: { action: "addExpense" } }),
+        run: () => navigateToQuickAction(navigate, "/expenses", "addExpense"),
       },
       {
         id: "action-account",
@@ -286,7 +238,7 @@ export default function Layout() {
         group: "Quick Actions",
         keywords: ["funded", "challenge"],
         Icon: Briefcase,
-        run: () => navigate("/prop", { state: { action: "addAccount" } }),
+        run: () => navigateToQuickAction(navigate, "/prop", "addAccount"),
       },
       {
         id: "action-payout",
@@ -295,7 +247,7 @@ export default function Layout() {
         group: "Quick Actions",
         keywords: ["withdrawal", "profit split"],
         Icon: HandCoins,
-        run: () => navigate("/prop", { state: { action: "logPayout" } }),
+        run: () => navigateToQuickAction(navigate, "/prop", "logPayout"),
       },
     ],
     [navigate]
@@ -358,17 +310,22 @@ export default function Layout() {
       <main
         ref={mainRef}
         className="flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={loc.pathname}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="min-h-full p-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] md:p-6 md:pb-12"
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="shell-content min-h-full p-4 md:p-6"
+            style={
+              {
+                "--shell-bottom-pad": navVisible
+                  ? MOBILE_SHELL_PAD_VISIBLE
+                  : MOBILE_SHELL_PAD_HIDDEN,
+              } as CSSProperties
+            }
           >
             <Outlet />
           </motion.div>
@@ -377,6 +334,7 @@ export default function Layout() {
 
       <MobileNav
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        onQuickAction={(action) => setQuickActionOpen(action)}
         navVisible={navVisible}
       />
 
@@ -385,6 +343,11 @@ export default function Layout() {
         onClose={() => setCommandPaletteOpen(false)}
         items={commandItems}
         dynamicItems={dynamicItems}
+      />
+
+      <QuickActionHost
+        action={quickActionOpen}
+        onClose={() => setQuickActionOpen(null)}
       />
     </div>
   );

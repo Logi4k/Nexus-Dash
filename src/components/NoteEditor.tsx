@@ -283,7 +283,7 @@ export default function NoteEditor({
             </div>
           </div>
 
-          <div className="space-y-2 relative">
+          <div className="space-y-1 relative">
             {note.blocks.map((block, index) => (
               <div key={block.id} className="group relative">
                 <div className="absolute -left-9 top-1 hidden md:flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

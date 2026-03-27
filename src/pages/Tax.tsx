@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
+import { navigateToQuickAction } from "@/lib/quickActions";
 import { fmtGBP, toNum, cn, daysUntil } from "@/lib/utils";
 import { UK_TAX } from "@/lib/utils";
 import { PAGE_THEMES } from "@/lib/theme";
@@ -456,7 +457,7 @@ export default function TaxPage() {
                       <p className="text-xs text-tx-4">No payouts recorded this tax year.</p>
                       <button
                         className="btn-primary btn-sm self-start"
-                        onClick={() => navigate("/prop", { state: { action: "logPayout" } })}
+                        onClick={() => navigateToQuickAction(navigate, "/prop", "logPayout")}
                       >
                         <Plus size={14} /> Record Payout
                       </button>

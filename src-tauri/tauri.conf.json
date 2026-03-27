@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Nexus",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "identifier": "com.nexus.trader",
   "build": {
     "frontendDist": "../dist",
@@ -34,11 +34,18 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
   },
   "plugins": {
     "fs": {
       "requireLiteralLeadingDot": false
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExMjc5MzZFMjcwNjhDRkEKUldUNmpBWW5icE1uRVdzT0NYdGNVbk92Tll6MjRZYkdGbmcvZllmMjVJc1pJUWl3enRnTmlBcWgK",
+      "endpoints": [
+        "https://github.com/Logi4k/Nexus-Dash/releases/latest/download/latest.json"
+      ]
     }
   }
 }

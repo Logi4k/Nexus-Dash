@@ -37,11 +37,13 @@ const sheetVariants = {
 };
 
 const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+const OPEN_GUARD_MS = 800;
 
 export default function Modal({ open, onClose, title, children, size = "md" }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
+  const openedAtRef = useRef(0);
   useEffect(() => { onCloseRef.current = onClose; });
 
   const [isMobile, setIsMobile] = useState<boolean>(() =>
@@ -91,8 +93,21 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
       setDragY(0);
       setIsDragging(false);
       touchStartYRef.current = null;
+      openedAtRef.current = 0;
+      return;
     }
+    openedAtRef.current = Date.now();
   }, [open]);
+
+  const handleBackdropClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // When a sheet is opened from a FAB on mobile, the originating tap can land
+    // on the freshly-mounted backdrop and dismiss the modal immediately.
+    if (Date.now() - openedAtRef.current < OPEN_GUARD_MS) {
+      e.stopPropagation();
+      return;
+    }
+    onCloseRef.current();
+  }, []);
 
   // Focus trap + keyboard navigation
   useEffect(() => {
@@ -134,7 +149,7 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
         {open && (
           <motion.div
             className="modal-backdrop"
-            onClick={onClose}
+            onClick={handleBackdropClick}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: { duration: 0.2 } }}
             exit={{ opacity: 0, transition: { duration: 0.18 } }}
@@ -148,13 +163,14 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
               className={cn(
                 "absolute bottom-0 left-0 right-0 w-full",
                 "bg-bg-card border border-border border-b-0",
-                "rounded-t-[28px]",
-                "max-h-[85vh] flex flex-col shadow-modal",
+                "rounded-t-[30px]",
+                "max-h-[88svh] flex flex-col shadow-modal",
                 "pb-[env(safe-area-inset-bottom)]"
               )}
               style={{
                 transform: `translateY(${dragY}px)`,
                 transition: isDragging ? "none" : "transform 0.2s ease",
+                overscrollBehavior: "contain",
               }}
               variants={sheetVariants}
               initial="hidden"
@@ -183,7 +199,7 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
                 </div>
               )}
 
-              <div className="px-5 py-5 overflow-y-auto flex-1 min-h-0">{children}</div>
+              <div className="px-5 py-5 overflow-y-auto flex-1 min-h-0" style={{ overscrollBehavior: "contain" }}>{children}</div>
             </motion.div>
           </motion.div>
         )}
@@ -198,7 +214,7 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
       {open && (
         <motion.div
           className="modal-backdrop"
-          onClick={onClose}
+          onClick={handleBackdropClick}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { duration: 0.2 } }}
           exit={{ opacity: 0, transition: { duration: 0.18 } }}

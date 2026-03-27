@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from 'sonner';
 import { PAGE_THEMES } from "@/lib/theme";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   Plus,
   Trash2,
@@ -20,6 +20,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { getQuickActionState } from "@/lib/quickActions";
 import { fmtGBP, fmtDate, toNum, groupByMonth, cn, generateId } from "@/lib/utils";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
@@ -354,7 +355,7 @@ function FirmBreakdownStrip({ expenses }: { expenses: { description: string; amo
 /*  Prop Firm Tab                                                      */
 /* ------------------------------------------------------------------ */
 
-function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
+function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean; onOpened?: () => void }) {
   const bw = useBWMode();
   const { data, update } = useAppData();
 
@@ -362,9 +363,10 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    if (initialOpen) setAddOpen(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!initialOpen) return;
+    setAddOpen(true);
+    onOpened?.();
+  }, [initialOpen, onOpened]);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
   const [form, setForm] = useState({
@@ -583,13 +585,34 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
 
           {/* Monthly collapsible sections */}
           {monthGroups.length === 0 ? (
-            <div className="py-16 text-center flex flex-col items-center gap-3">
-              <p className="text-tx-3 text-sm">No expenses found{search ? " matching your search" : ""}.</p>
-              {search && (
-                <button className="btn btn-ghost btn-sm text-tx-3" onClick={() => setSearch("")}>
-                  Clear search
-                </button>
-              )}
+            <div className="task-empty">
+              <div className="task-empty-copy">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-tx-4">
+                  <Receipt size={12} />
+                  Prop Expenses
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-tx-1">
+                    {search ? "No prop expenses match this search." : "Start tracking evaluation and platform costs."}
+                  </p>
+                  <p className="mt-1 text-sm text-tx-3">
+                    {search
+                      ? "Clear the filter or add a new entry to keep the ledger complete."
+                      : "Capture account fees, subscriptions, and firm costs so net payout performance stays accurate."}
+                  </p>
+                </div>
+              </div>
+              <div className="task-empty-actions mt-4">
+                {search ? (
+                  <button className="btn-ghost btn-sm" onClick={() => setSearch("")}>
+                    Clear Search
+                  </button>
+                ) : (
+                  <button className="btn-primary btn-sm" onClick={() => setAddOpen(true)}>
+                    <Plus size={14} /> Add Expense
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
@@ -998,7 +1021,7 @@ function PropFirmTab({ initialOpen = false }: { initialOpen?: boolean }) {
             {errors.amount && <p className="text-[10px] text-loss mt-1">{errors.amount}</p>}
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="modal-action-bar">
             <button className="btn-primary btn flex-1" onClick={handleAdd}
               disabled={!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false)}
               style={(!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false)) ? { opacity: 0.5 } : undefined}>
@@ -1156,13 +1179,34 @@ function OtherExpensesTab() {
       {/* Entries list */}
       <div className="card overflow-hidden" style={{ border: "1px solid rgba(14,184,154,0.1)" }}>
         {sorted.length === 0 ? (
-          <div className="py-16 text-center flex flex-col items-center gap-3">
-            <p className="text-tx-3 text-sm">No entries recorded{search ? " matching your search" : ""}.</p>
-            {search && (
-              <button className="btn btn-ghost btn-sm text-tx-3" onClick={() => setSearch("")}>
-                Clear search
-              </button>
-            )}
+          <div className="task-empty m-3">
+            <div className="task-empty-copy">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-tx-4">
+                <Wallet size={12} />
+                Other Expenses
+              </div>
+              <div>
+                <p className="text-base font-semibold text-tx-1">
+                  {search ? "No entries match this search." : "Keep your trading overhead in one ledger."}
+                </p>
+                <p className="mt-1 text-sm text-tx-3">
+                  {search
+                    ? "Reset the search or add a new item."
+                    : "Track software, gear, education, and other trading costs so tax and ROI views stay complete."}
+                </p>
+              </div>
+            </div>
+            <div className="task-empty-actions mt-4">
+              {search ? (
+                <button className="btn-ghost btn-sm" onClick={() => setSearch("")}>
+                  Clear Search
+                </button>
+              ) : (
+                <button className="btn-primary btn-sm" onClick={() => setAddOpen(true)}>
+                  <Plus size={14} /> Add Expense
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <>
@@ -1260,7 +1304,7 @@ function OtherExpensesTab() {
             />
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="modal-action-bar">
             <button className="btn-primary btn flex-1" onClick={handleAdd}
               disabled={!form.amount}
               style={!form.amount ? { opacity: 0.5 } : undefined}>
@@ -1284,19 +1328,29 @@ function OtherExpensesTab() {
 export default function Expenses() {
   const { data } = useAppData();
   const location = useLocation();
-  const navigate = useNavigate();
+  const handledLocationAction = useRef<string | null>(null);
   const [tab, setTab] = useState<TabKey>("propfirm");
 
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.expenses, isBW);
-  const locationAction = (location.state as { action?: string } | null)?.action;
+  const [triggerAddOpen, setTriggerAddOpen] = useState(false);
 
   useEffect(() => {
-    if (locationAction === "addExpense") {
-      navigate(location.pathname, { replace: true, state: {} });
+    const quickAction = getQuickActionState(location.state);
+    const requestKey = quickAction?.quickActionId ?? null;
+
+    if (!quickAction?.action) {
+      handledLocationAction.current = null;
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (handledLocationAction.current === requestKey) return;
+
+    if (quickAction.action === "addExpense") {
+      handledLocationAction.current = requestKey;
+      setTab("propfirm");
+      setTriggerAddOpen(true);
+    }
+  }, [location.state]);
 
   const tabs: { key: TabKey; label: string; count: number; icon: React.ReactNode }[] = [
     {
@@ -1314,7 +1368,7 @@ export default function Expenses() {
   ];
 
   return (
-    <div className="space-y-5 w-full page-enter">
+    <div className="space-y-5 w-full">
       {/* Header */}
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Expenses</div>
@@ -1343,7 +1397,7 @@ export default function Expenses() {
       <div className="divider" />
 
       {/* Tab content */}
-      {tab === "propfirm" && <PropFirmTab initialOpen={locationAction === "addExpense"} />}
+      {tab === "propfirm" && <PropFirmTab initialOpen={triggerAddOpen} onOpened={() => setTriggerAddOpen(false)} />}
       {tab === "other" && <OtherExpensesTab />}
     </div>
   );

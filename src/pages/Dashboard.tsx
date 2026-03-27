@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { useAppData } from "@/lib/store";
 import Modal from "@/components/Modal";
+import { navigateToQuickAction, type QuickAction } from "@/lib/quickActions";
 import {
   fmtGBP, fmtUSD, fmtShortDate, toNum, groupByMonth,
   formatMinutesAsLabel, getActiveSession, getETMinutes, getEasternTimeParts,
@@ -1359,7 +1360,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Recent activity */}
-        <Card className="md:col-span-2">
+        <Card className="md:col-span-2 hidden md:block">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -1447,7 +1448,7 @@ export default function Dashboard() {
 
       {/* ── WEALTH TARGETS ────────────────────────────────────────────────────── */}
       {(
-        <div>
+        <div className="hidden md:block">
         <motion.div variants={item}>
           <Card>
             <CardHeader className="pb-3">
@@ -1612,7 +1613,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardDescription>Recurring</CardDescription>
-                  <CardTitle className="mt-1">Active Subscriptions</CardTitle>
+                  <CardTitle className="mt-1">Subscriptions</CardTitle>
                 </div>
                 <div
                   className="px-3 py-1.5 rounded-xl text-xs font-bold font-mono"
@@ -1627,8 +1628,10 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {data.subscriptions.map((sub, i) => {
+              {(() => {
+                const activeSubs = data.subscriptions.filter(sub => !sub.cancelled);
+                const cancelledSubs = data.subscriptions.filter(sub => sub.cancelled);
+                const renderSub = (sub: typeof data.subscriptions[0], cancelled = false) => {
                   const monthly =
                     sub.frequency === "monthly"
                       ? sub.amount
@@ -1640,40 +1643,71 @@ export default function Dashboard() {
                     yearly: BLUE,
                     weekly: ORANGE,
                   };
-                  const col = freqColors[sub.frequency] ?? WARN;
+                  const col = cancelled ? "#6b7280" : (freqColors[sub.frequency] ?? WARN);
                   return (
                     <div
                       key={sub.id}
                       className="relative flex flex-col gap-1 px-3 py-2.5 rounded-xl overflow-hidden"
                       style={{
-                        background: `${col}08`,
-                        border: `1px solid ${col}18`,
+                        background: cancelled ? "rgba(107,114,128,0.06)" : `${col}08`,
+                        border: cancelled ? "1px solid rgba(107,114,128,0.15)" : `1px solid ${col}18`,
+                        opacity: cancelled ? 0.5 : 1,
                       }}
                     >
-                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, ${col}60, transparent)` }} />
+                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: cancelled ? "rgba(107,114,128,0.3)" : `linear-gradient(90deg, ${col}60, transparent)` }} />
                       <div className="flex items-center justify-between gap-1">
-                        <p className="text-xs font-bold text-tx-1 truncate">{sub.name}</p>
-                        <span
-                          className="text-[10px] px-1 py-px rounded font-bold uppercase shrink-0"
-                          style={{ background: `${col}20`, color: col }}
-                        >
-                          {sub.frequency.slice(0, 2)}
-                        </span>
+                        <p className={`text-xs font-bold text-tx-1 truncate${cancelled ? " line-through" : ""}`}>{sub.name}</p>
+                        {cancelled ? (
+                          <span className="text-[10px] px-1 py-px rounded font-bold uppercase shrink-0 bg-surface-2 text-tx-4">
+                            Cancelled
+                          </span>
+                        ) : (
+                          <span
+                            className="text-[10px] px-1 py-px rounded font-bold uppercase shrink-0"
+                            style={{ background: `${col}20`, color: col }}
+                          >
+                            {sub.frequency.slice(0, 2)}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-sm font-black font-mono tabular-nums" style={{ color: col }}>
+                      {cancelled && sub.cancelledAt && (
+                        <p className="text-[10px] text-tx-4">{sub.cancelledAt}</p>
+                      )}
+                      <p className="text-sm font-black font-mono tabular-nums" style={{ color: cancelled ? "#6b7280" : col }}>
                         {fmtGBP(monthly)}<span className="text-[10px] font-medium text-tx-4">/mo</span>
                       </p>
                     </div>
                   );
-                })}
-              </div>
+                };
+                return (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {activeSubs.map(sub => renderSub(sub, false))}
+                    </div>
+                    {cancelledSubs.length > 0 && (
+                      <>
+                        {activeSubs.length > 0 && (
+                          <div className="flex items-center gap-2 mt-4 mb-2">
+                            <div className="flex-1 h-px bg-surface-2" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-tx-4">Cancelled</span>
+                            <div className="flex-1 h-px bg-surface-2" />
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {cancelledSubs.map(sub => renderSub(sub, true))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </motion.div>
       )}
 
       {/* ── MARKET SESSIONS ───────────────────────────────────────────────────── */}
-      <motion.div variants={item}>
+      <motion.div variants={item} className="hidden md:block">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -1764,7 +1798,7 @@ export default function Dashboard() {
 
         {/* Quick Actions */}
         <div
-          className="card p-4"
+          className="card p-4 hidden md:block"
           style={{
             background: "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(168,85,247,0.04) 100%)",
             borderColor: "rgba(59,130,246,0.12)",
@@ -1782,7 +1816,11 @@ export default function Dashboard() {
             ].map(({ label, path, color, icon, action }) => (
               <button
                 key={label}
-                onClick={() => navigate(path, action ? { state: { action } } : undefined)}
+                onClick={() =>
+                  action
+                    ? navigateToQuickAction(navigate, path, action as QuickAction)
+                    : navigate(path)
+                }
                 className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-[10px] font-semibold transition-all duration-150 hover:scale-[1.04] active:scale-[0.97]"
                 style={{
                   background: `${color}12`,
@@ -1992,6 +2030,7 @@ export default function Dashboard() {
         </div>
 
         {/* Net Worth Snapshot */}
+        <div className="hidden md:block">
         {(() => {
           const netWorth = stats.totalWithdrawals - stats.totalExpenses + stats.portfolioValue - stats.totalDebt + stats.fundedAccountPnL;
           const rows = [
@@ -2028,6 +2067,7 @@ export default function Dashboard() {
             </div>
           );
         })()}
+        </div>
 
         {/* Today's Trades */}
         {(() => {

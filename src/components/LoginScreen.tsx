@@ -2,7 +2,7 @@ import { useState } from "react";
 import { signIn } from "@/lib/supabase";
 
 interface Props {
-  onSignIn: () => void;
+  onSignIn: () => Promise<void>;
 }
 
 export default function LoginScreen({ onSignIn }: Props) {
@@ -17,7 +17,7 @@ export default function LoginScreen({ onSignIn }: Props) {
     setLoading(true);
     try {
       await signIn(email, password);
-      onSignIn();
+      await onSignIn();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");
     } finally {
