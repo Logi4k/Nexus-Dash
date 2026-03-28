@@ -33,6 +33,10 @@ Primary targets:
 
 ## Recent Work Completed
 
+- Public GitHub repo hygiene pass completed:
+  - sensitive tracked files were sanitized at current HEAD
+  - remote history was rewritten to remove old credential/data/path leaks
+  - `main` and `master` now point at the same cleaned commit
 - Mobile FAB flow stabilized across pages.
 - Journal account filtering/status logic fixed so challenge and funded accounts appear correctly.
 - Shared prop-rule engine added for Topstep, Lucid, and Tradeify.
@@ -54,6 +58,13 @@ Primary targets:
 - Desktop updater messaging pass completed:
   - updater failures now show a real error state instead of looking up to date
   - private-release fetch failures are explained in-app
+- Local repo reconciliation completed after the history rewrite:
+  - local `master` was reset to the cleaned remote head
+  - in-progress Journal/OTA-related changes were restored on top of it
+- Local OTA config durability fix completed:
+  - `src-tauri/tauri.conf.json` now keeps the public updater runtime config committed
+  - `prebuild-tauri-config.js` no longer strips updater runtime config during plain web builds
+  - updater artifacts are only enabled when signing key env vars are present
 
 ## Build Status
 
@@ -63,7 +74,7 @@ Primary targets:
 
 ## Known Issues / Watch Items
 
-- Current desktop OTA fetch is blocked for end users if the updater assets are hosted behind a private GitHub release URL.
+- Signed OTA artifact generation still requires signing key env vars at build time.
 - Supabase auth for the local test account has been intermittently unreliable.
 - The Vite large-chunk warning remains.
 - Real-device QA is still worth doing for overflow, spacing, and motion edge cases.

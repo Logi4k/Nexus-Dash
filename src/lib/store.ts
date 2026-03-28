@@ -2,6 +2,7 @@ import { useSyncExternalStore, useCallback } from "react";
 import type { AppData } from "@/types";
 import seedData from "@/data/data.json";
 import { supabase, getSession } from "@/lib/supabase";
+import { hydrateTradePhases } from "@/lib/tradePhases";
 
 // ── Supabase sync state ──────────────────────────────────────────────────────
 let _syncedAt: number | null = null;       // ms-since-epoch of last confirmed sync
@@ -78,7 +79,8 @@ let _lastLocalSaveAt: number | null = localSavedAt() || null;
 
 // ── Merge helper: user data wins, seed fills missing keys ────────────────────
 function mergeWithSeed(parsed: Partial<AppData>): AppData {
-  return { ...(seedData as unknown as AppData), ...parsed };
+  const merged = { ...(seedData as unknown as AppData), ...parsed };
+  return hydrateTradePhases(merged).data;
 }
 
 // ── Singleton store ──────────────────────────────────────────────────────────
@@ -190,10 +192,11 @@ function cloudPayload(data: AppData): AppData {
 }
 
 export function saveData(data: AppData): void {
-  currentData = data;
-  localSave(data);
+  const normalized = hydrateTradePhases(data).data;
+  currentData = normalized;
+  localSave(normalized);
   if (isTauri) {
-    tauriSave(data);
+    tauriSave(normalized);
   }
   notify();
   // ── Supabase sync (fire and forget) ────────────────────────────────────────
@@ -203,7 +206,7 @@ export function saveData(data: AppData): void {
     void Promise.resolve(
       supabase
         .from("user_data")
-        .upsert({ user_id: _currentUserId, payload: cloudPayload(data) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
+        .upsert({ user_id: _currentUserId, payload: cloudPayload(normalized) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
         .select("updated_at")
         .single()
     ).then(({ data: row, error }) => {

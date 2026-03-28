@@ -26,6 +26,10 @@ function applyDesktopUpdaterConfig() {
   const updaterEndpoints = parseUpdaterEndpoints(
     process.env.TAURI_UPDATER_ENDPOINTS || process.env.TAURI_UPDATER_ENDPOINT
   );
+  const signingConfigured = Boolean(
+    process.env.TAURI_SIGNING_PRIVATE_KEY?.trim() ||
+    process.env.TAURI_SIGNING_PRIVATE_KEY_PATH?.trim()
+  );
 
   config.plugins ||= {};
   config.bundle ||= {};
@@ -35,18 +39,24 @@ function applyDesktopUpdaterConfig() {
       pubkey: updaterPubkey,
       endpoints: updaterEndpoints,
     };
-    config.bundle.createUpdaterArtifacts = true;
     console.log(`✓ Desktop updater enabled with ${updaterEndpoints.length} endpoint(s)`);
-    return;
+  } else if (updaterPubkey || updaterEndpoints.length > 0) {
+    console.warn('! Desktop updater env config is incomplete. Using the committed updater endpoint instead.');
   }
 
-  if (config.plugins.updater) {
-    delete config.plugins.updater;
-  }
-  config.bundle.createUpdaterArtifacts = false;
+  const resolvedUpdater = config.plugins.updater;
+  const hasUpdaterRuntimeConfig = Boolean(
+    resolvedUpdater?.pubkey && Array.isArray(resolvedUpdater?.endpoints) && resolvedUpdater.endpoints.length > 0
+  );
 
-  if (updaterPubkey || updaterEndpoints.length > 0) {
-    console.warn('! Desktop updater config is incomplete. Set both TAURI_UPDATER_PUBKEY and TAURI_UPDATER_ENDPOINTS to enable OTA builds.');
+  config.bundle.createUpdaterArtifacts = signingConfigured && hasUpdaterRuntimeConfig;
+
+  if (!hasUpdaterRuntimeConfig) {
+    console.warn('! Desktop updater runtime config is missing. OTA checks will be unavailable in packaged desktop builds.');
+  } else if (!signingConfigured) {
+    console.log('• Desktop updater runtime config present; updater artifacts disabled because no signing key env vars were provided.');
+  } else {
+    console.log('✓ Desktop updater artifacts enabled for signed build');
   }
 }
 

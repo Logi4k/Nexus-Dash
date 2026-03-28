@@ -5,6 +5,7 @@ import Modal from "@/components/Modal";
 import { formatAccountOptionLabel, isActiveAccount } from "@/lib/accountStatus";
 import { reconcileLinkedPayoutAccounts } from "@/lib/payouts";
 import { useAppData } from "@/lib/store";
+import { inferTradeAccountPhase } from "@/lib/tradePhases";
 import { FUTURES_CONTRACTS, generateId, toNum } from "@/lib/utils";
 import type { Account, AccountStatus, Expense, TradeEntry, Withdrawal } from "@/types";
 import type { QuickAction } from "@/lib/quickActions";
@@ -231,9 +232,18 @@ function AddTradeQuickModal({
         })),
     [data.accounts]
   );
+  const accountsById = useMemo(
+    () => new Map(data.accounts.map((account) => [account.id, account])),
+    [data.accounts]
+  );
 
   function handleSave() {
     if (!form.entryPrice || !form.exitPrice) return;
+
+    const selectedAccount = form.accountId ? accountsById.get(form.accountId) : undefined;
+    const accountPhase = form.accountId
+      ? inferTradeAccountPhase({ date: form.date }, selectedAccount, data.passedChallenges ?? []) ?? undefined
+      : undefined;
 
     const trade: TradeEntry = {
       id: generateId(),
@@ -250,6 +260,7 @@ function AddTradeQuickModal({
       session: form.session || undefined,
       notes: form.notes || undefined,
       accountId: form.accountId || undefined,
+      accountPhase,
     };
 
     update((prev) => ({

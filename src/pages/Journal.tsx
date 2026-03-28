@@ -37,6 +37,10 @@ import {
   isActiveAccount,
   normalizeAccountStatus,
 } from "@/lib/accountStatus";
+import {
+  inferTradeAccountPhase,
+  getCurrentAccountTradePhase,
+} from "@/lib/tradePhases";
 import { cn, fmtUSD, generateId, FUTURES_CONTRACTS } from "@/lib/utils";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
@@ -755,6 +759,20 @@ export default function Journal() {
     () => (data.accounts ?? []).filter((account) => isActiveAccount(account)),
     [data.accounts]
   );
+  const accountsById = useMemo(
+    () => new Map((data.accounts ?? []).map((account) => [account.id, account])),
+    [data.accounts]
+  );
+  const tradesWithResolvedPhase = useMemo(
+    () =>
+      allTrades.map((trade) => ({
+        trade,
+        accountPhase: trade.accountId
+          ? inferTradeAccountPhase(trade, accountsById.get(trade.accountId), data.passedChallenges ?? [])
+          : null,
+      })),
+    [accountsById, allTrades, data.passedChallenges]
+  );
   const journalAccountOptions = useMemo(
     () =>
       activeAccounts.map((account) => ({
@@ -912,7 +930,13 @@ export default function Journal() {
   // ── Per-account stats ──
   const accountStats = useMemo(() => {
     return activeAccounts.map(acc => {
-      const accTrades = allTrades.filter(t => t.accountId === acc.id);
+      const currentPhase = getCurrentAccountTradePhase(acc);
+      const accTrades = tradesWithResolvedPhase
+        .filter(({ trade, accountPhase }) =>
+          trade.accountId === acc.id &&
+          (!currentPhase || accountPhase === currentPhase)
+        )
+        .map(({ trade }) => trade);
       const wins = accTrades.filter(t => t.pnl > 0).length;
       const losses = accTrades.filter(t => t.pnl < 0).length;
       const total = accTrades.length;
@@ -941,7 +965,7 @@ export default function Journal() {
         Number(normalizeAccountStatus(b.acc.status) !== "funded");
       return phaseDelta || b.total - a.total || b.net - a.net;
     });
-  }, [activeAccounts, allTrades]);
+  }, [activeAccounts, tradesWithResolvedPhase]);
 
   // ── Updater helper ──
   function patchEntry(patch: Partial<Omit<JournalEntry, "id" | "date">>) {
@@ -1025,6 +1049,11 @@ export default function Journal() {
 
     const newImageIds = pendingImages.map((img) => img.id);
 
+    const selectedAccount = accountId ? accountsById.get(accountId) : undefined;
+    const accountPhase = accountId
+      ? inferTradeAccountPhase({ date }, selectedAccount, data.passedChallenges ?? []) ?? undefined
+      : undefined;
+
     const stopLossVal = stopLoss ? parseFloat(stopLoss) : undefined;
     const tradeData = {
       date,
@@ -1043,6 +1072,7 @@ export default function Journal() {
       tags: tags.length > 0 ? tags : undefined,
       imageIds: newImageIds,
       accountId: accountId || undefined,
+      accountPhase,
     };
 
     if (editTradeId) {

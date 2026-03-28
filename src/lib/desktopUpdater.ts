@@ -49,3 +49,18 @@ export async function installDesktopUpdate(): Promise<DesktopUpdateInstallResult
 export async function requestDesktopRestart(): Promise<void> {
   await invoke("request_app_restart");
 }
+
+export function formatDesktopUpdaterError(error: string | null | undefined): string | null {
+  if (!error) return null;
+
+  const normalized = error.toLowerCase();
+  if (
+    normalized.includes("could not fetch a valid release json from the remote") ||
+    normalized.includes("404") ||
+    normalized.includes("not found")
+  ) {
+    return "The updater endpoint is returning 404. Nexus is currently checking a private GitHub release URL, so desktop OTA will not work until the update host is public or you install a new bootstrap build with a public updater endpoint.";
+  }
+
+  return error;
+}

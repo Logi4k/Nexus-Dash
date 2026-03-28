@@ -53,6 +53,7 @@ export interface Account {
   name?: string;
   status: AccountStatus;
   phaseHint?: "challenge" | "funded";
+  fundedAt?: string;
   balance: number;
   initialBalance?: number;
   peakBalance?: number;
@@ -67,6 +68,7 @@ export interface Account {
 
 export interface PassedChallenge {
   id: string;
+  accountId?: string;
   firm: string;
   type: string;
   name?: string;
@@ -197,6 +199,7 @@ export interface TradeEntry {
   tags?: string[];
   imageIds?: string[];   // keys into IndexedDB image store
   accountId?: string;
+  accountPhase?: "challenge" | "funded";
 }
 
 export interface JournalEntry {

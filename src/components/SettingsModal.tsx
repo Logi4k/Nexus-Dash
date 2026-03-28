@@ -22,6 +22,7 @@ import { forcePullFromCloud, syncNow, useAppData, useSyncStatus } from "@/lib/st
 import { deleteAvatar, uploadAvatar } from "@/lib/avatarStorage";
 import {
   checkDesktopUpdate,
+  formatDesktopUpdaterError,
   installDesktopUpdate,
   isDesktopUpdaterRuntime,
   requestDesktopRestart,
@@ -262,12 +263,15 @@ export default function SettingsModal({ open, onClose }: Props) {
     setDesktopUpdateAction("checking");
     try {
       const status = await checkDesktopUpdate();
-      setDesktopUpdateStatus(status);
+      setDesktopUpdateStatus({
+        ...status,
+        error: formatDesktopUpdaterError(status.error),
+      });
       if (notifyOnError && status.error) {
-        toast.error(`Update check failed: ${status.error}`);
+        toast.error(`Update check failed: ${formatDesktopUpdaterError(status.error)}`);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Update check failed.";
+      const message = formatDesktopUpdaterError(error instanceof Error ? error.message : "Update check failed.");
       setDesktopUpdateStatus((prev) => ({
         supported: true,
         configured: prev?.configured ?? false,
@@ -302,7 +306,9 @@ export default function SettingsModal({ open, onClose }: Props) {
         void requestDesktopRestart();
       }, 450);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Desktop update install failed.";
+      const message = formatDesktopUpdaterError(
+        error instanceof Error ? error.message : "Desktop update install failed."
+      );
       toast.error(message);
       setDesktopUpdateAction("idle");
       await loadDesktopUpdateStatus(false);
@@ -607,14 +613,18 @@ export default function SettingsModal({ open, onClose }: Props) {
                 <span
                   className={cn(
                     "text-[10px] font-semibold px-2.5 py-1 rounded-full border",
-                    !desktopUpdateStatus?.configured
+                    desktopUpdateStatus?.error
+                      ? "bg-loss/10 border-loss/20 text-loss"
+                      : !desktopUpdateStatus?.configured
                       ? "bg-warn/10 border-warn/20 text-warn"
                       : desktopUpdateStatus.available
                         ? "bg-profit/10 border-profit/20 text-profit"
                         : "bg-accent-muted border-border-subtle text-tx-3"
                   )}
                 >
-                  {!desktopUpdateStatus?.configured
+                  {desktopUpdateStatus?.error
+                    ? "Check failed"
+                    : !desktopUpdateStatus?.configured
                     ? "Not configured"
                     : desktopUpdateStatus.available
                       ? "Update ready"

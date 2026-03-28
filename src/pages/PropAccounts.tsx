@@ -25,6 +25,7 @@ import { useAppData } from "@/lib/store";
 import { getQuickActionState } from "@/lib/quickActions";
 import { formatAccountOptionLabel, isActiveAccount } from "@/lib/accountStatus";
 import { reconcileLinkedPayoutAccounts } from "@/lib/payouts";
+import { getAccountFundingDate } from "@/lib/tradePhases";
 import {
   buildProgramTypeLabel,
   getAccountPhase,
@@ -1482,6 +1483,7 @@ export default function PropAccounts() {
     if (!form.balance) return;
     const firmName = form.firm === "__other__" ? form.customFirm.trim() : form.firm;
     if (!firmName) return;
+    const accountId = editAccount?.id ?? generateId();
     const bal = parseFloat(form.balance);
     const selectedPlanKey = firmHasPlans && activePlanKey ? activePlanKey : null;
     const selectedSize = form.planSize ? Number(form.planSize) : parseAccountSize(form.type);
@@ -1489,6 +1491,10 @@ export default function PropAccounts() {
     const initBal = form.initialBalance ? parseFloat(form.initialBalance) : selectedSize ?? bal;
     const sodBal = form.sodBalance ? parseFloat(form.sodBalance) : bal;
     const manualMll = form.mll ? parseFloat(form.mll) : undefined;
+    const previousPhase = editAccount ? getPhaseForStatus(editAccount.status, editAccount.phaseHint ?? "challenge") : null;
+    const preservedFundedAt = editAccount
+      ? (editAccount.fundedAt ?? getAccountFundingDate(editAccount, data.passedChallenges ?? []) ?? undefined)
+      : undefined;
     let phaseHint = getPhaseForStatus(form.status, fallbackPhase);
     let finalStatus: AccountStatus = form.status;
     let passRecord: import("@/types").PassedChallenge | null = null;
@@ -1518,6 +1524,7 @@ export default function PropAccounts() {
       }
       passRecord = {
         id: generateId(),
+        accountId,
         firm: firmName,
         type: finalType,
         name: form.name || undefined,
@@ -1537,13 +1544,19 @@ export default function PropAccounts() {
       });
     }
 
+    const finalPhase = getPhaseForStatus(finalStatus, phaseHint);
+    const fundedAt = finalPhase === "funded"
+      ? (preservedFundedAt ?? passRecord?.passedDate ?? (previousPhase === "funded" ? editAccount?.fundedAt : new Date().toISOString().slice(0, 10)))
+      : undefined;
+
     const baseAccount: Account = {
-      id: editAccount?.id ?? generateId(),
+      id: accountId,
       firm: firmName,
       type: finalType,
       name: form.name || undefined,
       status: finalStatus,
       phaseHint,
+      fundedAt,
       balance: bal,
       initialBalance: initBal,
       peakBalance,
