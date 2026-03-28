@@ -1,0 +1,143 @@
+{
+  "expenses": [],
+  "genExpenses": [],
+  "withdrawals": [],
+  "investments": [],
+  "wealthTargets": [
+    {
+      "id": "demo-goal-home",
+      "emoji": "DM",
+      "name": "Demo Goal",
+      "desc": "Example savings target",
+      "target": 10000,
+      "saved": 2500,
+      "monthly": 250,
+      "color": "var(--accent)"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "demo-challenge-50k",
+      "firm": "Tradeify",
+      "type": "Select Evaluation 50K",
+      "name": "Demo Challenge 50K",
+      "status": "Challenge",
+      "balance": 50000,
+      "initialBalance": 50000,
+      "peakBalance": 50000,
+      "sodBalance": 50000,
+      "mll": 48000,
+      "notes": "Synthetic demo data",
+      "pnlHistory": []
+    },
+    {
+      "id": "demo-funded-50k",
+      "firm": "Lucid Trading",
+      "type": "LucidFlex 50K",
+      "name": "Demo Funded 50K",
+      "status": "Funded",
+      "phaseHint": "funded",
+      "fundedAt": "2026-03-01",
+      "balance": 52350,
+      "initialBalance": 50000,
+      "peakBalance": 52500,
+      "sodBalance": 52350,
+      "mll": 50350,
+      "notes": "Synthetic demo data",
+      "pnlHistory": []
+    }
+  ],
+  "debts": [],
+  "creditCards": [],
+  "subscriptions": [],
+  "t212": {
+    "last_sync": 0,
+    "free_cash": 0,
+    "total_value": 0,
+    "invested": 0,
+    "ppl": 0,
+    "result": 0
+  },
+  "t212History": [],
+  "taxProfile": {
+    "country": "UK",
+    "employmentStatus": "Employed",
+    "annualIncome": 0,
+    "ukSpecific": {
+      "studentLoan": "None",
+      "pensionPercentage": 0,
+      "taxCode": "1257L",
+      "isScottish": false
+    },
+    "otherSpecific": {
+      "effectiveTaxRate": 20
+    }
+  },
+  "marketTickers": [
+    {
+      "name": "S&P 500 ETF",
+      "ticker": "SPY"
+    },
+    {
+      "name": "Nasdaq ETF",
+      "ticker": "QQQ"
+    }
+  ],
+  "otherDebts": [],
+  "savingsAccounts": [],
+  "tradeJournal": [
+    {
+      "id": "demo-trade-1",
+      "date": "2026-03-03",
+      "time": "09:45",
+      "instrument": "MES",
+      "direction": "long",
+      "entryPrice": 5085.25,
+      "exitPrice": 5089.25,
+      "contracts": 2,
+      "pnl": 40,
+      "fees": 2,
+      "setup": "Breakout",
+      "session": "New York",
+      "notes": "Synthetic demo trade",
+      "accountId": "demo-funded-50k",
+      "accountPhase": "funded"
+    }
+  ],
+  "economicEvents": [],
+  "journalEntries": [],
+  "sessionChecklist": [],
+  "userProfile": {
+    "username": "Trader",
+    "avatarColor": "#1dd4b4"
+  },
+  "userSettings": {
+    "subscriptionRenewalDays": 7,
+    "theme": "dark",
+    "dismissedNotificationIds": []
+  },
+  "passedChallenges": [
+    {
+      "id": "demo-pass-1",
+      "accountId": "demo-funded-50k",
+      "firm": "Lucid Trading",
+      "type": "LucidFlex 50K",
+      "name": "Demo Funded 50K",
+      "passedDate": "2026-03-01",
+      "finalBalance": 53000,
+      "initialBalance": 50000,
+      "profitTarget": 3000
+    }
+  ],
+  "ideaPageMeta": {
+    "tagline": "Capture, review, and refine market ideas."
+  },
+  "ideaTopics": [],
+  "ideaNotes": [],
+  "taxSettings": {
+    "salary": 0,
+    "savedSoFar": 0,
+    "savingsGoalOverride": null
+  },
+  "categoryBudgets": {}
+}
