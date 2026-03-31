@@ -41,7 +41,6 @@ import {
 import Modal from "@/components/Modal";
 import type { MarketSession } from "@/types";
 import { tauriFetch } from "@/lib/tauriFetch";
-import { open as tauriOpen } from "@tauri-apps/plugin-shell";
 
 const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -83,11 +82,6 @@ interface FFEvent {
   actual: string;
 }
 
-interface FFCalendarCacheEntry {
-  cachedAt: number;
-  events: FFEvent[];
-}
-
 const FF_IMPACT: Record<string, { color: string; bg: string; border: string; label: string }> = {
   High:   { color: "#f87171", bg: "rgba(239,68,68,0.08)",  border: "rgba(239,68,68,0.2)",  label: "H" },
   Medium: { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.2)", label: "M" },
@@ -98,12 +92,6 @@ const COUNTRY_FLAG: Record<string, string> = {
   USD: "🇺🇸", GBP: "🇬🇧", EUR: "🇪🇺", JPY: "🇯🇵",
   AUD: "🇦🇺", CAD: "🇨🇦", CHF: "🇨🇭", NZD: "🇳🇿",
 };
-
-const FF_CACHE_PREFIX = "nexus.ff_calendar";
-const FF_CACHE_TTL_MS = 1000 * 60 * 30;
-const FF_RATE_LIMIT_COOLDOWN_MS = 1000 * 60 * 5;
-const ffInFlightLoads: Partial<Record<"this" | "next", Promise<FFEvent[]>>> = {};
-const ffRateLimitedUntil: Partial<Record<"this" | "next", number>> = {};
 
 const NEWS_SOURCES_PROXY = [
   { id: "forexlive", label: "ForexLive", url: "/rss/forexlive" },
@@ -701,46 +689,28 @@ function isFFToday(dateStr: string): boolean {
   return dateStr.slice(0, 10) === etDate;
 }
 
-function getFFCacheKey(week: "this" | "next"): string {
-  return `${FF_CACHE_PREFIX}.${week}`;
-}
+function ForexCalendar() {
+  const [events, setEvents] = useState<FFEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [week, setWeek] = useState<"this" | "next">("this");
+  const [filterImpact, setFilterImpact] = useState<"all" | "High" | "Medium">("High");
+  const [filterCountry, setFilterCountry] = useState<"all" | "USD" | "GBP">("USD");
 
-function readFFCache(week: "this" | "next"): FFCalendarCacheEntry | null {
-  if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(getFFCacheKey(week));
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<FFCalendarCacheEntry>;
-    if (!Array.isArray(parsed.events) || typeof parsed.cachedAt !== "number") {
-      return null;
+  async function load(w: "this" | "next", force = false) {
+    const cacheKey = `ff_cal_${w}`;
+    if (!force) {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try { setEvents(JSON.parse(cached)); setLoading(false); return; } catch {}
+      }
     }
-    return {
-      cachedAt: parsed.cachedAt,
-      events: parsed.events,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeFFCache(week: "this" | "next", events: FFEvent[]) {
-  if (typeof window === "undefined") return;
-  const payload: FFCalendarCacheEntry = { cachedAt: Date.now(), events };
-  localStorage.setItem(getFFCacheKey(week), JSON.stringify(payload));
-}
-
-async function fetchFFCalendarWeek(week: "this" | "next"): Promise<FFEvent[]> {
-  const cooldownUntil = ffRateLimitedUntil[week] ?? 0;
-  if (Date.now() < cooldownUntil) {
-    throw new Error("HTTP 429");
-  }
-
-  if (!ffInFlightLoads[week]) {
-    ffInFlightLoads[week] = (async () => {
+    setLoading(true);
+    setError(null);
+    try {
       const url = isTauri
-        ? `https://nfs.faireconomy.media/ff_calendar_${week}week.json`
-        : `/ff-calendar/ff_calendar_${week}week.json`;
+        ? `https://nfs.faireconomy.media/ff_calendar_${w}week.json`
+        : `/ff-calendar/ff_calendar_${w}week.json`;
       const res = await tauriFetch(url, isTauri ? {
         headers: {
           "Referer": "https://www.forexfactory.com/",
@@ -748,95 +718,17 @@ async function fetchFFCalendarWeek(week: "this" | "next"): Promise<FFEvent[]> {
           "Accept": "application/json",
         },
       } : undefined);
-
-      if (res.status === 404 && week === "next") {
+      if (res.status === 404 && w === "next") {
         throw new Error("Next week's calendar isn't published yet — check back closer to the weekend.");
       }
-      if (res.status === 429) {
-        ffRateLimitedUntil[week] = Date.now() + FF_RATE_LIMIT_COOLDOWN_MS;
-        throw new Error("HTTP 429");
-      }
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      ffRateLimitedUntil[week] = 0;
-      return res.json();
-    })().finally(() => {
-      delete ffInFlightLoads[week];
-    });
-  }
-
-  return ffInFlightLoads[week]!;
-}
-
-function ForexCalendar() {
-  const [events, setEvents] = useState<FFEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [week, setWeek] = useState<"this" | "next">("this");
-  const [filterImpact, setFilterImpact] = useState<"all" | "High" | "Medium">("High");
-  const [filterCountry, setFilterCountry] = useState<"all" | "USD" | "GBP">("USD");
-  const [cacheStatus, setCacheStatus] = useState<"cached" | "fallback" | null>(null);
-
-  async function load(w: "this" | "next", force = false) {
-    const sessionKey = `ff_cal_${w}`;
-    const persistentCache = readFFCache(w);
-    let cachedEvents: FFEvent[] | null = persistentCache?.events ?? null;
-    let cachedAt = persistentCache?.cachedAt ?? null;
-
-    if (!cachedEvents) {
-      const sessionCached = sessionStorage.getItem(sessionKey);
-      if (sessionCached) {
-        try {
-          const parsed = JSON.parse(sessionCached);
-          if (Array.isArray(parsed)) {
-            cachedEvents = parsed;
-          }
-        } catch {
-          // Ignore corrupted session cache and continue to network.
-        }
-      }
-    }
-
-    const hasCache = Array.isArray(cachedEvents) && cachedEvents.length > 0;
-    const hasFreshPersistentCache =
-      !force &&
-      persistentCache !== null &&
-      Date.now() - persistentCache.cachedAt < FF_CACHE_TTL_MS;
-
-    if (hasCache && cachedEvents) {
-      setEvents(cachedEvents);
-      setError(null);
-      setCacheStatus(hasFreshPersistentCache ? "cached" : "fallback");
-      setLoading(false);
-    }
-
-    if (hasFreshPersistentCache) {
-      return;
-    }
-
-    setLoading(!hasCache);
-    setRefreshing(hasCache);
-    setError(null);
-    try {
-      const data = await fetchFFCalendarWeek(w);
-      sessionStorage.setItem(sessionKey, JSON.stringify(data));
-      writeFFCache(w, data);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
       setEvents(data);
-      setCacheStatus(null);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to load";
-      if (hasCache) {
-        setError(null);
-        setCacheStatus("fallback");
-      } else {
-        setError(message);
-      }
+      setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }
 
@@ -933,21 +825,9 @@ function ForexCalendar() {
             className="p-1.5 rounded-lg text-tx-4 hover:text-tx-2 hover:bg-white/[0.04] transition-all"
             title="Refresh"
           >
-            <RefreshCw size={12} className={loading || refreshing ? "animate-spin" : ""} />
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           </button>
           <span className="text-[10px] text-tx-4">Forex Factory</span>
-          {cacheStatus && (
-            <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-              style={{
-                background: "rgba(148,163,184,0.08)",
-                color: "var(--tx-3)",
-                border: "1px solid rgba(148,163,184,0.18)",
-              }}
-            >
-              {cacheStatus === "cached" ? "Cached" : "Cached fallback"}
-            </span>
-          )}
         </div>
       </div>
 
@@ -1067,11 +947,7 @@ function ForexCalendar() {
 
       {/* Footer */}
       <div className="px-5 py-2.5 border-t border-white/[0.06] flex items-center gap-2">
-        <span className="text-[10px] text-tx-4">
-          {cacheStatus === "fallback"
-            ? "Source: Forex Factory · showing cached data after upstream rate-limit/network failure"
-            : "Source: Forex Factory · All times ET"}
-        </span>
+        <span className="text-[10px] text-tx-4">Source: Forex Factory · All times ET</span>
         <span className="text-[10px] text-tx-4 ml-auto">{filtered.length} events shown</span>
       </div>
     </div>
@@ -1524,12 +1400,6 @@ function NewsFeed() {
                 rel="noopener noreferrer"
                 className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors group"
                 style={{ textDecoration: "none" }}
-                onClick={(e) => {
-                  if (isTauri && item.link) {
-                    e.preventDefault();
-                    tauriOpen(item.link);
-                  }
-                }}
               >
                 <div className="flex-1 min-w-0">
                   <p
@@ -1775,7 +1645,7 @@ export default function Market() {
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.market, isBW);
   return (
-    <div className="space-y-5 w-full">
+    <div className="space-y-5 w-full page-enter">
       {/* Header */}
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Market</div>

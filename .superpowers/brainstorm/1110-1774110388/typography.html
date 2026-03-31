@@ -1,0 +1,154 @@
+<h2>Typography — Readability Comparison</h2>
+<p class="subtitle">The mockup previews use tiny text to fit the layout frames — that's not how the real app looks. Here's a side-by-side of current vs proposed typography at real sizes.</p>
+
+<div class="split" style="margin-bottom: 24px;">
+
+  <!-- Current -->
+  <div class="mockup">
+    <div class="mockup-header">Current — what you have today</div>
+    <div class="mockup-body" style="background:#0b0d14;padding:20px;font-family:'Inter',system-ui,sans-serif;">
+
+      <!-- Page title area -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.22em;color:#374151;text-transform:uppercase;margin-bottom:4px;">NAVIGATION</div>
+        <div style="font-size:13px;font-weight:600;color:#4b5563;">Journal</div>
+      </div>
+
+      <!-- Stat card -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#475569;margin-bottom:6px;">NET WORTH</div>
+        <div style="font-size:18px;font-weight:900;color:#fafafa;">£24,830</div>
+        <div style="font-size:11px;color:#4b5563;margin-top:4px;">↑ 4.2% this month</div>
+      </div>
+
+      <!-- Body text -->
+      <div style="font-size:13px;color:#f8fafc;font-weight:600;margin-bottom:6px;">LLM Trading Signals</div>
+      <div style="font-size:12px;color:#4b5563;line-height:1.5;margin-bottom:10px;">GPT-4 pattern recognition shows strong potential for systematic entries on tick data windows above 500 contracts.</div>
+
+      <!-- Filter pills -->
+      <div style="display:flex;gap:5px;margin-bottom:10px;">
+        <div style="padding:4px 10px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.09);border-radius:12px;font-size:11px;font-weight:600;color:#f8fafc;">1M ✓</div>
+        <div style="padding:4px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;font-size:11px;color:#4b5563;">All</div>
+        <div style="padding:4px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;font-size:11px;color:#4b5563;">1W</div>
+      </div>
+
+      <!-- Table row -->
+      <div style="border:1px solid rgba(255,255,255,0.07);border-radius:8px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.05);">
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#374151;">DATE</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#374151;">INSTRUMENT</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#374151;">DIRECTION</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#374151;">P&L</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:10px 12px;">
+          <div style="font-size:12px;color:#4b5563;">21 Mar</div>
+          <div style="font-size:12px;color:#f8fafc;">NQ</div>
+          <div style="font-size:12px;color:#4ade80;">Long</div>
+          <div style="font-size:12px;color:#4ade80;">+£420</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;font-size:10px;color:#374151;text-align:center;">Issues: labels too dim, secondary text barely readable, small label sizes</div>
+    </div>
+  </div>
+
+  <!-- Proposed -->
+  <div class="mockup">
+    <div class="mockup-header">Proposed — improved hierarchy & readability</div>
+    <div class="mockup-body" style="background:#070810;padding:20px;font-family:'Inter',system-ui,sans-serif;">
+
+      <!-- Page title area -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;color:rgba(251,191,36,0.6);margin-bottom:3px;">Journal</div>
+        <div style="font-size:20px;font-weight:800;color:#f8fafc;letter-spacing:-0.02em;">Trade Log</div>
+      </div>
+
+      <!-- Stat card -->
+      <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.15);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:500;color:rgba(251,191,36,0.65);margin-bottom:5px;">Net Worth</div>
+        <div style="font-size:24px;font-weight:800;color:#f8fafc;letter-spacing:-0.02em;">£24,830</div>
+        <div style="font-size:12px;color:#4ade80;margin-top:3px;font-weight:500;">↑ 4.2% this month</div>
+      </div>
+
+      <!-- Body text -->
+      <div style="font-size:14px;color:#f8fafc;font-weight:700;margin-bottom:5px;letter-spacing:-0.01em;">LLM Trading Signals</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;margin-bottom:10px;">GPT-4 pattern recognition shows strong potential for systematic entries on tick data windows above 500 contracts.</div>
+
+      <!-- Filter pills -->
+      <div style="display:flex;gap:5px;margin-bottom:10px;">
+        <div style="padding:5px 12px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.28);border-radius:12px;font-size:12px;font-weight:700;color:#fbbf24;">1M</div>
+        <div style="padding:5px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;font-size:12px;color:rgba(255,255,255,0.45);">All</div>
+        <div style="padding:5px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;font-size:12px;color:rgba(255,255,255,0.45);">1W</div>
+      </div>
+
+      <!-- Table row -->
+      <div style="border:1px solid rgba(255,255,255,0.08);border-radius:8px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:9px 14px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.04em;">Date</div>
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.04em;">Instrument</div>
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.04em;">Direction</div>
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.04em;">P&L</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:11px 14px;">
+          <div style="font-size:13px;color:rgba(255,255,255,0.55);">21 Mar</div>
+          <div style="font-size:13px;color:#f8fafc;font-weight:600;">NQ</div>
+          <div style="font-size:13px;color:#4ade80;font-weight:600;">Long</div>
+          <div style="font-size:13px;color:#4ade80;font-weight:700;">+£420</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;font-size:10px;color:rgba(255,255,255,0.3);text-align:center;">Fixes: raised contrast, sentence-case labels, tighter letter-spacing on headings</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section">
+  <h3>The 4 changes that matter most</h3>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;font-family:system-ui;">
+
+    <div style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;">
+      <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-bottom:3px;">1 — Kill excessive ALL CAPS tracking</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">Current: <span style="letter-spacing:0.22em;font-size:10px;color:#374151;">NAVIGATION · NET WORTH · DATE</span> — hard to read at small sizes.<br>Fix: sentence-case labels at 11px with modest tracking (0.04em).</div>
+    </div>
+
+    <div style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;">
+      <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-bottom:3px;">2 — Raise secondary text contrast</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">Current: <span style="color:#374151;">#374151 and #4b5563</span> — near-invisible on dark background (fails WCAG AA).<br>Fix: secondary text → <span style="color:rgba(255,255,255,0.55);">rgba(255,255,255,0.55)</span>, tertiary → <span style="color:rgba(255,255,255,0.4);">rgba(255,255,255,0.40)</span>.</div>
+    </div>
+
+    <div style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;">
+      <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-bottom:3px;">3 — Tighter letter-spacing on headings</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">Large bold text reads better with <span style="letter-spacing:-0.02em;font-size:13px;font-weight:700;color:#f8fafc;">negative tracking (−0.02em)</span> — feels premium and modern vs default spacing.</div>
+    </div>
+
+    <div style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;">
+      <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-bottom:3px;">4 — Consistent type scale</div>
+      <div style="display:flex;flex-direction:column;gap:3px;margin-top:6px;">
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <div style="font-size:22px;font-weight:800;color:#f8fafc;letter-spacing:-0.02em;min-width:80px;">£24,830</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);">22px / 800 — hero numbers</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <div style="font-size:18px;font-weight:700;color:#f8fafc;letter-spacing:-0.015em;min-width:80px;">Dashboard</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);">18px / 700 — page title</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <div style="font-size:14px;font-weight:600;color:#f8fafc;min-width:80px;">Card title</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);">14px / 600 — section headings</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <div style="font-size:13px;color:rgba(255,255,255,0.7);min-width:80px;">Body text</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);">13px / 400 — primary content</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <div style="font-size:11px;color:rgba(255,255,255,0.45);min-width:80px;">Label / meta</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);">11px / 500 — labels, timestamps</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Does the right side (proposed) read better? These 4 rules will be applied globally across every page and component in the spec.</p>

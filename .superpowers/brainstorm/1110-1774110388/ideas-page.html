@@ -1,0 +1,133 @@
+<h2>Ideas & Research Page Layout</h2>
+<p class="subtitle">You want to paste findings, write notes, brainstorm topics like AI research. Which layout fits best?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="notebook" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#070810;padding:14px;min-height:210px;font-family:system-ui;">
+      <!-- Sidebar topics + main editor -->
+      <div style="display:flex;gap:8px;height:180px;">
+        <!-- Topic list -->
+        <div style="width:80px;background:rgba(129,140,248,0.06);border:1px solid rgba(129,140,248,0.12);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+          <div style="font-size:7px;color:rgba(129,140,248,0.6);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Topics</div>
+          <div style="padding:4px 6px;background:linear-gradient(135deg,rgba(129,140,248,0.2),rgba(192,132,252,0.2));border:1px solid rgba(129,140,248,0.25);border-radius:6px;font-size:8px;color:#c084fc;font-weight:600;">AI Research</div>
+          <div style="padding:4px 6px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:8px;color:rgba(255,255,255,0.4);">Trading Ideas</div>
+          <div style="padding:4px 6px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:8px;color:rgba(255,255,255,0.4);">Market Notes</div>
+          <div style="padding:4px 6px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:8px;color:rgba(255,255,255,0.4);">Strategies</div>
+          <div style="margin-top:auto;padding:4px 6px;background:rgba(129,140,248,0.08);border:1px dashed rgba(129,140,248,0.2);border-radius:6px;font-size:8px;color:rgba(129,140,248,0.5);text-align:center;">+ New</div>
+        </div>
+        <!-- Main editor area -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <!-- Toolbar -->
+          <div style="display:flex;gap:4px;align-items:center;">
+            <div style="padding:3px 8px;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.2);border-radius:6px;font-size:8px;color:#818cf8;font-weight:700;">B</div>
+            <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:8px;color:rgba(255,255,255,0.4);font-style:italic;">I</div>
+            <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:8px;color:rgba(255,255,255,0.4);">H1</div>
+            <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:8px;color:rgba(255,255,255,0.4);">≡</div>
+            <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:8px;color:rgba(255,255,255,0.4);">🔗</div>
+          </div>
+          <!-- Note content -->
+          <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px;">
+            <div style="font-size:11px;font-weight:800;color:#f8fafc;margin-bottom:6px;">AI Research Notes</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:6px;">Large language models are showing strong potential for pattern recognition in financial data. Key finding: transformer architectures outperform...</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <div style="padding:2px 7px;background:rgba(129,140,248,0.15);border-radius:10px;font-size:7px;color:#818cf8;">#llm</div>
+              <div style="padding:2px 7px;background:rgba(192,132,252,0.15);border-radius:10px;font-size:7px;color:#c084fc;">#finance</div>
+              <div style="padding:2px 7px;background:rgba(34,197,94,0.12);border-radius:10px;font-size:7px;color:#4ade80;">#research</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Notebook</h3>
+      <p>Topics list on the left, rich-text editor on the right. Like Notion. Add tags, format text, paste links. Clean and focused for long-form notes.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="cards-board" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#070810;padding:14px;min-height:210px;font-family:system-ui;">
+      <!-- Tag filter row -->
+      <div style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="padding:3px 10px;background:linear-gradient(135deg,rgba(129,140,248,0.25),rgba(192,132,252,0.25));border:1px solid rgba(129,140,248,0.3);border-radius:20px;font-size:8px;color:#c084fc;font-weight:600;">All</div>
+        <div style="padding:3px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;font-size:8px;color:rgba(255,255,255,0.4);">AI</div>
+        <div style="padding:3px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;font-size:8px;color:rgba(255,255,255,0.4);">Trading</div>
+        <div style="padding:3px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;font-size:8px;color:rgba(255,255,255,0.4);">Markets</div>
+        <div style="padding:3px 10px;background:rgba(129,140,248,0.06);border:1px dashed rgba(129,140,248,0.2);border-radius:20px;font-size:8px;color:rgba(129,140,248,0.5);">+ Tag</div>
+      </div>
+      <!-- Card grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;">
+        <div style="background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.18);border-radius:10px;padding:8px;">
+          <div style="font-size:8px;font-weight:700;color:#f8fafc;margin-bottom:4px;">LLM for trading signals</div>
+          <div style="font-size:7px;color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:5px;">GPT-4 pattern recognition shows 68% accuracy on...</div>
+          <div style="display:flex;gap:3px;">
+            <div style="padding:1px 5px;background:rgba(129,140,248,0.2);border-radius:8px;font-size:6px;color:#818cf8;">#ai</div>
+          </div>
+        </div>
+        <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.15);border-radius:10px;padding:8px;">
+          <div style="font-size:8px;font-weight:700;color:#f8fafc;margin-bottom:4px;">VWAP breakout strategy</div>
+          <div style="font-size:7px;color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:5px;">Works best in London session open, NQ futures...</div>
+          <div style="display:flex;gap:3px;">
+            <div style="padding:1px 5px;background:rgba(251,191,36,0.15);border-radius:8px;font-size:6px;color:#fbbf24;">#trading</div>
+          </div>
+        </div>
+        <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.15);border-radius:10px;padding:8px;">
+          <div style="font-size:8px;font-weight:700;color:#f8fafc;margin-bottom:4px;">Fed rate impact study</div>
+          <div style="font-size:7px;color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:5px;">Historical data shows 3-day momentum after...</div>
+          <div style="display:flex;gap:3px;">
+            <div style="padding:1px 5px;background:rgba(34,197,94,0.15);border-radius:8px;font-size:6px;color:#4ade80;">#markets</div>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.1);border-radius:10px;padding:8px;display:flex;align-items:center;justify-content:center;">
+          <div style="font-size:8px;color:rgba(255,255,255,0.25);">+ Add idea</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Tagged Cards</h3>
+      <p>Each idea is a card with a tag. Filter by tag at the top. Great for quick captures. Click a card to expand and edit. Good for research snippets.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#070810;padding:14px;min-height:210px;font-family:system-ui;">
+      <!-- Tab bar: Topics -->
+      <div style="display:flex;gap:1px;margin-bottom:10px;background:rgba(255,255,255,0.04);border-radius:10px;padding:3px;">
+        <div style="flex:1;padding:4px 0;background:linear-gradient(135deg,rgba(129,140,248,0.3),rgba(192,132,252,0.3));border-radius:8px;text-align:center;font-size:8px;color:#c084fc;font-weight:700;">AI Research</div>
+        <div style="flex:1;padding:4px 0;text-align:center;font-size:8px;color:rgba(255,255,255,0.35);">Trading</div>
+        <div style="flex:1;padding:4px 0;text-align:center;font-size:8px;color:rgba(255,255,255,0.35);">Markets</div>
+        <div style="flex:1;padding:4px 0;text-align:center;font-size:8px;color:rgba(129,140,248,0.5);">+ New</div>
+      </div>
+      <!-- Split: pinned note top, cards bottom -->
+      <div style="display:flex;flex-direction:column;gap:6px;height:145px;">
+        <!-- Pinned long-form note -->
+        <div style="background:rgba(129,140,248,0.07);border:1px solid rgba(129,140,248,0.15);border-radius:10px;padding:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-size:9px;font-weight:700;color:#f8fafc;">📌 Main Research Doc</div>
+            <div style="font-size:7px;color:rgba(129,140,248,0.6);">Edit</div>
+          </div>
+          <div style="font-size:7px;color:rgba(255,255,255,0.5);line-height:1.5;">Transformer models show strong signal on tick data. Claude API for portfolio analysis looks promising. Next steps: backtest on ES futures...</div>
+        </div>
+        <!-- Quick capture cards row -->
+        <div style="display:flex;gap:6px;flex:1;">
+          <div style="flex:1;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.14);border-radius:8px;padding:7px;">
+            <div style="font-size:7px;font-weight:700;color:#fbbf24;margin-bottom:2px;">💡 Quick Note</div>
+            <div style="font-size:7px;color:rgba(255,255,255,0.4);">Check Anthropic's financial analysis SDK...</div>
+          </div>
+          <div style="flex:1;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.13);border-radius:8px;padding:7px;">
+            <div style="font-size:7px;font-weight:700;color:#4ade80;margin-bottom:2px;">🔗 Link saved</div>
+            <div style="font-size:7px;color:rgba(255,255,255,0.4);">arxiv.org/abs/2401... LLM trading paper</div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.08);border-radius:8px;padding:7px;display:flex;align-items:center;justify-content:center;">
+            <div style="font-size:8px;color:rgba(255,255,255,0.2);">+ Capture</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Hybrid (Recommended)</h3>
+      <p>Topic tabs across the top. Each topic has a pinned long-form note (for deep research) + quick-capture cards below (for links, snippets, ideas). Best of both.</p>
+    </div>
+  </div>
+
+</div>

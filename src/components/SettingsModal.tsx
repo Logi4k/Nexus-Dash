@@ -10,24 +10,10 @@ import {
   Sun,
   Smartphone,
   Download,
-  Cloud,
-  RefreshCw,
-  ArrowDownToLine,
-  AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
 import Modal from "@/components/Modal";
-import AvatarCropModal from "@/components/AvatarCropModal";
-import { forcePullFromCloud, syncNow, useAppData, useSyncStatus } from "@/lib/store";
-import { deleteAvatar, uploadAvatar } from "@/lib/avatarStorage";
-import {
-  checkDesktopUpdate,
-  formatDesktopUpdaterError,
-  installDesktopUpdate,
-  isDesktopUpdaterRuntime,
-  requestDesktopRestart,
-  type DesktopUpdateStatus,
-} from "@/lib/desktopUpdater";
+import { useAppData } from "@/lib/store";
+import { deleteAvatar } from "@/lib/avatarStorage";
 import { cn } from "@/lib/utils";
 import { DEFAULT_MOBILE_NAV_ITEMS, MOBILE_NAV_OPTIONS, sanitizeMobileNavItems } from "@/lib/mobileNav";
 import type { MobileNavItemId } from "@/types";
@@ -60,16 +46,6 @@ function toCSV(rows: Record<string, unknown>[], headers: string[]): string {
   ].join("\n");
 }
 
-function formatSyncTime(timestamp: number | null): string {
-  if (!timestamp) return "Not yet";
-  return new Date(timestamp).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 const AVATAR_COLORS = [
   "#1dd4b4", // teal (accent)
   "#3b82f6", // blue
@@ -99,7 +75,6 @@ interface Props {
 
 export default function SettingsModal({ open, onClose }: Props) {
   const { data, update } = useAppData();
-  const syncStatus = useSyncStatus();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Local draft state — only committed on Save
@@ -123,12 +98,7 @@ export default function SettingsModal({ open, onClose }: Props) {
       ? sanitizeMobileNavItems(data.userSettings?.mobileNavItems)
       : DEFAULT_MOBILE_NAV_ITEMS
   );
-  const [cropSource, setCropSource] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [desktopUpdateStatus, setDesktopUpdateStatus] = useState<DesktopUpdateStatus | null>(null);
-  const [desktopUpdateAction, setDesktopUpdateAction] = useState<"idle" | "checking" | "installing">("idle");
-  const desktopUpdaterVisible = isDesktopUpdaterRuntime();
   // Re-sync draft state each time the modal opens
   useEffect(() => {
     if (!open) return;
@@ -170,7 +140,7 @@ export default function SettingsModal({ open, onClose }: Props) {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const result = ev.target?.result as string;
-      setCropSource(result);
+      setAvatarUrl(result);
     };
     reader.readAsDataURL(file);
     // Reset input so the same file can be re-selected
@@ -179,32 +149,16 @@ export default function SettingsModal({ open, onClose }: Props) {
 
   function handleRemovePhoto() {
     setAvatarUrl(undefined);
+    deleteAvatar().catch(() => {});
   }
 
-  async function handleSave() {
-    if (isSaving) return;
-
-    setIsSaving(true);
-
-    const previousAvatarUrl = data.userProfile?.avatarUrl;
-    let nextAvatarUrl = avatarUrl;
-
-    if (nextAvatarUrl?.startsWith("data:")) {
-      const uploadedAvatarUrl = await uploadAvatar(nextAvatarUrl);
-      if (!uploadedAvatarUrl) {
-        toast.error("Profile photo upload failed. Please try again.");
-        setIsSaving(false);
-        return;
-      }
-      nextAvatarUrl = uploadedAvatarUrl;
-    }
-
+  function handleSave() {
     update((prev) => ({
       ...prev,
       userProfile: {
         username:    username.trim() || "Trader",
         avatarColor,
-        avatarUrl: nextAvatarUrl,
+        avatarUrl: avatarUrl,
       },
       userSettings: {
         ...(prev.userSettings ?? {}),
@@ -213,12 +167,6 @@ export default function SettingsModal({ open, onClose }: Props) {
         mobileNavItems,
       },
     }));
-
-    if (previousAvatarUrl && !nextAvatarUrl) {
-      void deleteAvatar().catch(() => {});
-    }
-
-    setIsSaving(false);
     onClose();
   }
 
@@ -239,107 +187,16 @@ export default function SettingsModal({ open, onClose }: Props) {
     downloadFile(toCSV(rows, headers), `nexus-expenses-${todayISO()}.csv`, "text/csv");
   }
 
-  async function handleSyncNow() {
-    const ok = await syncNow();
-    if (ok) {
-      toast.success("Sync complete");
-    } else {
-      toast.error("Sync is unavailable right now.");
-    }
-  }
-
-  async function handlePullLatest() {
-    const ok = await forcePullFromCloud();
-    if (ok) {
-      toast.success("Pulled latest cloud data");
-    } else {
-      toast.error("Couldn't pull cloud data right now.");
-    }
-  }
-
-  async function loadDesktopUpdateStatus(notifyOnError = false) {
-    if (!desktopUpdaterVisible) return;
-
-    setDesktopUpdateAction("checking");
-    try {
-      const status = await checkDesktopUpdate();
-      setDesktopUpdateStatus({
-        ...status,
-        error: formatDesktopUpdaterError(status.error),
-      });
-      if (notifyOnError && status.error) {
-        toast.error(`Update check failed: ${formatDesktopUpdaterError(status.error)}`);
-      }
-    } catch (error) {
-      const message = formatDesktopUpdaterError(error instanceof Error ? error.message : "Update check failed.");
-      setDesktopUpdateStatus((prev) => ({
-        supported: true,
-        configured: prev?.configured ?? false,
-        currentVersion: prev?.currentVersion ?? "desktop",
-        available: false,
-        version: null,
-        date: null,
-        body: null,
-        error: message,
-      }));
-      if (notifyOnError) {
-        toast.error(message);
-      }
-    } finally {
-      setDesktopUpdateAction("idle");
-    }
-  }
-
-  async function handleInstallDesktopUpdate() {
-    setDesktopUpdateAction("installing");
-    try {
-      const result = await installDesktopUpdate();
-      if (!result.installed) {
-        toast.message("No newer desktop update is available.");
-        await loadDesktopUpdateStatus(false);
-        return;
-      }
-
-      toast.success(`Version ${result.version ?? "update"} installed. Restarting Nexus...`);
-      onClose();
-      setTimeout(() => {
-        void requestDesktopRestart();
-      }, 450);
-    } catch (error) {
-      const message = formatDesktopUpdaterError(
-        error instanceof Error ? error.message : "Desktop update install failed."
-      );
-      toast.error(message);
-      setDesktopUpdateAction("idle");
-      await loadDesktopUpdateStatus(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!open || !desktopUpdaterVisible) return;
-    void loadDesktopUpdateStatus(false);
-  }, [open, desktopUpdaterVisible]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const initials = (username.trim() || "T").slice(0, 2).toUpperCase();
-  const syncBadge = syncStatus.lastError
-    ? { label: "Needs attention", className: "bg-loss/10 border-loss/20 text-loss" }
-    : syncStatus.syncInFlight
-      ? { label: "Syncing", className: "bg-blue-500/10 border-blue-500/20 text-blue-300" }
-      : syncStatus.realtimeState === "connected"
-        ? { label: "Live", className: "bg-profit/10 border-profit/20 text-profit" }
-        : syncStatus.enabled
-          ? { label: "Manual", className: "bg-warn/10 border-warn/20 text-warn" }
-          : { label: "Signed out", className: "bg-accent-muted border-border-subtle text-tx-3" };
 
   return (
-    <>
-      <Modal
-        open={open}
-        onClose={onClose}
-        title="Settings"
-        size="sm"
-      >
-        <div className="space-y-5">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Settings"
+      size="sm"
+    >
+      <div className="space-y-5">
 
         {/* ── Profile Section ── */}
         <div>
@@ -353,7 +210,7 @@ export default function SettingsModal({ open, onClose }: Props) {
             {/* Clickable avatar with camera overlay */}
             <div className="relative flex-shrink-0 group">
               <div
-                className="w-[72px] h-[72px] rounded-[26px] flex items-center justify-center font-black text-xl select-none overflow-hidden cursor-pointer"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg select-none overflow-hidden cursor-pointer"
                 style={avatarUrl ? {} : {
                   background: avatarColor + "20",
                   border: `2px solid ${avatarColor}50`,
@@ -399,7 +256,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                   onClick={() => fileInputRef.current?.click()}
                   className="text-[9px] font-semibold px-2 py-0.5 rounded-md transition-all bg-accent-muted border border-border text-tx-3"
                 >
-                  {avatarUrl ? "Change & crop" : "Upload & crop"}
+                  {avatarUrl ? "Change photo" : "Upload photo"}
                 </button>
                 {avatarUrl && (
                   <button
@@ -438,9 +295,6 @@ export default function SettingsModal({ open, onClose }: Props) {
               </div>
             </div>
           )}
-          <p className="text-[9px] text-tx-4 mt-2">
-            Use a tight crop so your profile reads cleanly in both desktop and mobile navigation.
-          </p>
         </div>
 
         {/* ── Notifications Section ── */}
@@ -527,157 +381,6 @@ export default function SettingsModal({ open, onClose }: Props) {
             ))}
           </div>
         </div>
-
-        {/* ── Sync Center ── */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Cloud size={11} className="text-accent" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-tx-3">Sync</span>
-          </div>
-
-          <div className="rounded-xl p-3 border border-border-subtle bg-accent-muted space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold text-tx-2">Cloud sync status</p>
-                <p className="text-[9px] text-tx-4 mt-1">
-                  {syncStatus.realtimeState === "connected"
-                    ? "Realtime channel is connected."
-                    : syncStatus.enabled
-                      ? "Manual sync is available if realtime drops."
-                      : "Sign in is required for cloud sync."}
-                </p>
-              </div>
-              <span className={cn("text-[10px] font-semibold px-2.5 py-1 rounded-full border", syncBadge.className)}>
-                {syncBadge.label}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg px-3 py-2 border border-border-subtle bg-bg-hover/40">
-                <p className="text-[9px] uppercase tracking-[0.14em] text-tx-4">Last cloud sync</p>
-                <p className="text-[11px] font-semibold text-tx-2 mt-1">{formatSyncTime(syncStatus.syncedAt)}</p>
-              </div>
-              <div className="rounded-lg px-3 py-2 border border-border-subtle bg-bg-hover/40">
-                <p className="text-[9px] uppercase tracking-[0.14em] text-tx-4">Last local save</p>
-                <p className="text-[11px] font-semibold text-tx-2 mt-1">{formatSyncTime(syncStatus.localSavedAt)}</p>
-              </div>
-            </div>
-
-            {syncStatus.lastError && (
-              <div className="rounded-lg px-3 py-2 border border-loss/20 bg-loss/10 flex items-start gap-2">
-                <AlertTriangle size={12} className="text-loss mt-0.5 shrink-0" />
-                <p className="text-[10px] leading-relaxed text-loss/90">{syncStatus.lastError}</p>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleSyncNow}
-                disabled={!syncStatus.enabled || syncStatus.syncInFlight}
-                className="text-[10px] font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-all bg-accent-glow border border-border-accent text-tx-1 disabled:opacity-50"
-              >
-                <RefreshCw size={11} className={syncStatus.syncInFlight ? "animate-spin" : ""} />
-                {syncStatus.syncInFlight ? "Syncing..." : "Sync Now"}
-              </button>
-              <button
-                onClick={handlePullLatest}
-                disabled={!syncStatus.enabled || syncStatus.syncInFlight}
-                className="text-[10px] font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-all bg-bg-hover/40 border border-border-subtle text-tx-2 disabled:opacity-50"
-              >
-                <ArrowDownToLine size={11} />
-                Pull Latest
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Desktop Updates ── */}
-        {desktopUpdaterVisible && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <ArrowDownToLine size={11} className="text-accent" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-tx-3">Desktop Updates</span>
-            </div>
-
-            <div className="rounded-xl p-3 border border-border-subtle bg-accent-muted space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold text-tx-2">OTA updater</p>
-                  <p className="text-[9px] text-tx-4 mt-1">
-                    Current version {desktopUpdateStatus?.currentVersion ?? "loading..."}
-                    {desktopUpdateStatus?.available && desktopUpdateStatus.version
-                      ? ` · update ${desktopUpdateStatus.version} ready`
-                      : ""}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "text-[10px] font-semibold px-2.5 py-1 rounded-full border",
-                    desktopUpdateStatus?.error
-                      ? "bg-loss/10 border-loss/20 text-loss"
-                      : !desktopUpdateStatus?.configured
-                      ? "bg-warn/10 border-warn/20 text-warn"
-                      : desktopUpdateStatus.available
-                        ? "bg-profit/10 border-profit/20 text-profit"
-                        : "bg-accent-muted border-border-subtle text-tx-3"
-                  )}
-                >
-                  {desktopUpdateStatus?.error
-                    ? "Check failed"
-                    : !desktopUpdateStatus?.configured
-                    ? "Not configured"
-                    : desktopUpdateStatus.available
-                      ? "Update ready"
-                      : "Up to date"}
-                </span>
-              </div>
-
-              {!desktopUpdateStatus?.configured ? (
-                <div className="rounded-lg px-3 py-2 border border-warn/20 bg-warn/10">
-                  <p className="text-[10px] leading-relaxed text-warn">
-                    Set <span className="font-semibold">TAURI_UPDATER_PUBKEY</span> and <span className="font-semibold">TAURI_UPDATER_ENDPOINTS</span> before building the desktop release to enable OTA updates.
-                  </p>
-                </div>
-              ) : null}
-
-              {desktopUpdateStatus?.body ? (
-                <div className="rounded-lg px-3 py-2 border border-border-subtle bg-bg-hover/40">
-                  <p className="text-[9px] uppercase tracking-[0.14em] text-tx-4 mb-1">Release Notes</p>
-                  <p className="text-[10px] leading-relaxed text-tx-3 whitespace-pre-wrap">
-                    {desktopUpdateStatus.body}
-                  </p>
-                </div>
-              ) : null}
-
-              {desktopUpdateStatus?.error ? (
-                <div className="rounded-lg px-3 py-2 border border-loss/20 bg-loss/10">
-                  <p className="text-[10px] leading-relaxed text-loss">
-                    {desktopUpdateStatus.error}
-                  </p>
-                </div>
-              ) : null}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => void loadDesktopUpdateStatus(true)}
-                  disabled={desktopUpdateAction !== "idle"}
-                  className="text-[10px] font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-all bg-bg-hover/40 border border-border-subtle text-tx-2 disabled:opacity-50"
-                >
-                  <RefreshCw size={11} className={desktopUpdateAction === "checking" ? "animate-spin" : ""} />
-                  {desktopUpdateAction === "checking" ? "Checking..." : "Check for Updates"}
-                </button>
-                <button
-                  onClick={() => void handleInstallDesktopUpdate()}
-                  disabled={desktopUpdateAction !== "idle" || !desktopUpdateStatus?.available}
-                  className="text-[10px] font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-all bg-accent-glow border border-border-accent text-tx-1 disabled:opacity-50"
-                >
-                  <ArrowDownToLine size={11} className={desktopUpdateAction === "installing" ? "animate-bounce" : ""} />
-                  {desktopUpdateAction === "installing" ? "Installing..." : "Download & Restart"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── App Info ── */}
         {isMobileViewport && (
@@ -774,22 +477,12 @@ export default function SettingsModal({ open, onClose }: Props) {
 
         {/* ── Actions ── */}
         <div className="flex gap-2 pt-1">
-          <button className="btn-primary btn flex-1 disabled:opacity-60" onClick={handleSave} disabled={isSaving}>
-            <Save size={12} />{isSaving ? "Saving..." : "Save Settings"}
+          <button className="btn-primary btn flex-1" onClick={handleSave}>
+            <Save size={12} />Save Settings
           </button>
-          <button className="btn-ghost btn" onClick={onClose} disabled={isSaving}>Cancel</button>
+          <button className="btn-ghost btn" onClick={onClose}>Cancel</button>
         </div>
-        </div>
-      </Modal>
-      <AvatarCropModal
-        open={!!cropSource}
-        source={cropSource}
-        onCancel={() => setCropSource(null)}
-        onApply={(croppedDataUrl) => {
-          setAvatarUrl(croppedDataUrl);
-          setCropSource(null);
-        }}
-      />
-    </>
+      </div>
+    </Modal>
   );
 }

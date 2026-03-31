@@ -1,56 +1,36 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Bell, X, RefreshCw, AlertTriangle, Check, Landmark, PiggyBank, Briefcase } from "lucide-react";
+import { Bell, X, RefreshCw, AlertTriangle, Check } from "lucide-react";
 import { useAppData } from "@/lib/store";
-import { buildAppNotifications, buildRawAppNotifications, getNotificationCount } from "@/lib/notifications";
+import { fmtGBP } from "@/lib/utils";
+
+function daysUntil(dateStr: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + "T00:00:00");
+  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function fmtRenewalDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
 
 export default function NotificationBell({ collapsed }: { collapsed: boolean }) {
-  const { data, update } = useAppData();
+  const { data } = useAppData();
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
-  const notifications = useMemo(() => buildAppNotifications(data), [data]);
-  const dismissedCount = data.userSettings?.dismissedNotificationIds?.length ?? 0;
-  const count = notifications.length;
 
-  function dismissNotification(id: string) {
-    update((prev) => {
-      const existing = prev.userSettings?.dismissedNotificationIds ?? [];
-      if (existing.includes(id)) return prev;
-      return {
-        ...prev,
-        userSettings: {
-          ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }),
-          dismissedNotificationIds: [...existing, id],
-        },
-      };
-    });
-  }
+  const leadDays = data.userSettings?.subscriptionRenewalDays ?? 7;
 
-  function resetDismissedNotifications() {
-    update((prev) => {
-      if (!prev.userSettings?.dismissedNotificationIds?.length) return prev;
-      return {
-        ...prev,
-        userSettings: {
-          ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }),
-          dismissedNotificationIds: [],
-        },
-      };
-    });
-  }
+  const upcoming = (data.subscriptions ?? [])
+    .map((sub) => ({ ...sub, daysLeft: daysUntil(sub.nextRenewal) }))
+    .filter((sub) => sub.daysLeft >= 0 && sub.daysLeft <= leadDays)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
 
-  function dismissAllNotifications() {
-    const allIds = buildRawAppNotifications(data).map((notification) => notification.id);
-    update((prev) => ({
-      ...prev,
-      userSettings: {
-        ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }),
-        dismissedNotificationIds: allIds,
-      },
-    }));
-  }
+  const count = upcoming.length;
 
   const computePos = useCallback(() => {
     if (!btnRef.current) return;
@@ -140,49 +120,30 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
             </span>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {count > 0 && (
-            <button
-              onClick={dismissAllNotifications}
-              style={{
-                padding: "3px 7px",
-                borderRadius: 999,
-                color: "var(--tx-3)",
-                background: "rgba(var(--surface-rgb),0.04)",
-                border: "1px solid rgba(var(--border-rgb),0.08)",
-                cursor: "pointer",
-                fontSize: 9,
-                fontWeight: 700,
-              }}
-            >
-              Dismiss all
-            </button>
-          )}
-          <button
-            onClick={() => setOpen(false)}
-            style={{
-              width: 20,
-              height: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 4,
-              color: "var(--tx-4)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-            }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--tx-1)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--tx-4)")}
-          >
-            <X size={11} />
-          </button>
-        </div>
+        <button
+          onClick={() => setOpen(false)}
+          style={{
+            width: 20,
+            height: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 4,
+            color: "var(--tx-4)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--tx-1)")}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--tx-4)")}
+        >
+          <X size={11} />
+        </button>
       </div>
 
       {/* List */}
       <div style={{ maxHeight: 260, overflowY: "auto" }}>
-        {notifications.length === 0 ? (
+        {upcoming.length === 0 ? (
           <div
             style={{
               display: "flex",
@@ -208,31 +169,20 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
             </div>
             <p style={{ fontSize: 12, fontWeight: 500, color: "var(--tx-3)", margin: 0 }}>All clear</p>
             <p style={{ fontSize: 10, color: "var(--tx-4)", textAlign: "center", margin: 0 }}>
-              No urgent alerts across subscriptions, prop risk, debt, or tax.
+              No renewals in the next {leadDays} day{leadDays !== 1 ? "s" : ""}
             </p>
           </div>
         ) : (
           <div style={{ padding: "4px 0" }}>
-            {notifications.map((item) => {
-              const dotColor =
-                item.severity === "critical"
-                  ? "var(--color-loss)"
-                  : item.severity === "warn"
-                    ? "var(--color-warn)"
-                    : "var(--color-blue)";
-
-              const Icon =
-                item.category === "subscription"
-                  ? RefreshCw
-                  : item.category === "prop"
-                    ? Briefcase
-                    : item.category === "debt"
-                      ? Landmark
-                      : PiggyBank;
+            {upcoming.map((sub) => {
+              const isUrgent  = sub.daysLeft <= 2;
+              const isWarning = sub.daysLeft <= 5;
+              const dotColor  = isUrgent ? "var(--color-loss)" : isWarning ? "var(--color-warn)" : "var(--color-blue)";
+              const amount    = typeof sub.amount === "number" ? sub.amount : parseFloat(String(sub.amount)) || 0;
 
               return (
                 <div
-                  key={item.id}
+                  key={sub.id}
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
@@ -257,53 +207,26 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
                       border: `1px solid ${dotColor}30`,
                     }}
                   >
-                    {item.severity === "critical"
+                    {isUrgent
                       ? <AlertTriangle size={10} style={{ color: dotColor }} />
-                      : <Icon size={10} style={{ color: dotColor }} />
+                      : <RefreshCw size={10} style={{ color: dotColor }} />
                     }
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 11, fontWeight: 600, color: "var(--tx-1)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {item.title}
+                      {sub.name}
                     </p>
                     <p style={{ fontSize: 10, color: "var(--tx-4)", margin: 0 }}>
-                      {item.detail}
+                      {fmtGBP(amount)}/{sub.frequency === "monthly" ? "mo" : sub.frequency === "yearly" ? "yr" : "wk"}
+                      {" · "}
+                      {fmtRenewalDate(sub.nextRenewal)}
                     </p>
                   </div>
                   <div style={{ flexShrink: 0, textAlign: "right" }}>
                     <p style={{ fontSize: 11, fontWeight: 900, color: dotColor, margin: 0, fontVariantNumeric: "tabular-nums" }}>
-                      {item.sideLabel}
+                      {sub.daysLeft === 0 ? "Today" : sub.daysLeft === 1 ? "Tomorrow" : `${sub.daysLeft}d`}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    aria-label={`Dismiss ${item.title}`}
-                    onClick={() => dismissNotification(item.id)}
-                    style={{
-                      width: 20,
-                      height: 20,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: 6,
-                      border: "1px solid rgba(var(--border-rgb),0.08)",
-                      background: "rgba(var(--surface-rgb),0.04)",
-                      color: "var(--tx-4)",
-                      cursor: "pointer",
-                      flexShrink: 0,
-                      marginTop: 1,
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.color = "var(--tx-1)";
-                      (e.currentTarget as HTMLElement).style.background = "rgba(var(--surface-rgb),0.08)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.color = "var(--tx-4)";
-                      (e.currentTarget as HTMLElement).style.background = "rgba(var(--surface-rgb),0.04)";
-                    }}
-                  >
-                    <X size={10} />
-                  </button>
                 </div>
               );
             })}
@@ -321,27 +244,8 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
           justifyContent: "space-between",
         }}
       >
-        <span style={{ fontSize: 9, color: "var(--tx-4)" }}>
-          {dismissedCount > 0 ? `${dismissedCount} dismissed` : "Operational alerts"}
-        </span>
-        {dismissedCount > 0 ? (
-          <button
-            type="button"
-            onClick={resetDismissedNotifications}
-            style={{
-              fontSize: 9,
-              color: "var(--tx-3)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            Reset dismissed
-          </button>
-        ) : (
-          <span style={{ fontSize: 9, color: "var(--tx-4)" }}>Sync + settings aware</span>
-        )}
+        <span style={{ fontSize: 9, color: "var(--tx-4)" }}>Alerting {leadDays}d ahead</span>
+        <span style={{ fontSize: 9, color: "var(--tx-4)" }}>Change in Settings ⚙</span>
       </div>
     </div>
   ) : null;

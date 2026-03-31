@@ -7,16 +7,6 @@ src-tauri/target/
 src-tauri/gen/
 *.log
 .factory-test-credentials
-.playwright-cli/
-.superpowers/
-.claude/
-output/
-release/
-.dev-server.log
-.dev-server.err.log
-CODEX_HANDOFF.local.md
-.factory/screenshots/
-.factory/*.png
 SYNC_AUDIT_REPORT.md
 MOBILE_UX_AUDIT.md
 FEATURE_AUDIT.md

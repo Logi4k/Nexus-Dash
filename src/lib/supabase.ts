@@ -15,17 +15,8 @@ export async function signOut(): Promise<void> {
 }
 
 export async function getSession() {
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("[supabase] getSession failed:", error.message);
-      return null;
-    }
-    return data.session ?? null;
-  } catch (error) {
-    console.error("[supabase] getSession threw:", error);
-    return null;
-  }
+  const { data } = await supabase.auth.getSession();
+  return data.session;
 }
 
 export function onAuthStateChange(callback: (event: string, session: unknown) => void) {

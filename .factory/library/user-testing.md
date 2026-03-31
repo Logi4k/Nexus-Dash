@@ -1,6 +1,6 @@
 # User Testing
 
-**What belongs here:** testing surface, required testing skills/tools, and resource cost classification per surface.
+**What belongs here:** Testing surface, required testing skills/tools, resource cost classification per surface.
 
 ---
 
@@ -8,45 +8,49 @@
 
 ### Browser (Primary)
 - **Tool:** agent-browser
-- **URL:** `http://localhost:1420`
-- **Auth:** use a local test account stored outside source control
-- **Desktop viewport:** default browser (`1440x900`)
-- **Mobile viewport:** `390x844`, mobile, touch
+- **URL:** http://localhost:1420 (Vite dev server)
+- **Auth:** test@nexus-dev.local / TestNexus2026! (from .factory-test-credentials)
+- **Desktop viewport:** Default browser (1440x900)
+- **Mobile viewport:** 390x844, mobile, touch (use agent-browser emulation)
 
 ### Starting the Dev Server
-From the repository root in PowerShell:
-```powershell
-npm run dev
+On Windows PowerShell:
 ```
-
-Verify:
-```powershell
+Start-Process cmd.exe -ArgumentList "/c","cd /d D:\6 Droid\New Version\nexus && npx vite --port 1420" -WindowStyle Hidden
+```
+Wait ~5 seconds, then verify with:
+```
 Invoke-WebRequest -Uri "http://localhost:1420" -UseBasicParsing -TimeoutSec 5
 ```
 
 ### Auth Flow
-1. Navigate to `http://localhost:1420`
-2. Wait for the login screen
-3. Use local test credentials from an ignored file or your own test account
-4. Click `Sign In`
-5. Confirm the dashboard loads
+1. Navigate to http://localhost:1420
+2. Login screen appears
+3. Fill email: test@nexus-dev.local
+4. Fill password: TestNexus2026!
+5. Click "Sign In"
+6. Dashboard loads
 
 ### Theme Testing
-- Toggle theme in the Settings modal
-- BW mode: `theme-bw` class on the root html element
-- Dark mode: default state
+- Toggle theme in Settings modal
+- BW mode: `theme-bw` class on html element
+- Dark mode: default (no class)
 
 ### Mobile Testing
-- Use a `390x844` mobile/touch viewport
-- Verify bottom navigation and FAB behavior
-- Test modal sheets, scroll behavior, and route transitions on phone-sized screens
+- Use agent-browser viewport emulation: 390x844, mobile, touch
+- Bottom tab bar at viewport bottom
+- Test swipe gestures via agent-browser drag actions
 
 ## Validation Concurrency
 
 ### agent-browser
-- Machine-dependent; keep concurrent validators low enough that the dev server stays responsive.
-- Default recommendation: **max 3** concurrent browser validators.
+- Machine: 16 GB RAM, 16 CPU cores, ~4 GB free at baseline
+- Per instance: ~300 MB RAM
+- Shared: Vite dev server ~200 MB
+- Usable headroom (70%): ~2.9 GB
+- **Max concurrent validators: 3**
+- Rationale: 3 * 300 MB + 200 MB = 1.1 GB, well within 2.9 GB budget
 
 ## Known Limitations
-- Tauri-specific features such as native updater flow, file export, and mobile packaging require the Tauri runtime and cannot be fully verified in the plain browser dev server.
-- In web dev mode, Tauri plugins are unavailable. Features that use native wrappers should be validated via native builds or code inspection.
+- Tauri-specific features (push notifications, file export) cannot be tested in browser — they require the native Tauri runtime. These assertions should be verified via code inspection and TypeScript compilation rather than runtime testing.
+- The dev server runs Vite (web only), not Tauri dev. Tauri plugins (fs, http, shell) won't be available. Features using `tauriFetch` will fall back to native fetch in dev mode.

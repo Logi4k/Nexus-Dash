@@ -199,12 +199,12 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
           {!isCollapsed ? (
             <div className="flex items-center gap-2">
               {/* Avatar */}
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 font-black text-sm select-none overflow-hidden"
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-xs select-none overflow-hidden"
                 style={avatarUrl ? {} : { background: avatarColor + "20", border: `1.5px solid ${avatarColor}50`, color: avatarColor }}>
                 {avatarUrl ? <img src={avatarUrl} alt={username} className="w-full h-full object-cover" /> : initials}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold truncate" style={{ color: "var(--tx-1)" }}>{username}</p>
+                <p className="text-xs font-semibold truncate" style={{ color: "var(--tx-1)" }}>{username}</p>
                 <p className="text-[10px]" style={{ color: "var(--tx-4)" }}>{dateStr} | {timeStr}</p>
               </div>
               <div className="flex items-center gap-1">
@@ -220,7 +220,7 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1.5">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm select-none overflow-hidden"
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs select-none overflow-hidden"
                 style={avatarUrl ? {} : { background: avatarColor + "20", border: `1.5px solid ${avatarColor}50`, color: avatarColor }}
                 title={username}>
                 {avatarUrl ? <img src={avatarUrl} alt={username} className="w-full h-full object-cover" /> : initials}

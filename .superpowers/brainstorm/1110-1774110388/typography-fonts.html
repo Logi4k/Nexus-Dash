@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #111;
+    --text: #f0f0f0;
+    --muted: #999;
+    --border: rgba(255,255,255,0.1);
+  }
+  body {
+    background: #0e0e14;
+    color: #f0f0f0;
+    padding: 32px 24px;
+    font-size: 14px;
+  }
+  h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #f8fafc; letter-spacing: -0.02em; font-family: system-ui; }
+  .subtitle { color: rgba(255,255,255,0.45); margin-bottom: 28px; font-size: 13px; font-family: system-ui; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+
+  .card {
+    background: #0a0c18;
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.2); }
+  .card.selected { border-color: rgba(251,191,36,0.6); }
+
+  .card-label {
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: system-ui;
+  }
+  .card-label .name { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.08em; }
+  .card-label .desc { font-size: 10px; color: rgba(255,255,255,0.3); }
+  .card-label .badge {
+    padding: 2px 8px;
+    background: rgba(251,191,36,0.12);
+    border: 1px solid rgba(251,191,36,0.25);
+    border-radius: 20px;
+    font-size: 9px;
+    color: #fbbf24;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .card.selected .badge { opacity: 1; }
+
+  .card-body { padding: 18px; background: #070810; }
+
+  /* Font A: Plus Jakarta Sans */
+  .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+  /* Font B: Space Grotesk */
+  .font-grotesk { font-family: 'Space Grotesk', sans-serif; }
+  /* Font C: DM Sans */
+  .font-dm { font-family: 'DM Sans', sans-serif; }
+  /* Font D: Outfit */
+  .font-outfit { font-family: 'Outfit', sans-serif; }
+
+  .demo-page-label { font-size: 11px; font-weight: 600; color: rgba(251,191,36,0.65); margin-bottom: 4px; letter-spacing: 0.03em; }
+  .demo-page-title { font-size: 22px; font-weight: 800; color: #f8fafc; letter-spacing: -0.02em; margin-bottom: 14px; }
+
+  .demo-stat {
+    background: rgba(251,191,36,0.07);
+    border: 1px solid rgba(251,191,36,0.14);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .demo-stat-label { font-size: 11px; font-weight: 500; color: rgba(251,191,36,0.6); margin-bottom: 4px; }
+  .demo-stat-value { font-size: 26px; font-weight: 800; color: #f8fafc; letter-spacing: -0.03em; line-height: 1; }
+  .demo-stat-sub { font-size: 12px; color: #4ade80; font-weight: 500; margin-top: 4px; }
+
+  .demo-body { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 10px; font-weight: 400; }
+  .demo-note-title { font-size: 14px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; letter-spacing: -0.01em; }
+
+  .demo-pills { display: flex; gap: 6px; }
+  .demo-pill-active {
+    padding: 5px 13px;
+    background: rgba(251,191,36,0.14);
+    border: 1px solid rgba(251,191,36,0.28);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fbbf24;
+  }
+  .demo-pill {
+    padding: 5px 13px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 500;
+  }
+
+  .table-demo { border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; overflow: hidden; margin-top: 10px; }
+  .table-head { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; padding: 8px 14px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .table-head div { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35); }
+  .table-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; padding: 10px 14px; }
+  .table-row div { font-size: 13px; color: rgba(255,255,255,0.65); font-weight: 400; }
+  .table-row .hi { color: #f8fafc; font-weight: 600; }
+  .table-row .green { color: #4ade80; font-weight: 700; }
+
+  .note { margin-top: 12px; font-size: 10px; color: rgba(255,255,255,0.25); font-family: system-ui; font-style: italic; text-align: center; }
+
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+</style>
+<script>
+  function toggleSelect(card) {
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    if (window.__selectChoice) window.__selectChoice(card.dataset.choice, card.querySelector('.card-label .name').textContent);
+  }
+</script>
+</head>
+<body>
+
+<h2>Typography — Font Direction</h2>
+<p class="subtitle">Same layout, four different font families. Which feels right for the app?</p>
+
+<div class="grid">
+
+  <!-- A: Plus Jakarta Sans -->
+  <div class="card" data-choice="jakarta" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div>
+        <div class="name">A — Plus Jakarta Sans</div>
+        <div class="desc">Modern geometric · Used by Revolut, Vercel</div>
+      </div>
+      <div class="badge">Selected ✓</div>
+    </div>
+    <div class="card-body font-jakarta">
+      <div class="demo-page-label">Journal</div>
+      <div class="demo-page-title">Trade Log</div>
+      <div class="demo-stat">
+        <div class="demo-stat-label">Net Worth</div>
+        <div class="demo-stat-value">£24,830</div>
+        <div class="demo-stat-sub">↑ 4.2% this month</div>
+      </div>
+      <div class="demo-note-title">LLM Trading Signals</div>
+      <div class="demo-body">GPT-4 pattern recognition shows strong potential for systematic entries on tick data windows above 500 contracts.</div>
+      <div class="demo-pills">
+        <div class="demo-pill-active">1M</div>
+        <div class="demo-pill">All</div>
+        <div class="demo-pill">1W</div>
+      </div>
+      <div class="table-demo">
+        <div class="table-head"><div>Date</div><div>Instrument</div><div>Direction</div><div>P&amp;L</div></div>
+        <div class="table-row"><div>21 Mar</div><div class="hi">NQ</div><div class="green">Long</div><div class="green">+£420</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B: Space Grotesk -->
+  <div class="card" data-choice="grotesk" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div>
+        <div class="name">B — Space Grotesk</div>
+        <div class="desc">Technical, distinctive · Has character</div>
+      </div>
+      <div class="badge">Selected ✓</div>
+    </div>
+    <div class="card-body font-grotesk">
+      <div class="demo-page-label">Journal</div>
+      <div class="demo-page-title">Trade Log</div>
+      <div class="demo-stat">
+        <div class="demo-stat-label">Net Worth</div>
+        <div class="demo-stat-value">£24,830</div>
+        <div class="demo-stat-sub">↑ 4.2% this month</div>
+      </div>
+      <div class="demo-note-title">LLM Trading Signals</div>
+      <div class="demo-body">GPT-4 pattern recognition shows strong potential for systematic entries on tick data windows above 500 contracts.</div>
+      <div class="demo-pills">
+        <div class="demo-pill-active">1M</div>
+        <div class="demo-pill">All</div>
+        <div class="demo-pill">1W</div>
+      </div>
+      <div class="table-demo">
+        <div class="table-head"><div>Date</div><div>Instrument</div><div>Direction</div><div>P&amp;L</div></div>
+        <div class="table-row"><div>21 Mar</div><div class="hi">NQ</div><div class="green">Long</div><div class="green">+£420</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C: DM Sans -->
+  <div class="card" data-choice="dm" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div>
+        <div class="name">C — DM Sans</div>
+        <div class="desc">Clean & neutral · Highly readable at all sizes</div>
+      </div>
+      <div class="badge">Selected ✓</div>
+    </div>
+    <div class="card-body font-dm">
+      <div class="demo-page-label">Journal</div>
+      <div class="demo-page-title">Trade Log</div>
+      <div class="demo-stat">
+        <div class="demo-stat-label">Net Worth</div>
+        <div class="demo-stat-value">£24,830</div>
+        <div class="demo-stat-sub">↑ 4.2% this month</div>
+      </div>
+      <div class="demo-note-title">LLM Trading Signals</div>
+      <div class="demo-body">GPT-4 pattern recognition shows strong potential for systematic entries on tick data windows above 500 contracts.</div>
+      <div class="demo-pills">
+        <div class="demo-pill-active">1M</div>
+        <div class="demo-pill">All</div>
+        <div class="demo-pill">1W</div>
+      </div>
+      <div class="table-demo">
+        <div class="table-head"><div>Date</div><div>Instrument</div><div>Direction</div><div>P&amp;L</div></div>
+        <div class="table-row"><div>21 Mar</div><div class="hi">NQ</div><div class="green">Long</div><div class="green">+£420</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D: Outfit -->
+  <div class="card" data-choice="outfit" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div>
+        <div class="name">D — Outfit</div>
+        <div class="desc">Geometric & bold · Confident, modern fintech</div>
+      </div>
+      <div class="badge">Selected ✓</div>
+    </div>
+    <div class="card-body font-outfit">
+      <div class="demo-page-label">Journal</div>
+      <div class="demo-page-title">Trade Log</div>
+      <div class="demo-stat">
+        <div class="demo-stat-label">Net Worth</div>
+        <div class="demo-stat-value">£24,830</div>
+        <div class="demo-stat-sub">↑ 4.2% this month</div>
+      </div>
+      <div class="demo-note-title">LLM Trading Signals</div>
+      <div class="demo-body">GPT-4 pattern recognition shows strong potential for systematic entries on tick data windows above 500 contracts.</div>
+      <div class="demo-pills">
+        <div class="demo-pill-active">1M</div>
+        <div class="demo-pill">All</div>
+        <div class="demo-pill">1W</div>
+      </div>
+      <div class="table-demo">
+        <div class="table-head"><div>Date</div><div>Instrument</div><div>Direction</div><div>P&amp;L</div></div>
+        <div class="table-row"><div>21 Mar</div><div class="hi">NQ</div><div class="green">Long</div><div class="green">+£420</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="font-family:system-ui;font-size:11px;color:rgba(255,255,255,0.3);text-align:center;">Click a card to select · Or tell me in the terminal if none feel right and I'll show more options</p>
+
+</body>
+</html>

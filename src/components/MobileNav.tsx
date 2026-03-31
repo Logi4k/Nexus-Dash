@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase,
+  Camera,
   Landmark,
   LayoutGrid,
   Lightbulb,
@@ -18,18 +19,14 @@ import {
   MoreHorizontal,
   X,
   Search,
-  RefreshCw,
 } from "lucide-react";
-import { toast } from "sonner";
 import { PAGE_THEMES, type PageTheme } from "@/lib/theme";
-import { syncNow, useAppData, useSyncStatus } from "@/lib/store";
+import { useAppData } from "@/lib/store";
 import NotificationBell from "@/components/NotificationBell";
 import SettingsModal from "@/components/SettingsModal";
 import { DEFAULT_MOBILE_NAV_ITEMS, MOBILE_NAV_OPTIONS, sanitizeMobileNavItems } from "@/lib/mobileNav";
-import type { QuickAction } from "@/lib/quickActions";
-import { getNotificationCount } from "@/lib/notifications";
 import type { MobileNavItemId } from "@/types";
-import { signOut } from "@/lib/supabase";
+import { getSession, signOut } from "@/lib/supabase";
 
 const ICONS: Record<MobileNavItemId, ElementType> = {
   dashboard: LayoutGrid,
@@ -44,16 +41,13 @@ const ICONS: Record<MobileNavItemId, ElementType> = {
 };
 
 const FAB_ACTIONS = [
-  { label: "Log Trade",   path: "/journal",  action: "addTrade",   color: "#8b5cf6", Icon: NotebookPen },
-  { label: "Add Expense", path: "/expenses", action: "addExpense", color: "#ef4444", Icon: Receipt },
-  { label: "Log Payout",  path: "/prop",     action: "logPayout",  color: "#22c55e", Icon: Wallet },
-  { label: "Add Account", path: "/prop",     action: "addAccount", color: "#3b82f6", Icon: Briefcase },
+  { label: "Log Trade",   path: "/journal",  state: { action: "addTrade" },    color: "#8b5cf6", Icon: NotebookPen },
+  { label: "Add Expense", path: "/expenses", state: { action: "addExpense" },  color: "#ef4444", Icon: Receipt },
+  { label: "Log Payout",  path: "/prop",     state: { action: "logPayout" },   color: "#22c55e", Icon: Wallet },
+  { label: "Add Account", path: "/prop",     state: { action: "addAccount" },  color: "#3b82f6", Icon: Briefcase },
 ] as const;
 
 const SLIDE_TRANSITION = { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
-const FAB_BOTTOM = "calc(env(safe-area-inset-bottom) + 1rem)";
-const FAB_STACK_BOTTOM = "calc(env(safe-area-inset-bottom) + 4.8rem)";
-const FAB_VISIBLE_LIFT = 58;
 
 function Avatar({ avatarUrl, username, avatarColor, size }: {
   avatarUrl?: string;
@@ -85,26 +79,26 @@ function Avatar({ avatarUrl, username, avatarColor, size }: {
 
 export default function MobileNav({
   onOpenCommandPalette,
-  onQuickAction,
   navVisible = true,
 }: {
   onOpenCommandPalette?: () => void;
-  onQuickAction?: (action: QuickAction) => void;
   navVisible?: boolean;
 }) {
   const loc = useLocation();
   const navigate = useNavigate();
   const { data } = useAppData();
-  const syncStatus = useSyncStatus();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const fabRef = useRef<HTMLDivElement>(null);
-  const fabLiftY = navVisible ? -FAB_VISIBLE_LIFT : 0;
-  const notificationCount = getNotificationCount(data);
-  const showNotificationBell = notificationCount > 0;
+
+  // Fetch email once on mount
+  useEffect(() => {
+    getSession().then((s) => setUserEmail(s?.user.email ?? null)).catch(() => {});
+  }, []);
 
   // Dismiss panel on click/tap outside
   useEffect(() => {
@@ -130,44 +124,10 @@ export default function MobileNav({
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [fabOpen]);
 
-  useEffect(() => {
-    if (!fabOpen) return;
-    if (panelOpen || moreOpen || settingsOpen) {
-      setFabOpen(false);
-    }
-  }, [fabOpen, panelOpen, moreOpen, settingsOpen]);
-
-  useEffect(() => {
-    setFabOpen(false);
-    setPanelOpen(false);
-    setMoreOpen(false);
-  }, [loc.pathname]);
-
   function handleFabAction(action: typeof FAB_ACTIONS[number]) {
+    navigate(action.path, { state: action.state });
     setFabOpen(false);
-    if (onQuickAction) {
-      onQuickAction(action.action as QuickAction);
-      return;
-    }
-    navigate(action.path);
   }
-
-  async function handleSyncNow() {
-    if (syncStatus.syncInFlight) return;
-    if (await syncNow()) {
-      toast.success("Sync complete");
-    } else {
-      toast.error("Sync is unavailable right now");
-    }
-  }
-
-  const syncLabel = syncStatus.lastError
-    ? "Sync issue"
-    : syncStatus.syncInFlight
-      ? "Syncing..."
-      : syncStatus.syncedAt
-        ? `Synced ${new Date(syncStatus.syncedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
-        : "Sync ready";
 
   const rowStyle: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 8,
@@ -234,16 +194,46 @@ export default function MobileNav({
     <>
       {/* Nav bar + FAB wrapped in a single animated container */}
       <motion.div
-        animate={{ y: navVisible ? 0 : 108, opacity: navVisible ? 1 : 0.92 }}
+        animate={{ y: navVisible ? 0 : 120 }}
         transition={SLIDE_TRANSITION}
         className="md:hidden"
         style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50 }}
       >
         <nav
           className="px-3 pb-[calc(env(safe-area-inset-bottom)+0.7rem)] pt-2"
+          style={{
+            background: "rgb(var(--bg-base-rgb))",
+          }}
         >
+          <div className="mx-auto mb-2 flex justify-end" style={{ maxWidth: 430 }}>
+            <div className="flex items-center gap-2">
+              <NotificationBell collapsed={false} />
+              <button
+                type="button"
+                onClick={() => setPanelOpen((o) => !o)}
+                style={{
+                  width: 34, height: 34,
+                  borderRadius: "50%",
+                  border: "2px solid rgba(99,102,241,0.45)",
+                  padding: 0, overflow: "hidden",
+                  background: "transparent", cursor: "pointer",
+                  boxShadow: panelOpen ? "0 0 0 3px rgba(99,102,241,0.25)" : "none",
+                  flexShrink: 0,
+                }}
+                aria-label="Open account panel"
+              >
+                <Avatar
+                  avatarUrl={data.userProfile?.avatarUrl}
+                  username={data.userProfile?.username ?? "Trader"}
+                  avatarColor={data.userProfile?.avatarColor}
+                  size={30}
+                />
+              </button>
+            </div>
+          </div>
+
           <div
-            className="mx-auto flex items-center gap-1 px-2 py-2 rounded-[24px] w-fit max-w-[calc(100vw-2rem)]"
+            className="mx-auto flex items-center gap-1 px-2 py-2 rounded-[24px] w-fit"
             style={{
               background: `rgba(var(--bg-card-rgb),0.95)`,
               border: "1px solid rgba(var(--border-rgb),0.08)",
@@ -263,7 +253,7 @@ export default function MobileNav({
             {/* More / All Pages Button */}
             <button
               type="button"
-              onClick={() => { setPanelOpen(false); setFabOpen(false); setMoreOpen(true); }}
+              onClick={() => setMoreOpen(true)}
               className="flex flex-col items-center gap-0.5 min-w-[44px] min-h-[44px] justify-center"
               aria-label="All pages"
             >
@@ -279,95 +269,111 @@ export default function MobileNav({
               Array.from({ length: 2 - rightItems.length }, (_, index) => (
                 <div key={`right-empty-${index}`} className="min-w-[44px]" />
               ))}
-
-            {showNotificationBell && (
-              <>
-                <div style={{ width: 1, height: 24, background: "rgba(var(--border-rgb),0.12)", flexShrink: 0, marginLeft: 4, marginRight: 4 }} />
-                <div className="flex items-center justify-center min-w-[36px]">
-                  <NotificationBell collapsed={false} />
-                </div>
-              </>
-            )}
-
-            {/* Profile avatar */}
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => {
-                setMoreOpen(false);
-                setFabOpen(false);
-                setPanelOpen((o) => !o);
-              }}
-              style={{
-                width: 42, height: 42,
-                minWidth: 42,
-                borderRadius: "50%",
-                border: "2px solid rgba(99,102,241,0.35)",
-                padding: 0, overflow: "hidden",
-                background: "transparent", cursor: "pointer",
-              boxShadow: panelOpen ? "0 0 0 3px rgba(99,102,241,0.25)" : "none",
-              flexShrink: 0,
-                transition: "box-shadow 0.2s ease",
-              }}
-              aria-label="Open account panel"
-            >
-              <Avatar
-                avatarUrl={data.userProfile?.avatarUrl}
-                username={data.userProfile?.username ?? "Trader"}
-                avatarColor={data.userProfile?.avatarColor}
-                size={38}
-              />
-            </button>
           </div>
 
+          <AnimatePresence>
+            {panelOpen && (
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+                exit={{ opacity: 0, y: 6, scale: 0.97, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } }}
+                style={{
+                  position: "fixed",
+                  bottom: "calc(env(safe-area-inset-bottom) + 5.5rem)",
+                  right: "0.75rem",
+                  width: 210,
+                  background: `rgba(var(--bg-card-rgb),0.98)`,
+                  border: "1px solid rgba(var(--border-rgb),0.1)",
+                  borderRadius: 16,
+                  padding: "12px 10px",
+                  boxShadow: "0 16px 40px rgba(0,0,0,0.7)",
+                  zIndex: 60,
+                }}
+              >
+                {/* Avatar + name/email */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  paddingBottom: 10,
+                  borderBottom: "1px solid rgba(var(--border-rgb),0.06)",
+                  marginBottom: 6,
+                }}>
+                  <Avatar
+                    avatarUrl={data.userProfile?.avatarUrl}
+                    username={data.userProfile?.username ?? "Trader"}
+                    avatarColor={data.userProfile?.avatarColor}
+                    size={36}
+                  />
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--tx-1)" }}>
+                      {data.userProfile?.username ?? "Trader"}
+                    </div>
+                    {userEmail && (
+                      <div style={{ fontSize: 10, color: "var(--tx-4)", marginTop: 1 }}>
+                        {userEmail}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Settings */}
+                <button
+                  type="button"
+                  style={rowStyle}
+                  onClick={() => { setPanelOpen(false); setSettingsOpen(true); }}
+                >
+                  <Settings size={13} /> Settings
+                </button>
+
+                {/* Change Photo */}
+                <button
+                  type="button"
+                  style={rowStyle}
+                  onClick={() => { setPanelOpen(false); setSettingsOpen(true); }}
+                >
+                  <Camera size={13} /> Change Photo
+                </button>
+
+                {/* Sign Out */}
+                <button
+                  type="button"
+                  style={{ ...rowStyle, color: "var(--color-loss)" }}
+                  onClick={async () => { await signOut(); window.location.reload(); }}
+                >
+                  <LogOut size={13} /> Sign Out
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </nav>
       </motion.div>
 
       {/* FAB — outside the animated nav wrapper so it is never affected by the translateY transform */}
       <div ref={fabRef} className="md:hidden">
-        <AnimatePresence>
-          {fabOpen && (
-            <motion.button
-              type="button"
-              aria-label="Close quick actions"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-[48] md:hidden"
-              style={{ background: "rgba(4, 8, 14, 0.22)", backdropFilter: "blur(3px)" }}
-              onClick={() => setFabOpen(false)}
-            />
-          )}
-        </AnimatePresence>
-
         {/* Action items stacked above FAB */}
         <AnimatePresence>
           {fabOpen && (
             <motion.div
-              initial={{ opacity: 0, y: fabLiftY + 18 }}
-              animate={{ opacity: 1, y: fabLiftY }}
-              exit={{ opacity: 0, y: fabLiftY + 10 }}
-              transition={SLIDE_TRANSITION}
-              className="fixed right-4 z-50 flex flex-col items-end gap-2.5 md:hidden"
-              style={{ bottom: FAB_STACK_BOTTOM }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed right-4 z-50 flex flex-col items-end gap-2 md:hidden"
+              style={{ bottom: "calc(env(safe-area-inset-bottom) + 9.5rem)" }}
             >
               {FAB_ACTIONS.map((action, i) => (
                 <motion.button
                   key={action.label}
-                  type="button"
                   initial={{ opacity: 0, y: 16, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
                   transition={{ delay: i * 0.05, duration: 0.2 }}
                   onClick={() => handleFabAction(action)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-[22px]"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
                   style={{
-                    background: `rgba(var(--bg-card-rgb), 0.95)`,
-                    backdropFilter: "blur(18px)",
-                    border: `1px solid ${action.color}60`,
-                    boxShadow: `0 12px 28px rgba(0,0,0,0.28), 0 6px 16px ${action.color}18`,
-                    minWidth: 172,
+                    background: `${action.color}20`,
+                    border: `1px solid ${action.color}35`,
+                    boxShadow: `0 4px 12px ${action.color}25`,
+                    minWidth: 160,
                   }}
                 >
                   <action.Icon size={16} style={{ color: action.color }} />
@@ -381,19 +387,17 @@ export default function MobileNav({
         {/* FAB button */}
         <motion.button
           type="button"
-          animate={{ y: fabLiftY }}
-          transition={SLIDE_TRANSITION}
           whileTap={{ scale: 0.92 }}
           onClick={() => setFabOpen((o) => !o)}
           aria-label={fabOpen ? "Close quick actions" : "Open quick actions"}
           className="fixed right-4 z-[51] flex items-center justify-center rounded-full md:hidden"
           style={{
-            bottom: FAB_BOTTOM,
+            bottom: "calc(env(safe-area-inset-bottom) + 8rem)",
             width: 52,
             height: 52,
             background: "var(--tx-1)",
             color: "var(--bg-base)",
-            boxShadow: fabOpen ? "0 10px 28px rgba(0,0,0,0.42)" : "0 6px 22px rgba(0,0,0,0.32)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
           }}
         >
           <motion.div
@@ -404,84 +408,6 @@ export default function MobileNav({
           </motion.div>
         </motion.button>
       </div>
-
-      {/* Profile panel — outside the animated nav div so CSS transform doesn't trap its z-index */}
-      <AnimatePresence>
-        {panelOpen && (
-          <motion.div
-            ref={panelRef}
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
-            exit={{ opacity: 0, y: 6, scale: 0.97, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } }}
-            style={{
-              position: "fixed",
-              bottom: navVisible
-                ? "calc(env(safe-area-inset-bottom) + 5.3rem)"
-                : "calc(env(safe-area-inset-bottom) + 1rem)",
-              right: "0.75rem",
-              width: 228,
-              background: `rgba(var(--bg-card-rgb),0.98)`,
-              border: "1px solid rgba(var(--border-rgb),0.1)",
-              borderRadius: 16,
-              padding: "12px 10px",
-              boxShadow: "0 16px 40px rgba(0,0,0,0.7)",
-              zIndex: 200,
-              transition: "bottom 0.24s cubic-bezier(0.22, 1, 0.36, 1)",
-            }}
-          >
-            {/* Avatar + name */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 10,
-              paddingBottom: 10,
-              borderBottom: "1px solid rgba(var(--border-rgb),0.06)",
-              marginBottom: 6,
-            }}>
-              <Avatar
-                avatarUrl={data.userProfile?.avatarUrl}
-                username={data.userProfile?.username ?? "Trader"}
-                avatarColor={data.userProfile?.avatarColor}
-                size={46}
-              />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--tx-1)" }}>
-                  {data.userProfile?.username ?? "Trader"}
-                </div>
-                <div style={{ fontSize: 10, color: "var(--tx-4)", marginTop: 1 }}>
-                  {syncLabel}
-                </div>
-              </div>
-            </div>
-
-            {/* Settings */}
-            <button
-              type="button"
-              style={rowStyle}
-              onClick={() => { setPanelOpen(false); setSettingsOpen(true); }}
-            >
-              <Settings size={13} /> Settings
-            </button>
-
-            {/* Sync Now */}
-            <button
-              type="button"
-              style={rowStyle}
-              onClick={handleSyncNow}
-              disabled={syncStatus.syncInFlight}
-            >
-              <RefreshCw size={13} className={syncStatus.syncInFlight ? "animate-spin" : ""} /> {syncStatus.syncInFlight ? "Syncing..." : "Sync Now"}
-            </button>
-
-            {/* Sign Out */}
-            <button
-              type="button"
-              style={{ ...rowStyle, color: "var(--color-loss)" }}
-              onClick={async () => { await signOut(); window.location.reload(); }}
-            >
-              <LogOut size={13} /> Sign Out
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
@@ -512,8 +438,6 @@ export default function MobileNav({
                 boxShadow: "0 -8px 48px rgba(0,0,0,0.5)",
                 backdropFilter: "blur(20px)",
                 paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)",
-                maxHeight: "min(78vh, 680px)",
-                overflowY: "auto",
               }}
             >
               {/* Handle */}

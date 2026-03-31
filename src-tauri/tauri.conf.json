@@ -1,51 +1,44 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Nexus",
-  "version": "1.0.10",
-  "identifier": "com.nexus.trader",
-  "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
-    "beforeDevCommand": "npm run dev"
-  },
-  "app": {
-    "windows": [
-      {
-        "title": "Nexus — Trader Dashboard",
-        "width": 1440,
-        "height": 900,
-        "resizable": true,
-        "fullscreen": false,
-        "decorations": true,
-        "transparent": false
-      }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "createUpdaterArtifacts": false
-  },
-  "plugins": {
-    "fs": {
-      "requireLiteralLeadingDot": false
-    },
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExMjc5MzZFMjcwNjhDRkEKUldUNmpBWW5icE1uRVdzT0NYdGNVbk92Tll6MjRZYkdGbmcvZllmMjVJc1pJUWl3enRnTmlBcWgK",
-      "endpoints": [
-        "https://github.com/Logi4k/Nexus-Dash/releases/latest/download/latest.json"
-      ]
-    }
-  }
+    "$schema":  "https://schema.tauri.app/config/2",
+    "productName":  "Nexus",
+    "version":  "1.1.1",
+    "identifier":  "com.nexus.trader",
+    "build":  {
+                  "frontendDist":  "../dist",
+                  "devUrl":  "http://localhost:1420",
+                  "beforeBuildCommand":  "npm run build",
+                  "beforeDevCommand":  "npm run dev"
+              },
+    "app":  {
+                "windows":  [
+                                {
+                                    "title":  "Nexus — Trader Dashboard",
+                                    "width":  1440,
+                                    "height":  900,
+                                    "resizable":  true,
+                                    "fullscreen":  false,
+                                    "decorations":  true,
+                                    "transparent":  false
+                                }
+                            ],
+                "security":  {
+                                 "csp":  null
+                             }
+            },
+    "bundle":  {
+                   "active":  true,
+                   "targets":  "all",
+                   "icon":  [
+                                "icons/32x32.png",
+                                "icons/128x128.png",
+                                "icons/128x128@2x.png",
+                                "icons/icon.icns",
+                                "icons/icon.ico"
+                            ]
+               },
+    "plugins":  {
+                    "fs":  {
+                               "requireLiteralLeadingDot":  false
+                           }
+                }
 }

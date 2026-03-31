@@ -17,23 +17,6 @@ import { getSession } from "@/lib/supabase";
 import { initSupabaseSync } from "@/lib/store";
 import LoginScreen from "@/components/LoginScreen";
 
-function BootScreen() {
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-bg-base">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div
-          className="h-10 w-10 rounded-2xl animate-pulse"
-          style={{ background: "rgba(var(--surface-rgb),0.14)", border: "1px solid rgba(var(--border-rgb),0.12)" }}
-        />
-        <div>
-          <p className="text-sm font-semibold text-tx-1">Opening Nexus</p>
-          <p className="mt-1 text-xs text-tx-4">Restoring session and workspace state.</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ThemeApplier() {
   const { data } = useAppData();
   useEffect(() => {
@@ -88,47 +71,24 @@ export default function App() {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
-    let active = true;
-
-    void (async () => {
-      try {
-        const session = await getSession();
-        if (!active) return;
-
-        setHasSession(!!session);
-
-        if (session) {
-          try {
-            await initSupabaseSync();
-          } catch (error) {
-            console.error("[app] initSupabaseSync during bootstrap failed:", error);
-          }
-        }
-      } catch (error) {
-        console.error("[app] bootstrap failed:", error);
-        if (active) setHasSession(false);
-      } finally {
-        if (active) setAuthReady(true);
+    getSession().then(async (session) => {
+      if (session) {
+        await initSupabaseSync();
+        setHasSession(true);
       }
-    })();
-
-    return () => {
-      active = false;
-    };
+      setAuthReady(true);
+    });
   }, []);
 
-  if (!authReady) return <BootScreen />;
+  // Brief invisible wait while we check session (avoids login flash for returning users)
+  if (!authReady) return null;
 
   if (!hasSession) {
     return (
       <LoginScreen
         onSignIn={async () => {
+          await initSupabaseSync();
           setHasSession(true);
-          try {
-            await initSupabaseSync();
-          } catch (error) {
-            console.error("[app] initSupabaseSync after sign-in failed:", error);
-          }
         }}
       />
     );

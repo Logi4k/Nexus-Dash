@@ -1,0 +1,325 @@
+<h2>Mobile Nav Bar — Layout Options</h2>
+<p class="subtitle">Choose how the user icon and settings fit into the nav. All options keep the floating pill nav and safe-area fix.</p>
+
+<style>
+  .phone {
+    width: 200px;
+    height: 360px;
+    background: #070810;
+    border-radius: 28px;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .phone-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0 8px 12px;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 28px;
+    background: #070810;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.5);
+    z-index: 10;
+  }
+  .page-content {
+    position: absolute;
+    top: 28px; left: 0; right: 0;
+    bottom: 0;
+    background: #0a0d18;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .content-lines {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .line { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); }
+  .line.short { width: 40%; }
+  .line.medium { width: 65%; }
+  .line.long { width: 90%; }
+  .line.accent { background: rgba(99,102,241,0.18); width: 55%; }
+
+  /* Nav pill */
+  .nav-pill {
+    position: absolute;
+    bottom: 14px; left: 8px; right: 8px;
+    height: 52px;
+    background: rgba(13,16,24,0.92);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+  }
+  .nav-icon {
+    width: 28px; height: 28px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+  .nav-icon.active {
+    background: rgba(99,102,241,0.2);
+    border: 1px solid rgba(99,102,241,0.3);
+  }
+  .nav-icon.search-center {
+    width: 32px; height: 32px;
+    background: rgba(244,114,182,0.15);
+    border: 1px solid rgba(244,114,182,0.3);
+    border-radius: 12px;
+  }
+  .nav-label {
+    font-size: 7px;
+    color: rgba(255,255,255,0.35);
+    font-weight: 600;
+  }
+  .nav-label.active { color: #818cf8; }
+
+  /* Above-nav toolbar */
+  .above-nav {
+    position: absolute;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .toolbar-btn {
+    width: 30px; height: 30px;
+    background: rgba(13,16,24,0.88);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+  }
+  .toolbar-btn.user-btn {
+    background: rgba(99,102,241,0.15);
+    border-color: rgba(99,102,241,0.3);
+  }
+  .user-avatar {
+    width: 30px; height: 30px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.4), rgba(168,85,247,0.4));
+    border: 1px solid rgba(99,102,241,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    color: #c7d2fe;
+  }
+
+  /* User panel overlay */
+  .user-panel {
+    position: absolute;
+    bottom: 78px; right: 8px;
+    width: 140px;
+    background: rgba(13,16,24,0.97);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 10px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  }
+  .panel-email {
+    font-size: 8px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .panel-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 4px;
+    border-radius: 7px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+  }
+  .panel-item.danger { color: #f87171; }
+  .panel-item-icon { font-size: 10px; }
+
+  /* Option A: 5-slot nav with user replacing a slot */
+  .nav-user-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .cards { display: flex; flex-direction: column; gap: 16px; }
+  .card { cursor: pointer; }
+  .card-image { padding: 20px 20px 16px; display: flex; justify-content: center; }
+  .card-body { padding: 0 20px 20px; }
+  .card-body h3 { font-size: 15px; margin-bottom: 4px; }
+  .card-body p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
+
+  .option-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 6px;
+    background: rgba(99,102,241,0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99,102,241,0.25);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .option-badge.green {
+    background: rgba(34,197,94,0.12);
+    color: #4ade80;
+    border-color: rgba(34,197,94,0.2);
+  }
+  .option-badge.yellow {
+    background: rgba(251,191,36,0.12);
+    color: #fbbf24;
+    border-color: rgba(251,191,36,0.2);
+  }
+</style>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;gap:20px;align-items:flex-end">
+        <!-- Phone showing the panel open -->
+        <div class="phone">
+          <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+          <div class="page-content">
+            <div class="content-lines">
+              <div class="line accent"></div>
+              <div class="line long"></div>
+              <div class="line medium"></div>
+              <div class="line short"></div>
+              <div class="line long"></div>
+            </div>
+          </div>
+          <!-- User panel open -->
+          <div class="user-panel">
+            <div class="panel-email">phill@nexus.app</div>
+            <div class="panel-item"><span class="panel-item-icon">⚙️</span> Settings</div>
+            <div class="panel-item danger"><span class="panel-item-icon">↩</span> Sign Out</div>
+          </div>
+          <!-- Above nav: Bell + User avatar -->
+          <div class="above-nav" style="bottom:74px">
+            <div class="toolbar-btn">🔔</div>
+            <div class="user-avatar">P</div>
+          </div>
+          <div class="nav-pill">
+            <div class="nav-item"><div class="nav-icon active">⊞</div><div class="nav-label active">Dash</div></div>
+            <div class="nav-item"><div class="nav-icon">📈</div><div class="nav-label">Market</div></div>
+            <div class="nav-item"><div class="nav-icon search-center">🔍</div><div class="nav-label">Search</div></div>
+            <div class="nav-item"><div class="nav-icon">📓</div><div class="nav-label">Journal</div></div>
+            <div class="nav-item"><div class="nav-icon">💡</div><div class="nav-label">Ideas</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="option-badge green">Recommended</div>
+      <h3>A — User avatar replaces Settings gear</h3>
+      <p>Settings gear removed. User avatar (initials) takes its place above the nav. Tapping opens a panel: email, Settings link, Sign Out. Cleaner — one fewer button, everything in one place.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;gap:20px;align-items:flex-end">
+        <div class="phone">
+          <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+          <div class="page-content">
+            <div class="content-lines">
+              <div class="line accent"></div>
+              <div class="line long"></div>
+              <div class="line medium"></div>
+              <div class="line short"></div>
+            </div>
+          </div>
+          <!-- Above nav: Bell + User + Settings (3 items) -->
+          <div class="above-nav" style="bottom:74px">
+            <div class="toolbar-btn">🔔</div>
+            <div class="user-avatar">P</div>
+            <div class="toolbar-btn">⚙️</div>
+          </div>
+          <div class="nav-pill">
+            <div class="nav-item"><div class="nav-icon active">⊞</div><div class="nav-label active">Dash</div></div>
+            <div class="nav-item"><div class="nav-icon">📈</div><div class="nav-label">Market</div></div>
+            <div class="nav-item"><div class="nav-icon search-center">🔍</div><div class="nav-label">Search</div></div>
+            <div class="nav-item"><div class="nav-icon">📓</div><div class="nav-label">Journal</div></div>
+            <div class="nav-item"><div class="nav-icon">💡</div><div class="nav-label">Ideas</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="option-badge yellow">More buttons</div>
+      <h3>B — User avatar added alongside Settings</h3>
+      <p>Settings gear stays. User avatar added next to it — now 3 buttons above the nav (Bell, User, Settings). User tapping the avatar gets email + Sign Out only. Settings stays separate.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;gap:20px;align-items:flex-end">
+        <div class="phone">
+          <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+          <div class="page-content">
+            <div class="content-lines">
+              <div class="line accent"></div>
+              <div class="line long"></div>
+              <div class="line medium"></div>
+              <div class="line short"></div>
+            </div>
+          </div>
+          <!-- Above nav: Bell only (moved settings + user INTO the pill) -->
+          <div class="above-nav" style="bottom:74px">
+            <div class="toolbar-btn">🔔</div>
+          </div>
+          <!-- Nav pill with 6 slots: 2 + search + user + 2 -->
+          <div class="nav-pill" style="padding:0 2px">
+            <div class="nav-item"><div class="nav-icon active">⊞</div><div class="nav-label active">Dash</div></div>
+            <div class="nav-item"><div class="nav-icon">📈</div><div class="nav-label">Market</div></div>
+            <div class="nav-item"><div class="nav-icon search-center">🔍</div><div class="nav-label">Search</div></div>
+            <div class="nav-item">
+              <div class="nav-icon" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.25)">👤</div>
+              <div class="nav-label" style="color:#818cf8">You</div>
+            </div>
+            <div class="nav-item"><div class="nav-icon">📓</div><div class="nav-label">Journal</div></div>
+            <div class="nav-item"><div class="nav-icon">💡</div><div class="nav-label">Ideas</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="option-badge">Compact</div>
+      <h3>C — User slot inside the nav pill</h3>
+      <p>User profile becomes a permanent slot inside the pill (next to Search). Settings moves into the user panel. Only Bell stays above. More nav real estate used, but everything in one bar.</p>
+    </div>
+  </div>
+
+</div>

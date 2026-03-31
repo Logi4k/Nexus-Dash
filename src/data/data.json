@@ -1,55 +1,896 @@
 {
-  "expenses": [],
-  "genExpenses": [],
-  "withdrawals": [],
+  "expenses": [
+    {
+      "id": "e29",
+      "date": "2025-09-25",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 65.95,
+      "notes": ""
+    },
+    {
+      "id": "e30",
+      "date": "2025-09-25",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 66.07,
+      "notes": ""
+    },
+    {
+      "id": "e31",
+      "date": "2025-10-01",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 65.81,
+      "notes": ""
+    },
+    {
+      "id": "e32",
+      "date": "2025-10-08",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 65.48,
+      "notes": ""
+    },
+    {
+      "id": "e33",
+      "date": "2025-10-25",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 83.24,
+      "notes": ""
+    },
+    {
+      "id": "e34",
+      "date": "2025-10-31",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 52.65,
+      "notes": ""
+    },
+    {
+      "id": "e35",
+      "date": "2025-10-31",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 52.65,
+      "notes": ""
+    },
+    {
+      "id": "e36",
+      "date": "2025-11-27",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 87.35,
+      "notes": ""
+    },
+    {
+      "id": "e37",
+      "date": "2025-08-21",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 61.21,
+      "notes": ""
+    },
+    {
+      "id": "e38",
+      "date": "2025-09-16",
+      "description": "FundingTicks",
+      "cat": "account",
+      "amount": 74.49,
+      "notes": ""
+    },
+    {
+      "id": "e39",
+      "date": "2025-12-01",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 53.55,
+      "notes": "Orig $71.50"
+    },
+    {
+      "id": "e40",
+      "date": "2025-12-01",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 56.92,
+      "notes": "Orig $76.00"
+    },
+    {
+      "id": "e41",
+      "date": "2025-12-02",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 56.92,
+      "notes": "Orig $76.00"
+    },
+    {
+      "id": "e42",
+      "date": "2025-12-02",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 56.92,
+      "notes": "Orig $76.00"
+    },
+    {
+      "id": "e43",
+      "date": "2025-12-12",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 58.42,
+      "notes": "Orig $78.00"
+    },
+    {
+      "id": "e44",
+      "date": "2025-12-13",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 57.3,
+      "notes": "Orig $76.50"
+    },
+    {
+      "id": "e45",
+      "date": "2026-01-23",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 68.16,
+      "notes": "Orig $91.00"
+    },
+    {
+      "id": "e46",
+      "date": "2026-01-23",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 68.16,
+      "notes": "Orig $91.00"
+    },
+    {
+      "id": "e47",
+      "date": "2026-01-29",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 63.66,
+      "notes": "Orig $85.00"
+    },
+    {
+      "id": "e48",
+      "date": "2026-01-29",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 63.66,
+      "notes": "Orig $85.00"
+    },
+    {
+      "id": "e49",
+      "date": "2026-02-09",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 63.66,
+      "notes": "Orig $85.00"
+    },
+    {
+      "id": "e50",
+      "date": "2026-02-17",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 58.42,
+      "notes": "Orig $78.00"
+    },
+    {
+      "id": "e51",
+      "date": "2026-02-17",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 58.42,
+      "notes": "Orig $78.00"
+    },
+    {
+      "id": "e53",
+      "date": "2026-02-21",
+      "description": "Lucid Trading",
+      "cat": "account",
+      "amount": 48.69,
+      "notes": "Orig $65.00"
+    },
+    {
+      "id": "e56",
+      "date": "2025-08-18",
+      "description": "Maven Trading",
+      "cat": "account",
+      "amount": 157.14,
+      "notes": ""
+    },
+    {
+      "id": "e57",
+      "date": "2025-07-25",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 94.76,
+      "notes": ""
+    },
+    {
+      "id": "e58",
+      "date": "2025-07-31",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 81.61,
+      "notes": ""
+    },
+    {
+      "id": "e59",
+      "date": "2025-07-31",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 81.83,
+      "notes": ""
+    },
+    {
+      "id": "e60",
+      "date": "2025-08-02",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 82.34,
+      "notes": ""
+    },
+    {
+      "id": "e61",
+      "date": "2025-08-21",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 95.58,
+      "notes": ""
+    },
+    {
+      "id": "e62",
+      "date": "2025-09-03",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 96.06,
+      "notes": ""
+    },
+    {
+      "id": "e63",
+      "date": "2025-09-03",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 96.44,
+      "notes": ""
+    },
+    {
+      "id": "e64",
+      "date": "2025-09-05",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 90.11,
+      "notes": ""
+    },
+    {
+      "id": "e65",
+      "date": "2025-09-23",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 95.33,
+      "notes": ""
+    },
+    {
+      "id": "e66",
+      "date": "2025-09-24",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 89.48,
+      "notes": ""
+    },
+    {
+      "id": "e67",
+      "date": "2025-10-03",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 95.72,
+      "notes": ""
+    },
+    {
+      "id": "e68",
+      "date": "2025-11-09",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 92.96,
+      "notes": ""
+    },
+    {
+      "id": "e69",
+      "date": "2025-11-12",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 96.7,
+      "notes": ""
+    },
+    {
+      "id": "e70",
+      "date": "2025-11-24",
+      "description": "MyFundedFX",
+      "cat": "account",
+      "amount": 58.99,
+      "notes": ""
+    },
+    {
+      "id": "e71",
+      "date": "2025-10-25",
+      "description": "Take Profit Trader",
+      "cat": "account",
+      "amount": 76.72,
+      "notes": ""
+    },
+    {
+      "id": "e72",
+      "date": "2025-10-31",
+      "description": "Take Profit Trader",
+      "cat": "account",
+      "amount": 76.25,
+      "notes": ""
+    },
+    {
+      "id": "e73",
+      "date": "2025-11-08",
+      "description": "Take Profit Trader",
+      "cat": "account",
+      "amount": 77.7,
+      "notes": ""
+    },
+    {
+      "id": "e74",
+      "date": "2025-11-26",
+      "description": "Take Profit Trader",
+      "cat": "account",
+      "amount": 76.08,
+      "notes": ""
+    },
+    {
+      "id": "e75",
+      "date": "2025-12-08",
+      "description": "Take Profit Trader",
+      "cat": "account",
+      "amount": 77.6,
+      "notes": ""
+    },
+    {
+      "id": "e76",
+      "date": "2025-11-25",
+      "description": "Topstep",
+      "cat": "account",
+      "amount": 49.07,
+      "notes": ""
+    },
+    {
+      "id": "e77",
+      "date": "2025-11-27",
+      "description": "Topstep",
+      "cat": "account",
+      "amount": 81.18,
+      "notes": ""
+    },
+    {
+      "id": "e78",
+      "date": "2025-11-27",
+      "description": "Topstep",
+      "cat": "account",
+      "amount": 81.36,
+      "notes": ""
+    },
+    {
+      "id": "e79",
+      "date": "2025-12-27",
+      "description": "Topstep",
+      "cat": "account",
+      "amount": 79.46,
+      "notes": ""
+    },
+    {
+      "id": "e80",
+      "date": "2025-12-12",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 77.41,
+      "notes": "Orig $103.35"
+    },
+    {
+      "id": "e81",
+      "date": "2026-02-18",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 83.36,
+      "notes": "Orig $111.30"
+    },
+    {
+      "id": "e82",
+      "date": "2026-01-30",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 71.16,
+      "notes": "Orig $95.00"
+    },
+    {
+      "id": "e83",
+      "date": "2026-01-30",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 83.36,
+      "notes": "Orig $111.30"
+    },
+    {
+      "id": "e84",
+      "date": "2026-01-31",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 81.36,
+      "notes": ""
+    },
+    {
+      "id": "e85",
+      "date": "2026-02-02",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 71.16,
+      "notes": "Orig $95.00"
+    },
+    {
+      "id": "e86",
+      "date": "2026-02-13",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 116.09,
+      "notes": "Orig $155.00"
+    },
+    {
+      "id": "e87",
+      "date": "2026-02-03",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 69.64,
+      "notes": ""
+    },
+    {
+      "id": "e88",
+      "date": "2026-02-19",
+      "description": "Tradeify",
+      "cat": "account",
+      "amount": 82.7,
+      "notes": ""
+    },
+    {
+      "id": "exp1773186436639",
+      "date": "2026-03-10",
+      "amount": "63.56",
+      "description": "Lucid Trading",
+      "cat": "account"
+    },
+    {
+      "id": "exp1773186448591",
+      "date": "2026-03-10",
+      "amount": "63.56",
+      "description": "Lucid Trading",
+      "cat": "account"
+    },
+    {
+      "id": "exp1773186479838",
+      "date": "2026-03-10",
+      "amount": "83.33",
+      "description": "Tradeify",
+      "cat": "account"
+    },
+    {
+      "id": "exp1773186487547",
+      "date": "2026-03-10",
+      "amount": "83.33",
+      "description": "Tradeify",
+      "cat": "account"
+    },
+    {
+      "id": "exp1773186509762",
+      "date": "2026-03-10",
+      "amount": "63.70",
+      "description": "Lucid Trading",
+      "cat": "account"
+    },
+    {
+      "id": "exp1773186550571",
+      "date": "2026-03-10",
+      "amount": "63.70",
+      "description": "Lucid Trading",
+      "cat": "account"
+    },
+    {
+      "id": "exp1773186560589",
+      "date": "2026-03-10",
+      "amount": "58.60",
+      "description": "Lucid Trading",
+      "cat": "account"
+    },
+    {
+      "id": "exp1773186570882",
+      "date": "2026-03-10",
+      "amount": "68.37",
+      "description": "Lucid Trading",
+      "cat": "account"
+    }
+  ],
+  "withdrawals": [
+    {
+      "id": "w1",
+      "date": "2025-08-18",
+      "firm": "MyFundedFX",
+      "gross": 872.11,
+      "notes": ""
+    },
+    {
+      "id": "w2",
+      "date": "2025-09-04",
+      "firm": "MyFundedFX",
+      "gross": 875,
+      "notes": ""
+    },
+    {
+      "id": "w3",
+      "date": "2025-12-03",
+      "firm": "MyFundedFX",
+      "gross": 1272.94,
+      "notes": ""
+    }
+  ],
   "investments": [],
   "wealthTargets": [
     {
-      "id": "demo-goal-home",
-      "emoji": "DM",
-      "name": "Demo Goal",
-      "desc": "Example savings target",
-      "target": 10000,
-      "saved": 2500,
-      "monthly": 250,
-      "color": "var(--accent)"
+      "id": "wt1",
+      "emoji": "HM",
+      "name": "House Deposit",
+      "desc": "London Property",
+      "target": 300000,
+      "saved": 0,
+      "monthly": 300,
+      "color": "var(--dn)"
+    },
+    {
+      "id": "wt2",
+      "emoji": "CR",
+      "name": "Car Fund",
+      "desc": "Outright purchase",
+      "target": 15000,
+      "saved": 0,
+      "monthly": 150,
+      "color": "var(--orange)"
+    },
+    {
+      "id": "wt3",
+      "emoji": "SH",
+      "name": "Emergency Fund",
+      "desc": "3\u00d7 monthly NHS salary",
+      "target": 8991,
+      "saved": 0,
+      "monthly": 100,
+      "color": "var(--up)"
     }
   ],
   "accounts": [
     {
-      "id": "demo-challenge-50k",
-      "firm": "Tradeify",
-      "type": "Select Evaluation 50K",
-      "name": "Demo Challenge 50K",
+      "id": "acc_lucid_mar2026",
+      "firm": "Lucid Trading",
+      "type": "50k_flex",
+      "name": "Lucid Trading 50K Flex",
       "status": "Challenge",
       "balance": 50000,
       "initialBalance": 50000,
-      "peakBalance": 50000,
       "sodBalance": 50000,
-      "mll": 48000,
-      "notes": "Synthetic demo data",
+      "mll": 47500,
+      "ddResetTime": 0,
+      "notes": "",
       "pnlHistory": []
     },
     {
-      "id": "demo-funded-50k",
-      "firm": "Lucid Trading",
-      "type": "LucidFlex 50K",
-      "name": "Demo Funded 50K",
-      "status": "Funded",
-      "phaseHint": "funded",
-      "fundedAt": "2026-03-01",
-      "balance": 52350,
+      "id": "acc_tradeify_mar2026_1",
+      "firm": "Tradeify",
+      "type": "50k_select_eva",
+      "name": "Tradeify 50K Select Eva",
+      "status": "Challenge",
+      "balance": 50000,
       "initialBalance": 50000,
-      "peakBalance": 52500,
-      "sodBalance": 52350,
-      "mll": 50350,
-      "notes": "Synthetic demo data",
+      "sodBalance": 50000,
+      "mll": 47500,
+      "ddResetTime": 0,
+      "notes": "",
+      "pnlHistory": []
+    },
+    {
+      "id": "acc_tradeify_mar2026_2",
+      "firm": "Tradeify",
+      "type": "50k_select_eva",
+      "name": "Tradeify 50K Select Eva",
+      "status": "Challenge",
+      "balance": 50000,
+      "initialBalance": 50000,
+      "sodBalance": 50000,
+      "mll": 47500,
+      "ddResetTime": 0,
+      "notes": "",
       "pnlHistory": []
     }
   ],
-  "debts": [],
-  "creditCards": [],
-  "subscriptions": [],
+  "goals": [],
+  "recurring": [],
+  "creditCards": [
+    {
+      "id": "cc_1772896610474",
+      "name": "Amex",
+      "balance": 51,
+      "limit": 1028.05,
+      "apr": 29.1,
+      "minPayment": 46.29,
+      "network": "amex"
+    }
+  ],
+  "otherDebts": [],
+  "savingsAccounts": [],
+  "marketTickers": [
+    {
+      "name": "Apple",
+      "ticker": "AAPL"
+    },
+    {
+      "name": "Tesla",
+      "ticker": "TSLA"
+    }
+  ],
+  "genExpenses": [
+    {
+      "id": "e1",
+      "date": "2025-08-21",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 51.12,
+      "notes": "Orig $68.25"
+    },
+    {
+      "id": "e2",
+      "date": "2025-08-21",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 39.32,
+      "notes": "Orig $52.50"
+    },
+    {
+      "id": "e3",
+      "date": "2025-08-21",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 66.56,
+      "notes": "Orig $88.86"
+    },
+    {
+      "id": "e4",
+      "date": "2025-08-21",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 29.21,
+      "notes": "Orig $39.00"
+    },
+    {
+      "id": "e5",
+      "date": "2025-08-21",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 62.74,
+      "notes": "Orig $83.76"
+    },
+    {
+      "id": "e6",
+      "date": "2025-08-21",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 66.48,
+      "notes": "Orig $88.76"
+    },
+    {
+      "id": "e7",
+      "date": "2025-08-21",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 66.49,
+      "notes": "Orig $88.77"
+    },
+    {
+      "id": "e8",
+      "date": "2025-08-22",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 85.21,
+      "notes": "Orig $113.77"
+    },
+    {
+      "id": "e9",
+      "date": "2025-08-23",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 115.15,
+      "notes": "Orig $153.74"
+    },
+    {
+      "id": "e10",
+      "date": "2025-08-24",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 58.98,
+      "notes": "Orig $78.74"
+    },
+    {
+      "id": "e11",
+      "date": "2025-08-25",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 58.98,
+      "notes": "Orig $78.75"
+    },
+    {
+      "id": "e12",
+      "date": "2025-08-26",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 77.73,
+      "notes": "Orig $103.78"
+    },
+    {
+      "id": "e13",
+      "date": "2025-08-27",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 61.28,
+      "notes": "Orig $81.82"
+    },
+    {
+      "id": "e14",
+      "date": "2025-08-28",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 63.54,
+      "notes": "Orig $84.83"
+    },
+    {
+      "id": "e15",
+      "date": "2025-08-29",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 27.53,
+      "notes": "Orig $36.75"
+    },
+    {
+      "id": "e16",
+      "date": "2025-08-30",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 15.93,
+      "notes": "Orig $21.27"
+    },
+    {
+      "id": "e17",
+      "date": "2025-08-31",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 77.78,
+      "notes": "Orig $103.85"
+    },
+    {
+      "id": "e18",
+      "date": "2025-09-01",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 118.98,
+      "notes": "Orig $158.85"
+    },
+    {
+      "id": "e19",
+      "date": "2025-09-02",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 23.59,
+      "notes": "Orig $31.50"
+    },
+    {
+      "id": "e20",
+      "date": "2025-09-03",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 52.69,
+      "notes": "Orig $70.35"
+    },
+    {
+      "id": "e21",
+      "date": "2025-09-04",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 70.29,
+      "notes": "Orig $93.85"
+    },
+    {
+      "id": "e22",
+      "date": "2025-09-04",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 70.28,
+      "notes": "Orig $93.83"
+    },
+    {
+      "id": "e23",
+      "date": "2025-09-04",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 77.78,
+      "notes": "Orig $103.85"
+    },
+    {
+      "id": "e24",
+      "date": "2025-09-05",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 58.98,
+      "notes": "Orig $78.75"
+    },
+    {
+      "id": "e25",
+      "date": "2025-09-06",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 23.59,
+      "notes": "Orig $31.50"
+    },
+    {
+      "id": "e26",
+      "date": "2025-09-07",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 70.35,
+      "notes": "Orig $93.92"
+    },
+    {
+      "id": "e27",
+      "date": "2025-09-08",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 71.86,
+      "notes": "Orig $95.94"
+    },
+    {
+      "id": "e28",
+      "date": "2025-09-09",
+      "description": "Eileen",
+      "cat": "account",
+      "amount": 122.76,
+      "notes": "Orig $163.90"
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": "sub_tv",
+      "name": "TradingView",
+      "amount": 151.2,
+      "frequency": "yearly",
+      "startDate": "2025-08-21",
+      "nextRenewal": "2026-08-21",
+      "notes": "Annual charting subscription"
+    },
+    {
+      "id": "sub_1772924491791",
+      "name": "Interbank",
+      "amount": 35,
+      "frequency": "monthly",
+      "startDate": "2025-06-24",
+      "nextRenewal": "2026-03-28"
+    },
+    {
+      "id": "sub_1772929184499",
+      "name": "Gemini Pro",
+      "amount": 18,
+      "frequency": "monthly",
+      "startDate": "2026-03-07",
+      "nextRenewal": "2026-04-07"
+    }
+  ],
   "t212": {
     "last_sync": 0,
     "free_cash": 0,
@@ -59,85 +900,49 @@
     "result": 0
   },
   "t212History": [],
+  "debts": [
+    {
+      "id": "debt_barclaycard_avios",
+      "name": "Barclaycard Avios",
+      "creditLimit": 1850,
+      "currentBalance": 1225.68,
+      "rate": 22.9,
+      "monthly": 50,
+      "nextPayment": "2026-03-31"
+    },
+    {
+      "id": "debt_amex_1773084141",
+      "name": "American Express",
+      "creditLimit": 1100,
+      "currentBalance": 728.05,
+      "rate": 29.1,
+      "monthly": 25,
+      "nextPayment": "2026-03-24"
+    }
+  ],
+  "taxSettings": {
+    "salary": 30000,
+    "savedSoFar": 0,
+    "savingsGoalOverride": null
+  },
   "taxProfile": {
     "country": "UK",
-    "employmentStatus": "Employed",
-    "annualIncome": 0,
+    "employmentStatus": "Self-Employed",
+    "annualIncome": 35967,
     "ukSpecific": {
       "studentLoan": "None",
       "pensionPercentage": 0,
       "taxCode": "1257L",
       "isScottish": false
     },
+    "usSpecific": {
+      "state": "",
+      "filingStatus": "Single",
+      "preTaxDeductions": 0,
+      "stateTaxRate": 5
+    },
     "otherSpecific": {
       "effectiveTaxRate": 20
     }
-  },
-  "marketTickers": [
-    {
-      "name": "S&P 500 ETF",
-      "ticker": "SPY"
-    },
-    {
-      "name": "Nasdaq ETF",
-      "ticker": "QQQ"
-    }
-  ],
-  "otherDebts": [],
-  "savingsAccounts": [],
-  "tradeJournal": [
-    {
-      "id": "demo-trade-1",
-      "date": "2026-03-03",
-      "time": "09:45",
-      "instrument": "MES",
-      "direction": "long",
-      "entryPrice": 5085.25,
-      "exitPrice": 5089.25,
-      "contracts": 2,
-      "pnl": 40,
-      "fees": 2,
-      "setup": "Breakout",
-      "session": "New York",
-      "notes": "Synthetic demo trade",
-      "accountId": "demo-funded-50k",
-      "accountPhase": "funded"
-    }
-  ],
-  "economicEvents": [],
-  "journalEntries": [],
-  "sessionChecklist": [],
-  "userProfile": {
-    "username": "Trader",
-    "avatarColor": "#1dd4b4"
-  },
-  "userSettings": {
-    "subscriptionRenewalDays": 7,
-    "theme": "dark",
-    "dismissedNotificationIds": []
-  },
-  "passedChallenges": [
-    {
-      "id": "demo-pass-1",
-      "accountId": "demo-funded-50k",
-      "firm": "Lucid Trading",
-      "type": "LucidFlex 50K",
-      "name": "Demo Funded 50K",
-      "passedDate": "2026-03-01",
-      "finalBalance": 53000,
-      "initialBalance": 50000,
-      "profitTarget": 3000
-    }
-  ],
-  "ideaPageMeta": {
-    "tagline": "Capture, review, and refine market ideas."
-  },
-  "ideaTopics": [],
-  "ideaNotes": [],
-  "taxSettings": {
-    "salary": 0,
-    "savedSoFar": 0,
-    "savingsGoalOverride": null
-  },
-  "categoryBudgets": {}
+  }
 }

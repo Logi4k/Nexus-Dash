@@ -2,19 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  overscroll-behavior-x: none;
-}
-
 /* ─────────────────────────────────────────────────────────────────────────────
    CSS VARIABLES — Dark theme (default)
 ───────────────────────────────────────────────────────────────────────────── */
 :root {
   --sidebar-w: 240px;
-  --motion-curve: cubic-bezier(0.22, 1, 0.36, 1);
-  --motion-fast: 180ms;
-  --motion-medium: 280ms;
-  --motion-slow: 420ms;
 
   /* backgrounds */
   --bg-base:     #080a10;
@@ -283,25 +275,6 @@ html, body {
   }
   .nx-select option { background: var(--bg-elevated); }
 
-  /* ── Date & Time Inputs ──────────────────────────────────────────────── */
-  input[type="date"],
-  input[type="time"],
-  input[type="datetime-local"] {
-    color-scheme: dark;
-  }
-
-  input[type="date"]::-webkit-calendar-picker-indicator,
-  input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.7);
-    cursor: pointer;
-    opacity: 0.6;
-  }
-
-  input[type="date"]::-webkit-calendar-picker-indicator:hover,
-  input[type="time"]::-webkit-calendar-picker-indicator:hover {
-    opacity: 0.8;
-  }
-
   /* ── Buttons ─────────────────────────────────────────────────────────────── */
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl
@@ -354,51 +327,6 @@ html, body {
   .btn-success:hover { background: rgba(34,197,94,0.18); }
   .btn-sm { padding: 6px 12px; font-size: 12px; }
 
-  .modal-action-bar {
-    position: sticky;
-    bottom: -1.25rem;
-    z-index: 5;
-    display: flex;
-    align-items: stretch;
-    gap: 0.5rem;
-    margin: 0 -0.25rem -0.75rem;
-    padding: 0.9rem 0.25rem calc(env(safe-area-inset-bottom) + 0.35rem);
-    background:
-      linear-gradient(180deg, rgba(var(--bg-card-rgb),0) 0%, rgba(var(--bg-card-rgb),0.88) 24%, rgba(var(--bg-card-rgb),0.98) 100%);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-top: 1px solid rgba(var(--border-rgb),0.07);
-  }
-
-  .modal-action-bar > * {
-    min-height: 44px;
-  }
-
-  .task-empty {
-    @apply relative overflow-hidden rounded-3xl;
-    padding: 1.4rem;
-    border: 1px solid rgba(var(--border-rgb),0.08);
-    background:
-      radial-gradient(circle at top right, rgba(var(--surface-rgb),0.07), transparent 46%),
-      linear-gradient(180deg, rgba(var(--surface-rgb),0.035), rgba(var(--surface-rgb),0.02));
-  }
-
-  .task-empty::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(135deg, rgba(var(--surface-rgb),0.05), transparent 38%);
-  }
-
-  .task-empty-copy {
-    @apply relative z-[1] flex flex-col gap-2;
-  }
-
-  .task-empty-actions {
-    @apply relative z-[1] flex flex-wrap items-center gap-2;
-  }
-
   /* ── Progress ────────────────────────────────────────────────────────────── */
   .progress-track {
     @apply relative overflow-hidden rounded-full;
@@ -449,10 +377,7 @@ html, body {
     box-shadow: 0 0 8px rgba(34,197,94,0.6);
   }
 
-  .page-enter {
-    animation: fadeUp var(--motion-slow) var(--motion-curve) both;
-    will-change: opacity, transform;
-  }
+  .page-enter { animation: fadeUp 0.35s ease-out both; }
 
   /* ── Page titles ─────────────────────────────────────────────────────────── */
   /* Single source of truth for the standard page <h1> heading used on all pages */
@@ -607,35 +532,13 @@ html, body {
 /* ─────────────────────────────────────────────────────────────────────────────
    KEYFRAMES
 ───────────────────────────────────────────────────────────────────────────── */
-@keyframes fadeUp   { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeUp   { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
 @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
 @keyframes slideIn  { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
 @keyframes slideUp  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 @keyframes pulseDot { 0%, 100% { opacity:1; transform:scale(1); } 50% { opacity:0.35; transform:scale(0.8); } }
 @keyframes shimmer  { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
 @keyframes float    { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
-
-.shell-content {
-  padding-bottom: var(--shell-bottom-pad, calc(env(safe-area-inset-bottom) + 6.25rem));
-  scroll-padding-bottom: calc(var(--shell-bottom-pad, calc(env(safe-area-inset-bottom) + 6.25rem)) + 1rem);
-  transition: padding-bottom 220ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@media (min-width: 768px) {
-  .shell-content {
-    padding-bottom: 3rem;
-  }
-
-  .modal-action-bar {
-    position: static;
-    margin: 0;
-    padding: 0.5rem 0 0;
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-top: 0;
-  }
-}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    REDUCED MOTION — respect user's OS preference

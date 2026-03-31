@@ -1,0 +1,239 @@
+<h2>Design — Section 1: Adaptive Shell</h2>
+<p class="subtitle">How the layout changes across breakpoints. The data layer is untouched — only the outer shell changes.</p>
+
+<div class="section">
+  <h3>Three Breakpoints</h3>
+</div>
+
+<div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;">
+
+  <!-- Mobile -->
+  <div style="flex:1;min-width:140px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.12em;">Mobile  &lt; 768px</div>
+    <div style="width:130px;height:240px;background:#0d0f1a;border-radius:16px;border:2px solid rgba(255,255,255,0.12);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.5);">
+      <!-- Top bar -->
+      <div style="height:36px;background:#070810;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;padding:0 10px;">
+        <div style="font-size:9px;font-weight:900;color:#f8fafc;letter-spacing:0.15em;">NEXUS</div>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <div style="width:16px;height:16px;background:rgba(255,255,255,0.08);border-radius:4px;"></div>
+          <div style="width:22px;height:22px;background:rgba(129,140,248,0.2);border:1px solid rgba(129,140,248,0.3);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <div style="width:10px;height:10px;background:rgba(129,140,248,0.7);border-radius:2px;"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Page content -->
+      <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:5px;overflow:hidden;">
+        <!-- Filter pills -->
+        <div style="display:flex;gap:3px;overflow:hidden;">
+          <div style="padding:2px 7px;background:linear-gradient(135deg,rgba(129,140,248,0.3),rgba(192,132,252,0.3));border:1px solid rgba(129,140,248,0.4);border-radius:12px;font-size:7px;color:#c084fc;white-space:nowrap;">All</div>
+          <div style="padding:2px 7px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;font-size:7px;color:rgba(255,255,255,0.35);white-space:nowrap;">Today</div>
+          <div style="padding:2px 7px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;font-size:7px;color:rgba(255,255,255,0.35);white-space:nowrap;">Week</div>
+        </div>
+        <!-- Cards stacked -->
+        <div style="background:rgba(129,140,248,0.07);border:1px solid rgba(129,140,248,0.15);border-radius:8px;padding:7px;">
+          <div style="font-size:8px;font-weight:700;color:#f8fafc;margin-bottom:3px;">Net Worth</div>
+          <div style="font-size:13px;font-weight:900;color:#f8fafc;">£24,830</div>
+          <div style="font-size:7px;color:#4ade80;">↑ 4.2% this month</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);border-radius:8px;padding:7px;">
+            <div style="font-size:7px;color:rgba(34,197,94,0.7);margin-bottom:2px;">Funded</div>
+            <div style="font-size:12px;font-weight:900;color:#4ade80;">3</div>
+          </div>
+          <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.14);border-radius:8px;padding:7px;">
+            <div style="font-size:7px;color:rgba(251,191,36,0.7);margin-bottom:2px;">P&L</div>
+            <div style="font-size:12px;font-weight:900;color:#fbbf24;">+£420</div>
+          </div>
+        </div>
+      </div>
+      <!-- Bottom tab bar -->
+      <div style="height:44px;background:#070810;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-around;padding:0 6px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1.5px;">
+          <div style="width:16px;height:16px;background:linear-gradient(135deg,rgba(129,140,248,0.4),rgba(192,132,252,0.4));border-radius:4px;"></div>
+          <div style="width:3px;height:3px;background:#c084fc;border-radius:50%;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1.5px;">
+          <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:4px;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1.5px;">
+          <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:4px;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1.5px;">
+          <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:4px;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1.5px;">
+          <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:4px;"></div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.35);text-align:center;max-width:130px;">Full-width cards · bottom tabs · scrollable content</div>
+  </div>
+
+  <!-- Tablet -->
+  <div style="flex:1.4;min-width:180px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.12em;">Tablet  768–1199px</div>
+    <div style="width:190px;height:140px;background:#0d0f1a;border-radius:12px;border:2px solid rgba(255,255,255,0.12);display:flex;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.5);">
+      <!-- Icon-only sidebar -->
+      <div style="width:44px;background:#070810;border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:6px;">
+        <div style="width:22px;height:22px;background:rgba(129,140,248,0.15);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+          <div style="width:10px;height:10px;background:#818cf8;border-radius:2px;"></div>
+        </div>
+        <div style="width:4px;height:4px;background:#818cf8;border-radius:50%;"></div>
+        <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:5px;"></div>
+        <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:5px;"></div>
+        <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:5px;"></div>
+        <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:5px;"></div>
+        <div style="width:16px;height:16px;background:rgba(255,255,255,0.06);border-radius:5px;"></div>
+        <div style="margin-top:auto;width:16px;height:16px;background:rgba(255,255,255,0.04);border-radius:5px;"></div>
+      </div>
+      <!-- Content -->
+      <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;gap:3px;">
+          <div style="padding:2px 6px;background:linear-gradient(135deg,rgba(129,140,248,0.3),rgba(192,132,252,0.3));border-radius:10px;font-size:7px;color:#c084fc;">All</div>
+          <div style="padding:2px 6px;background:rgba(255,255,255,0.04);border-radius:10px;font-size:7px;color:rgba(255,255,255,0.3);">Today</div>
+          <div style="padding:2px 6px;background:rgba(255,255,255,0.04);border-radius:10px;font-size:7px;color:rgba(255,255,255,0.3);">Week</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;flex:1;">
+          <div style="background:rgba(129,140,248,0.07);border:1px solid rgba(129,140,248,0.15);border-radius:7px;padding:6px;">
+            <div style="font-size:7px;color:rgba(129,140,248,0.7);margin-bottom:2px;">Net Worth</div>
+            <div style="font-size:10px;font-weight:900;color:#f8fafc;">£24,830</div>
+          </div>
+          <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.14);border-radius:7px;padding:6px;">
+            <div style="font-size:7px;color:rgba(34,197,94,0.7);margin-bottom:2px;">Funded</div>
+            <div style="font-size:10px;font-weight:900;color:#4ade80;">3</div>
+          </div>
+          <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.13);border-radius:7px;padding:6px;">
+            <div style="font-size:7px;color:rgba(251,191,36,0.7);margin-bottom:2px;">P&L</div>
+            <div style="font-size:10px;font-weight:900;color:#fbbf24;">+£420</div>
+          </div>
+          <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.12);border-radius:7px;padding:6px;">
+            <div style="font-size:7px;color:rgba(239,68,68,0.6);margin-bottom:2px;">Debt</div>
+            <div style="font-size:10px;font-weight:900;color:#f87171;">£3.2k</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.35);text-align:center;max-width:190px;">Icon sidebar (collapsed) · 2-col grid · hover tooltips</div>
+  </div>
+
+  <!-- Desktop -->
+  <div style="flex:2;min-width:220px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.12em;">Desktop  ≥ 1200px</div>
+    <div style="width:260px;height:150px;background:#0d0f1a;border-radius:12px;border:2px solid rgba(255,255,255,0.12);display:flex;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.5);">
+      <!-- Full sidebar -->
+      <div style="width:70px;background:#070810;border-right:1px solid rgba(255,255,255,0.08);padding:8px;display:flex;flex-direction:column;gap:3px;">
+        <div style="font-size:7px;font-weight:900;color:#f8fafc;letter-spacing:0.15em;margin-bottom:4px;">NEXUS</div>
+        <!-- Net worth mini -->
+        <div style="background:rgba(129,140,248,0.07);border:1px solid rgba(129,140,248,0.14);border-radius:5px;padding:4px;margin-bottom:3px;">
+          <div style="font-size:6px;color:rgba(255,255,255,0.3);margin-bottom:1px;">Net Worth</div>
+          <div style="font-size:8px;font-weight:900;color:#f8fafc;">£24,830</div>
+        </div>
+        <!-- Nav items -->
+        <div style="padding:3px 4px;background:linear-gradient(135deg,rgba(129,140,248,0.2),rgba(192,132,252,0.2));border-radius:5px;display:flex;align-items:center;gap:3px;">
+          <div style="width:8px;height:8px;background:#818cf8;border-radius:2px;flex-shrink:0;"></div>
+          <div style="font-size:7px;color:#c084fc;font-weight:600;">Dashboard</div>
+        </div>
+        <div style="padding:3px 4px;border-radius:5px;display:flex;align-items:center;gap:3px;">
+          <div style="width:8px;height:8px;background:rgba(255,255,255,0.1);border-radius:2px;flex-shrink:0;"></div>
+          <div style="font-size:7px;color:rgba(255,255,255,0.35);">Market</div>
+        </div>
+        <div style="padding:3px 4px;border-radius:5px;display:flex;align-items:center;gap:3px;">
+          <div style="width:8px;height:8px;background:rgba(255,255,255,0.1);border-radius:2px;flex-shrink:0;"></div>
+          <div style="font-size:7px;color:rgba(255,255,255,0.35);">Journal</div>
+        </div>
+        <div style="padding:3px 4px;border-radius:5px;display:flex;align-items:center;gap:3px;">
+          <div style="width:8px;height:8px;background:rgba(255,255,255,0.1);border-radius:2px;flex-shrink:0;"></div>
+          <div style="font-size:7px;color:rgba(255,255,255,0.35);">Ideas</div>
+        </div>
+        <div style="margin-top:auto;padding:3px 4px;display:flex;align-items:center;gap:3px;">
+          <div style="width:14px;height:14px;background:rgba(129,140,248,0.15);border-radius:4px;flex-shrink:0;"></div>
+          <div style="font-size:6px;color:rgba(255,255,255,0.3);">Trader</div>
+        </div>
+      </div>
+      <!-- Content area -->
+      <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:5px;">
+        <!-- Filter bar -->
+        <div style="display:flex;gap:3px;align-items:center;">
+          <div style="padding:2px 7px;background:linear-gradient(135deg,rgba(129,140,248,0.25),rgba(192,132,252,0.25));border:1px solid rgba(129,140,248,0.35);border-radius:12px;font-size:7px;color:#c084fc;font-weight:600;">All</div>
+          <div style="padding:2px 7px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;font-size:7px;color:rgba(255,255,255,0.3);">1W</div>
+          <div style="padding:2px 7px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;font-size:7px;color:rgba(255,255,255,0.3);">1M</div>
+          <div style="margin-left:auto;padding:2px 7px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;font-size:7px;color:rgba(255,255,255,0.3);">↓ Sort</div>
+        </div>
+        <!-- Stats grid 3-col -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+          <div style="background:rgba(129,140,248,0.07);border:1px solid rgba(129,140,248,0.15);border-radius:7px;padding:6px;">
+            <div style="font-size:6px;color:rgba(129,140,248,0.6);margin-bottom:2px;">NET WORTH</div>
+            <div style="font-size:9px;font-weight:900;color:#f8fafc;">£24,830</div>
+            <div style="font-size:6px;color:#4ade80;">↑ 4.2%</div>
+          </div>
+          <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.14);border-radius:7px;padding:6px;">
+            <div style="font-size:6px;color:rgba(34,197,94,0.6);margin-bottom:2px;">FUNDED</div>
+            <div style="font-size:9px;font-weight:900;color:#4ade80;">3</div>
+            <div style="font-size:6px;color:rgba(255,255,255,0.3);">accounts</div>
+          </div>
+          <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.13);border-radius:7px;padding:6px;">
+            <div style="font-size:6px;color:rgba(251,191,36,0.6);margin-bottom:2px;">P&L TODAY</div>
+            <div style="font-size:9px;font-weight:900;color:#fbbf24;">+£420</div>
+            <div style="font-size:6px;color:#4ade80;">2 trades</div>
+          </div>
+        </div>
+        <!-- Chart area -->
+        <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:7px;padding:6px;display:flex;align-items:flex-end;gap:1.5px;">
+          <div style="flex:1;background:rgba(129,140,248,0.15);border-radius:1.5px;height:30%;"></div>
+          <div style="flex:1;background:rgba(129,140,248,0.15);border-radius:1.5px;height:50%;"></div>
+          <div style="flex:1;background:rgba(129,140,248,0.15);border-radius:1.5px;height:40%;"></div>
+          <div style="flex:1;background:rgba(129,140,248,0.15);border-radius:1.5px;height:70%;"></div>
+          <div style="flex:1;background:rgba(129,140,248,0.15);border-radius:1.5px;height:55%;"></div>
+          <div style="flex:1;background:rgba(129,140,248,0.15);border-radius:1.5px;height:80%;"></div>
+          <div style="flex:1;background:linear-gradient(180deg,#c084fc,#818cf8);border-radius:1.5px;height:100%;"></div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.35);text-align:center;max-width:260px;">Full sidebar + net worth card · 3-col grid · filter bar on every page</div>
+  </div>
+
+</div>
+
+<div class="section">
+  <h3>Per-Page Accent Colours</h3>
+  <p class="subtitle">Each section has its own colour identity within the Vibrant Dark theme.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+    <div style="padding:6px 14px;background:rgba(129,140,248,0.12);border:1px solid rgba(129,140,248,0.25);border-radius:20px;font-size:10px;color:#818cf8;font-weight:600;">Dashboard — Indigo/Purple</div>
+    <div style="padding:6px 14px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.22);border-radius:20px;font-size:10px;color:#4ade80;font-weight:600;">Prop Accounts — Green</div>
+    <div style="padding:6px 14px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.22);border-radius:20px;font-size:10px;color:#38bdf8;font-weight:600;">Market — Sky Blue</div>
+    <div style="padding:6px 14px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.22);border-radius:20px;font-size:10px;color:#fbbf24;font-weight:600;">Journal — Amber</div>
+    <div style="padding:6px 14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:20px;font-size:10px;color:#f87171;font-weight:600;">Debt — Red</div>
+    <div style="padding:6px 14px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.22);border-radius:20px;font-size:10px;color:#c084fc;font-weight:600;">Investments — Purple</div>
+    <div style="padding:6px 14px;background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.22);border-radius:20px;font-size:10px;color:#2dd4bf;font-weight:600;">Expenses — Teal</div>
+    <div style="padding:6px 14px;background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:20px;font-size:10px;color:#fb923c;font-weight:600;">Tax — Orange</div>
+    <div style="padding:6px 14px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:20px;font-size:10px;color:#f472b6;font-weight:600;">Ideas — Pink</div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>What changes vs. what stays the same</h3>
+  <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:10px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">✓ Replaced</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(34,197,94,0.06);border-radius:6px;">Layout.tsx — responsive shell</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(34,197,94,0.06);border-radius:6px;">Sidebar.tsx — adaptive nav</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(34,197,94,0.06);border-radius:6px;">tailwind.config.js — new tokens</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(34,197,94,0.06);border-radius:6px;">All 8 pages — redesigned</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(34,197,94,0.06);border-radius:6px;">New Ideas page added</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:10px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">↔ Untouched</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(129,140,248,0.06);border-radius:6px;">store.ts — all data logic</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(129,140,248,0.06);border-radius:6px;">types/index.ts — all types</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(129,140,248,0.06);border-radius:6px;">lib/utils.ts — helpers</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(129,140,248,0.06);border-radius:6px;">src-tauri/ — Rust backend</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);padding:4px 8px;background:rgba(129,140,248,0.06);border-radius:6px;">All data & API integrations</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Does this shell architecture look right? Any colour assignments you'd change?</p>

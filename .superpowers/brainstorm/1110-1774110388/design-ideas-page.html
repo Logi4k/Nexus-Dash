@@ -1,0 +1,208 @@
+<h2>Design — Section 2: Ideas & Research Page</h2>
+<p class="subtitle">Notebook layout — topics sidebar left, rich editor right. Accent: Pink. Desktop view shown.</p>
+
+<div class="mockup" style="margin-bottom: 20px;">
+  <div class="mockup-header">Ideas Page — Desktop</div>
+  <div class="mockup-body" style="background:#070810;padding:0;overflow:hidden;border-radius:0 0 10px 10px;">
+    <div style="display:flex;height:420px;font-family:system-ui;">
+
+      <!-- Topics sidebar -->
+      <div style="width:180px;background:#0a0c18;border-right:1px solid rgba(236,72,153,0.12);display:flex;flex-direction:column;flex-shrink:0;">
+        <!-- Header -->
+        <div style="padding:16px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:10px;font-weight:900;color:#f8fafc;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:2px;">Ideas</div>
+          <div style="font-size:9px;color:rgba(236,72,153,0.6);">Research & brainstorm</div>
+        </div>
+        <!-- Search -->
+        <div style="padding:8px 10px;">
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:5px 8px;display:flex;align-items:center;gap:5px;">
+            <div style="width:10px;height:10px;border:1.5px solid rgba(255,255,255,0.2);border-radius:50%;flex-shrink:0;"></div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.25);">Search topics...</div>
+          </div>
+        </div>
+        <!-- Topic list -->
+        <div style="flex:1;padding:4px 8px;display:flex;flex-direction:column;gap:2px;overflow:hidden;">
+          <!-- Active topic -->
+          <div style="padding:7px 8px;background:linear-gradient(135deg,rgba(236,72,153,0.15),rgba(244,114,182,0.1));border:1px solid rgba(236,72,153,0.25);border-radius:8px;display:flex;align-items:center;gap:6px;">
+            <div style="width:6px;height:6px;background:#f472b6;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px rgba(244,114,182,0.6);"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:9px;font-weight:700;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">AI Research</div>
+              <div style="font-size:8px;color:rgba(255,255,255,0.35);">12 notes</div>
+            </div>
+          </div>
+          <!-- Other topics -->
+          <div style="padding:7px 8px;border-radius:8px;display:flex;align-items:center;gap:6px;">
+            <div style="width:6px;height:6px;background:rgba(255,255,255,0.15);border-radius:50%;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:9px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Trading Strategies</div>
+              <div style="font-size:8px;color:rgba(255,255,255,0.2);">8 notes</div>
+            </div>
+          </div>
+          <div style="padding:7px 8px;border-radius:8px;display:flex;align-items:center;gap:6px;">
+            <div style="width:6px;height:6px;background:rgba(255,255,255,0.15);border-radius:50%;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:9px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Market Analysis</div>
+              <div style="font-size:8px;color:rgba(255,255,255,0.2);">5 notes</div>
+            </div>
+          </div>
+          <div style="padding:7px 8px;border-radius:8px;display:flex;align-items:center;gap:6px;">
+            <div style="width:6px;height:6px;background:rgba(255,255,255,0.15);border-radius:50%;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:9px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Prop Firm Notes</div>
+              <div style="font-size:8px;color:rgba(255,255,255,0.2);">3 notes</div>
+            </div>
+          </div>
+          <div style="padding:7px 8px;border-radius:8px;display:flex;align-items:center;gap:6px;">
+            <div style="width:6px;height:6px;background:rgba(255,255,255,0.15);border-radius:50%;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:9px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Book Notes</div>
+              <div style="font-size:8px;color:rgba(255,255,255,0.2);">6 notes</div>
+            </div>
+          </div>
+          <!-- Add new topic -->
+          <div style="margin-top:6px;padding:6px 8px;background:rgba(236,72,153,0.06);border:1px dashed rgba(236,72,153,0.2);border-radius:8px;display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <div style="font-size:12px;color:rgba(236,72,153,0.5);font-weight:300;">+</div>
+            <div style="font-size:9px;color:rgba(236,72,153,0.5);">New topic</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note list (middle column) -->
+      <div style="width:200px;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;flex-shrink:0;">
+        <!-- Topic header + new note button -->
+        <div style="padding:14px 12px 10px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#f8fafc;">AI Research</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.3);">12 notes</div>
+          </div>
+          <div style="padding:4px 8px;background:linear-gradient(135deg,rgba(236,72,153,0.25),rgba(244,114,182,0.2));border:1px solid rgba(236,72,153,0.3);border-radius:8px;font-size:8px;color:#f472b6;font-weight:700;">+ Note</div>
+        </div>
+        <!-- Tag filter -->
+        <div style="padding:6px 10px;display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.05);overflow:hidden;">
+          <div style="padding:2px 8px;background:rgba(236,72,153,0.15);border:1px solid rgba(236,72,153,0.25);border-radius:10px;font-size:7px;color:#f472b6;white-space:nowrap;">All</div>
+          <div style="padding:2px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-size:7px;color:rgba(255,255,255,0.3);white-space:nowrap;">#llm</div>
+          <div style="padding:2px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-size:7px;color:rgba(255,255,255,0.3);white-space:nowrap;">#api</div>
+        </div>
+        <!-- Note list -->
+        <div style="flex:1;overflow:hidden;padding:6px 8px;display:flex;flex-direction:column;gap:3px;">
+          <!-- Active note -->
+          <div style="padding:8px;background:rgba(236,72,153,0.08);border:1px solid rgba(236,72,153,0.2);border-radius:8px;">
+            <div style="font-size:9px;font-weight:700;color:#f8fafc;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">LLM Trading Signals</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.35);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:4px;">GPT-4 pattern recognition shows 68% accuracy on tick data when...</div>
+            <div style="display:flex;gap:3px;">
+              <div style="padding:1px 5px;background:rgba(236,72,153,0.15);border-radius:6px;font-size:7px;color:#f472b6;">#llm</div>
+              <div style="font-size:7px;color:rgba(255,255,255,0.2);margin-left:auto;">2h ago</div>
+            </div>
+          </div>
+          <div style="padding:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;">
+            <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.7);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Claude API for portfolio analysis</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.3);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:4px;">Anthropic SDK can be used to summarise monthly P&L and...</div>
+            <div style="display:flex;gap:3px;">
+              <div style="padding:1px 5px;background:rgba(255,255,255,0.06);border-radius:6px;font-size:7px;color:rgba(255,255,255,0.3);">#api</div>
+              <div style="font-size:7px;color:rgba(255,255,255,0.2);margin-left:auto;">Yesterday</div>
+            </div>
+          </div>
+          <div style="padding:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;">
+            <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.7);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Transformer architectures</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.3);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:4px;">BERT vs GPT for financial time series: key difference is...</div>
+            <div style="display:flex;gap:3px;">
+              <div style="padding:1px 5px;background:rgba(255,255,255,0.06);border-radius:6px;font-size:7px;color:rgba(255,255,255,0.3);">#llm</div>
+              <div style="font-size:7px;color:rgba(255,255,255,0.2);margin-left:auto;">3d ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor pane -->
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+        <!-- Note title + meta -->
+        <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:15px;font-weight:900;color:#f8fafc;margin-bottom:4px;">LLM Trading Signals</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:8px;color:rgba(255,255,255,0.25);">AI Research · 2 hours ago</div>
+            <div style="display:flex;gap:3px;">
+              <div style="padding:1px 7px;background:rgba(236,72,153,0.12);border:1px solid rgba(236,72,153,0.2);border-radius:8px;font-size:7px;color:#f472b6;">#llm</div>
+              <div style="padding:1px 7px;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.2);border-radius:8px;font-size:7px;color:#818cf8;">#finance</div>
+              <div style="padding:1px 7px;background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.1);border-radius:8px;font-size:7px;color:rgba(255,255,255,0.25);">+ tag</div>
+            </div>
+          </div>
+        </div>
+        <!-- Formatting toolbar -->
+        <div style="padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:3px;align-items:center;">
+          <div style="padding:3px 8px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:5px;font-size:9px;color:#f472b6;font-weight:900;">B</div>
+          <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:5px;font-size:9px;color:rgba(255,255,255,0.35);font-style:italic;">I</div>
+          <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:5px;font-size:9px;color:rgba(255,255,255,0.35);">H1</div>
+          <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:5px;font-size:9px;color:rgba(255,255,255,0.35);">H2</div>
+          <div style="width:1px;height:14px;background:rgba(255,255,255,0.08);margin:0 2px;"></div>
+          <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:5px;font-size:9px;color:rgba(255,255,255,0.35);">≡ List</div>
+          <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:5px;font-size:9px;color:rgba(255,255,255,0.35);">☑ Todo</div>
+          <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:5px;font-size:9px;color:rgba(255,255,255,0.35);">🔗 Link</div>
+          <div style="padding:3px 8px;background:rgba(255,255,255,0.04);border-radius:5px;font-size:9px;color:rgba(255,255,255,0.35);">⌞ Code</div>
+        </div>
+        <!-- Editor body -->
+        <div style="flex:1;padding:14px 16px;overflow:hidden;display:flex;flex-direction:column;gap:8px;">
+          <!-- H2 heading -->
+          <div style="font-size:12px;font-weight:800;color:#f8fafc;">Overview</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.6);line-height:1.7;">GPT-4 pattern recognition shows <span style="background:rgba(236,72,153,0.15);color:#f472b6;padding:0 3px;border-radius:3px;">68% accuracy</span> on tick data when trained on 6 months of NQ futures. Key finding: transformer models outperform LSTM on data windows &gt;500 ticks.</div>
+
+          <!-- H2 heading -->
+          <div style="font-size:12px;font-weight:800;color:#f8fafc;margin-top:4px;">Key Sources</div>
+          <!-- Bullet list -->
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <div style="width:4px;height:4px;background:rgba(244,114,182,0.6);border-radius:50%;margin-top:4px;flex-shrink:0;"></div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.55);">arxiv.org/abs/2401.xxxxx — "LLMs for Financial Time Series"</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <div style="width:4px;height:4px;background:rgba(244,114,182,0.6);border-radius:50%;margin-top:4px;flex-shrink:0;"></div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.55);">Anthropic docs — Claude API tool use for structured output</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <div style="width:4px;height:4px;background:rgba(244,114,182,0.6);border-radius:50%;margin-top:4px;flex-shrink:0;"></div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.55);">Backtest results — ES futures, Jan–Mar 2025</div>
+            </div>
+          </div>
+
+          <!-- Todo list -->
+          <div style="font-size:12px;font-weight:800;color:#f8fafc;margin-top:4px;">Next Steps</div>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <div style="width:11px;height:11px;border:1.5px solid rgba(34,197,94,0.5);border-radius:3px;background:rgba(34,197,94,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                <div style="width:5px;height:5px;background:#4ade80;border-radius:1px;"></div>
+              </div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.35);text-decoration:line-through;">Read transformer paper</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <div style="width:11px;height:11px;border:1.5px solid rgba(255,255,255,0.15);border-radius:3px;flex-shrink:0;"></div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.6);">Run backtest on MNQ with Claude API signal</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <div style="width:11px;height:11px;border:1.5px solid rgba(255,255,255,0.15);border-radius:3px;flex-shrink:0;"></div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.6);">Integrate findings into Journal page notes</div>
+            </div>
+          </div>
+
+          <!-- Cursor blink -->
+          <div style="display:flex;align-items:center;gap:2px;margin-top:4px;">
+            <div style="width:1.5px;height:14px;background:rgba(244,114,182,0.7);animation:none;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Features included</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+    <div style="padding:8px 12px;background:rgba(236,72,153,0.06);border:1px solid rgba(236,72,153,0.12);border-radius:8px;font-size:10px;color:rgba(255,255,255,0.65);">📁 Topics sidebar with note count + search</div>
+    <div style="padding:8px 12px;background:rgba(236,72,153,0.06);border:1px solid rgba(236,72,153,0.12);border-radius:8px;font-size:10px;color:rgba(255,255,255,0.65);">✏️ Rich text — bold, italic, H1/H2, lists, todos, links, inline code</div>
+    <div style="padding:8px 12px;background:rgba(236,72,153,0.06);border:1px solid rgba(236,72,153,0.12);border-radius:8px;font-size:10px;color:rgba(255,255,255,0.65);">🏷️ Tags per note — filter notes by tag within a topic</div>
+    <div style="padding:8px 12px;background:rgba(236,72,153,0.06);border:1px solid rgba(236,72,153,0.12);border-radius:8px;font-size:10px;color:rgba(255,255,255,0.65);">📋 Middle column note list — sorted by last edited</div>
+    <div style="padding:8px 12px;background:rgba(236,72,153,0.06);border:1px solid rgba(236,72,153,0.12);border-radius:8px;font-size:10px;color:rgba(255,255,255,0.65);">💾 Auto-save to Nexus data store (same store.ts)</div>
+    <div style="padding:8px 12px;background:rgba(236,72,153,0.06);border:1px solid rgba(236,72,153,0.12);border-radius:8px;font-size:10px;color:rgba(255,255,255,0.65);">📱 Mobile: full-screen note list → tap to open editor</div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Does this Ideas page look right? Any features to add or remove?</p>

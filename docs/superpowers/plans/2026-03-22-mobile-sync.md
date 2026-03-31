@@ -601,8 +601,8 @@ In Windows, open **System Properties → Environment Variables** and add:
 
 | Variable | Value (adjust path to your SDK version) |
 |----------|----------------------------------------|
-| `ANDROID_HOME` | `%LOCALAPPDATA%\Android\Sdk` |
-| `NDK_HOME` | `%LOCALAPPDATA%\Android\Sdk\ndk\<version>` (replace `<version>` with the installed NDK version folder name, e.g. `26.3.11579264`) |
+| `ANDROID_HOME` | `C:\Users\phill\AppData\Local\Android\Sdk` |
+| `NDK_HOME` | `C:\Users\phill\AppData\Local\Android\Sdk\ndk\<version>` (replace `<version>` with the installed NDK version folder name, e.g. `26.3.11579264`) |
 
 Then add to `Path`: `%ANDROID_HOME%\platform-tools`
 

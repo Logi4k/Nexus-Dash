@@ -47,9 +47,9 @@ function TextArea({
       autoFocus={autoFocus}
       dir="ltr"
       value={value}
-      rows={5}
+      rows={1}
       placeholder={placeholder}
-      style={{ ...baseInputStyle, ...style, minHeight: "7.5rem" }}
+      style={{ ...baseInputStyle, ...style }}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>}
       onFocus={onFocus}

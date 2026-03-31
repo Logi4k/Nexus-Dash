@@ -1,0 +1,345 @@
+<h2>Option A — Profile Photo Avatar</h2>
+<p class="subtitle">Profile photo upload in Settings, shown as circular avatar above the nav. Tap opens account panel.</p>
+
+<style>
+  .phone {
+    width: 200px;
+    height: 380px;
+    background: #070810;
+    border-radius: 28px;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 28px;
+    background: #070810;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.5);
+    z-index: 10;
+  }
+  .page-content {
+    position: absolute;
+    top: 28px; left: 0; right: 0; bottom: 0;
+    background: #0a0d18;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .content-lines {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .line { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); }
+  .line.short { width: 40%; }
+  .line.medium { width: 65%; }
+  .line.long { width: 90%; }
+  .line.accent { background: rgba(99,102,241,0.18); width: 55%; height: 8px; }
+
+  .nav-pill {
+    position: absolute;
+    bottom: 14px; left: 8px; right: 8px;
+    height: 52px;
+    background: rgba(13,16,24,0.92);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  }
+  .nav-item {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 2px; flex: 1;
+  }
+  .nav-icon {
+    width: 28px; height: 28px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+  .nav-icon.active {
+    background: rgba(99,102,241,0.2);
+    border: 1px solid rgba(99,102,241,0.3);
+  }
+  .nav-icon.search-center {
+    width: 32px; height: 32px;
+    background: rgba(244,114,182,0.15);
+    border: 1px solid rgba(244,114,182,0.3);
+    border-radius: 12px;
+  }
+  .nav-label { font-size: 7px; color: rgba(255,255,255,0.35); font-weight: 600; }
+  .nav-label.active { color: #818cf8; }
+
+  .above-nav {
+    position: absolute;
+    right: 10px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .toolbar-btn {
+    width: 30px; height: 30px;
+    background: rgba(13,16,24,0.88);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  .avatar-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(99,102,241,0.5);
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(99,102,241,0.2);
+  }
+  .avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar-placeholder {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border: 2px solid rgba(99,102,241,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+
+  .user-panel {
+    position: absolute;
+    bottom: 76px; right: 8px;
+    width: 150px;
+    background: rgba(10,13,24,0.98);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 10px 8px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+  }
+  .panel-top {
+    display: flex; align-items: center; gap: 7px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 6px;
+  }
+  .panel-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .panel-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .panel-email { font-size: 7.5px; color: rgba(255,255,255,0.4); line-height: 1.3; }
+  .panel-email strong { display: block; color: rgba(255,255,255,0.7); font-size: 8.5px; }
+  .panel-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 4px;
+    border-radius: 7px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+  }
+  .panel-item.danger { color: #f87171; }
+
+  /* Settings upload screen */
+  .settings-screen {
+    position: absolute;
+    top: 28px; left: 0; right: 0; bottom: 0;
+    background: #0a0d18;
+    padding: 12px;
+  }
+  .settings-header {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .photo-upload-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1.5px dashed rgba(255,255,255,0.1);
+    margin-bottom: 10px;
+  }
+  .photo-preview {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    border: 2px solid rgba(99,102,241,0.4);
+  }
+  .upload-label {
+    font-size: 8px;
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+  }
+  .upload-btn {
+    font-size: 8px;
+    padding: 4px 10px;
+    border-radius: 7px;
+    background: rgba(99,102,241,0.2);
+    border: 1px solid rgba(99,102,241,0.35);
+    color: #a5b4fc;
+    font-weight: 600;
+  }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 8.5px;
+    color: rgba(255,255,255,0.6);
+  }
+  .toggle {
+    width: 22px; height: 12px;
+    border-radius: 6px;
+    background: rgba(99,102,241,0.6);
+    position: relative;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    right: 2px; top: 2px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: white;
+  }
+
+  .scene-label {
+    text-align: center;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .phones-row {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .phone-col {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+</style>
+
+<div class="section">
+  <div class="phones-row">
+
+    <!-- Scene 1: Normal nav with avatar -->
+    <div class="phone-col">
+      <div class="scene-label">Nav bar</div>
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+        <div class="page-content">
+          <div class="content-lines">
+            <div class="line accent"></div>
+            <div class="line long"></div>
+            <div class="line medium"></div>
+            <div class="line short"></div>
+            <div class="line long"></div>
+            <div class="line medium"></div>
+          </div>
+        </div>
+        <div class="above-nav" style="bottom:76px">
+          <div class="toolbar-btn">🔔</div>
+          <div class="avatar-placeholder">📸</div>
+        </div>
+        <div class="nav-pill">
+          <div class="nav-item"><div class="nav-icon active">⊞</div><div class="nav-label active">Dash</div></div>
+          <div class="nav-item"><div class="nav-icon">📈</div><div class="nav-label">Market</div></div>
+          <div class="nav-item"><div class="nav-icon search-center">🔍</div><div class="nav-label">Search</div></div>
+          <div class="nav-item"><div class="nav-icon">📓</div><div class="nav-label">Journal</div></div>
+          <div class="nav-item"><div class="nav-icon">💡</div><div class="nav-label">Ideas</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 2: Panel open -->
+    <div class="phone-col">
+      <div class="scene-label">Tap avatar</div>
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+        <div class="page-content">
+          <div class="content-lines">
+            <div class="line accent"></div>
+            <div class="line long"></div>
+            <div class="line medium"></div>
+          </div>
+        </div>
+        <div class="user-panel">
+          <div class="panel-top">
+            <div class="panel-avatar">📸</div>
+            <div class="panel-email">
+              <strong>Phill</strong>
+              phill@nexus.app
+            </div>
+          </div>
+          <div class="panel-item"><span>⚙️</span> Settings</div>
+          <div class="panel-item"><span>🖼️</span> Change Photo</div>
+          <div class="panel-item danger"><span>↩</span> Sign Out</div>
+        </div>
+        <div class="above-nav" style="bottom:76px">
+          <div class="toolbar-btn">🔔</div>
+          <div class="avatar-placeholder" style="box-shadow:0 0 0 3px rgba(99,102,241,0.4)">📸</div>
+        </div>
+        <div class="nav-pill">
+          <div class="nav-item"><div class="nav-icon active">⊞</div><div class="nav-label active">Dash</div></div>
+          <div class="nav-item"><div class="nav-icon">📈</div><div class="nav-label">Market</div></div>
+          <div class="nav-item"><div class="nav-icon search-center">🔍</div><div class="nav-label">Search</div></div>
+          <div class="nav-item"><div class="nav-icon">📓</div><div class="nav-label">Journal</div></div>
+          <div class="nav-item"><div class="nav-icon">💡</div><div class="nav-label">Ideas</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 3: Settings photo upload -->
+    <div class="phone-col">
+      <div class="scene-label">Upload photo</div>
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+        <div class="settings-screen">
+          <div class="settings-header">⚙️ Settings</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.35);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Profile</div>
+          <div class="photo-upload-area">
+            <div class="photo-preview">📸</div>
+            <div class="upload-label">Your profile photo<br>syncs across devices</div>
+            <div class="upload-btn">Choose Photo</div>
+          </div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.35);margin-bottom:6px;margin-top:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Display</div>
+          <div class="settings-row">Theme <div style="display:flex;gap:4px"><div style="width:16px;height:16px;border-radius:4px;background:#1e1b4b;border:1px solid rgba(99,102,241,0.4)"></div><div style="width:16px;height:16px;border-radius:4px;background:#f8fafc;border:1px solid rgba(255,255,255,0.2)"></div></div></div>
+          <div class="settings-row">Mobile Nav Items <span style="color:rgba(255,255,255,0.25)">›</span></div>
+          <div class="settings-row">Notifications <div class="toggle"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>How it works</h3>
+  <div class="options">
+    <div class="option selected" data-choice="confirm" onclick="toggleSelect(this)">
+      <div class="letter">✓</div>
+      <div class="content">
+        <h3>Confirm this design</h3>
+        <p>Profile photo stored in Supabase Storage — syncs to all devices. Settings gear replaced by circular avatar. Tapping shows panel with photo, email, Settings link, Change Photo, and Sign Out.</p>
+      </div>
+    </div>
+  </div>
+</div>
