@@ -6,6 +6,8 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
+    "dialog:default",
+    "fs:default",
     {
       "identifier": "http:default",
       "allow": [
@@ -13,8 +15,10 @@
         { "url": "wss://semrkijiwrdanvvcfltl.supabase.co/**" },
         { "url": "https://nfs.faireconomy.media/**" },
         { "url": "https://www.forexlive.com/**" },
-        { "url": "https://www.fxstreet.com/**" }
+        { "url": "https://www.fxstreet.com/**" },
+        { "url": "https://github.com/Logi4k/Nexus-Dash/releases/**" }
       ]
-    }
+    },
+    "updater:default"
   ]
 }
