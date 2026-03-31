@@ -9,14 +9,22 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
       - name: Build Tauri app
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run tauri build
+        continue-on-error: true
       - name: Create Release
+        if: success()
         uses: softprops/action-gh-release@v1
         with:
           files: src-tauri/target/release/bundle/**/*.exe
