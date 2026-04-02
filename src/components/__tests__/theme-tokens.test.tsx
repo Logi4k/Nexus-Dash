@@ -4,7 +4,7 @@
  * Verifies that FilterBar, SettingsModal, CommandPalette, and Modal
  * use theme-aware CSS variable tokens instead of hardcoded hex colors.
  */
-import { render, within } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import fs from "fs";
 import path from "path";
