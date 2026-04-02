@@ -7,7 +7,8 @@
                     "dev":  "vite",
                     "build":  "tsc \u0026\u0026 vite build",
                     "preview":  "vite preview",
-                    "tauri":  "tauri"
+                    "tauri":  "tauri",
+                    "ota:desktop:latest":  "node scripts/generate-latest-json.js"
                 },
     "dependencies":  {
                          "@radix-ui/react-progress":  "^1.1.8",
