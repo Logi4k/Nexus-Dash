@@ -23,7 +23,7 @@ const NAV: { path: string; label: string; Icon: React.ElementType; themeKey: Pag
   { path: "/ideas",       label: "Ideas",         Icon: Lightbulb,     themeKey: "ideas"       },
 ];
 
-export default function Sidebar({ onOpenCommandPalette, onOpenPropRules }: { onOpenCommandPalette?: () => void; onOpenPropRules?: () => void }) {
+export default function Sidebar({ onOpenCommandPalette, onOpenPropRules, onQuickAction }: { onOpenCommandPalette?: () => void; onOpenPropRules?: () => void; onQuickAction?: (action: unknown) => void }) {
   const { data } = useAppData();
   const loc = useLocation();
   const [now, setNow] = useState(new Date());

@@ -53,6 +53,11 @@ export function fmtShortDate(dateStr: string | undefined | null): string {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
+export function todayLocalIsoDate(): string {
+  const d = new Date();
+  return d.toISOString().split("T")[0];
+}
+
 export function toNum(v: number | string): number {
   return typeof v === "string" ? parseFloat(v) || 0 : v;
 }

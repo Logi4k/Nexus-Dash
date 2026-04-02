@@ -79,9 +79,11 @@ function Avatar({ avatarUrl, username, avatarColor, size }: {
 
 export default function MobileNav({
   onOpenCommandPalette,
+  onQuickAction,
   navVisible = true,
 }: {
   onOpenCommandPalette?: () => void;
+  onQuickAction?: (action: import("@/lib/quickActions").QuickAction | null) => void;
   navVisible?: boolean;
 }) {
   const loc = useLocation();

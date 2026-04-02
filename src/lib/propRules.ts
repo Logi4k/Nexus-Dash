@@ -575,7 +575,7 @@ function getProgramBaseBalance(definition: ProgramDefinition, size: number): num
 
 export function getAccountPhase(account: Pick<Account, "status" | "phaseHint">): PropPhase | null {
   const normalized = normalizeAccountStatus(account.status);
-  if (normalized === "challenge" || normalized === "funded") return normalized;
+  if (normalized === "Challenge" || normalized === "funded") return normalized as PropPhase;
   return account.phaseHint ?? null;
 }
 
