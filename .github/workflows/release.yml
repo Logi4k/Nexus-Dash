@@ -59,7 +59,7 @@ jobs:
       - name: List built artifacts
         run: |
           echo "=== Built artifacts ==="
-          ls -la src-tauri/target/release/bundle/nsis/
+          Get-ChildItem src-tauri/target/release/bundle/nsis/
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
