@@ -12,6 +12,8 @@ export interface Withdrawal {
   date: string;
   firm: string;
   gross: number;
+  accountId?: string;
+  postBalance?: number;
   notes?: string;
 }
 
@@ -51,10 +53,16 @@ export interface Account {
   type: string;
   name?: string;
   status: AccountStatus;
+  phaseHint?: "challenge" | "funded";
+  fundedAt?: string;
+  challengeStartDate?: string;
+  breachedDate?: string;
   balance: number;
   initialBalance?: number;
+  peakBalance?: number;
   sodBalance?: number;
   mll?: number;
+  payoutCycleStartBalance?: number;
   ddResetTime?: number;
   notes?: string;
   pnlHistory?: number[];
@@ -64,6 +72,7 @@ export interface Account {
 
 export interface PassedChallenge {
   id: string;
+  accountId?: string;
   firm: string;
   type: string;
   name?: string;
@@ -193,6 +202,8 @@ export interface TradeEntry {
   notes?: string;
   tags?: string[];
   imageIds?: string[];   // keys into IndexedDB image store
+  accountId?: string;
+  accountPhase?: "challenge" | "funded";
 }
 
 export interface JournalEntry {
@@ -226,6 +237,7 @@ export interface UserSettings {
   theme?: "dark" | "bw";
   mobileNavItems?: MobileNavItemId[];
   t212ApiKey?: string;
+  dismissedNotificationIds?: string[];
 }
 
 export interface AppData {

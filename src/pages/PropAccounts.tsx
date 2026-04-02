@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from 'sonner';
 import { PAGE_THEMES } from "@/lib/theme";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   Plus,
   Shield,
@@ -15,7 +15,6 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
-  XCircle,
   DollarSign,
   Activity,
   Award,
@@ -23,13 +22,32 @@ import {
   Briefcase,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
-import { fmtGBP, fmtUSD, fmtDate, toNum, pct, cn, getStatusBg, generateId } from "@/lib/utils";
+import { getQuickActionState } from "@/lib/quickActions";
+import { formatAccountOptionLabel, isActiveAccount } from "@/lib/accountStatus";
+import { reconcileLinkedPayoutAccounts } from "@/lib/payouts";
+import { getAccountFundingDate } from "@/lib/tradePhases";
+import {
+  buildProgramTypeLabel,
+  getAccountPhase,
+  getDefaultProgramKey,
+  getDefaultProgramSize,
+  getPromotedProgramKey,
+  getProgramOptions,
+  getProgramRule,
+  getProgramRuleByKeySize,
+  getPropAccountSnapshot,
+  inferProgramKey,
+  normalizeAccountWithPropRules,
+  parseAccountSize,
+  type PropPhase,
+  type PropAccountSnapshot,
+  type PropProgramKey,
+} from "@/lib/propRules";
+import { fmtGBP, fmtUSD, fmtDate, toNum, pct, cn, getStatusBg, generateId, todayLocalIsoDate } from "@/lib/utils";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
 import StatCard from "@/components/StatCard";
-import type { Account, AccountStatus, Withdrawal, PassedChallenge } from "@/types";
-import type { Expense } from "@/types";
-
+import type { Account, AccountStatus, Withdrawal, PassedChallenge, Expense } from "@/types";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                           */
@@ -38,6 +56,11 @@ import type { Expense } from "@/types";
 const FIRMS = [
   "Lucid Trading",
   "Tradeify",
+  "Topstep",
+  "FundingTicks",
+  "MyFundedFX",
+  "Take Profit Trader",
+  "Maven Trading",
 ] as const;
 
 type FilterTab = "all" | "funded" | "Challenge" | "Breached";
@@ -46,228 +69,43 @@ const isFundedStatus = (s: string) => s === "funded" || s === "Funded";
 const isChallengeStatus = (s: string) => s === "Challenge";
 const isBreachedStatus = (s: string) => s === "Breached" || s === "breached";
 
-/* ------------------------------------------------------------------ */
-/*  Firm Rules Data                                                     */
-/* ------------------------------------------------------------------ */
-
-interface PlanRules {
-  drawdown: number;
-  mll: number;
-  dll: number | null;
-  profitTarget: number;
-  evalConsistency: string;
-  fundedConsistency: string;
-  maxContracts: string;
-  mllLock: number;
-  split: string;
-  weekend: boolean;
-  scalping: string | null;
-  minPayoutDays: string;
-  minTradingDays: number | null;
+function getPhaseForStatus(status: AccountStatus, fallback: PropPhase = "challenge"): PropPhase {
+  if (isFundedStatus(status)) return "funded";
+  if (isChallengeStatus(status)) return "challenge";
+  return fallback;
 }
 
-const PLAN_RULES: Record<string, Record<string, Record<number, PlanRules>>> = {
-  "Lucid Trading": {
-    flex: {
-      25000: {
-        drawdown: 1000, mll: 24000, dll: null, profitTarget: 1250,
-        evalConsistency: "50% max/day", fundedConsistency: "None",
-        maxContracts: "2 minis / 20 micros", mllLock: 25100,
-        split: "90/10", weekend: true, scalping: null,
-        minPayoutDays: "5 profitable days", minTradingDays: 2,
-      },
-      50000: {
-        drawdown: 2000, mll: 48000, dll: null, profitTarget: 3000,
-        evalConsistency: "50% max/day", fundedConsistency: "None",
-        maxContracts: "4 minis / 40 micros", mllLock: 50100,
-        split: "90/10", weekend: true, scalping: null,
-        minPayoutDays: "5 profitable days", minTradingDays: 2,
-      },
-      100000: {
-        drawdown: 3000, mll: 97000, dll: null, profitTarget: 6000,
-        evalConsistency: "50% max/day", fundedConsistency: "None",
-        maxContracts: "6 minis / 60 micros", mllLock: 100100,
-        split: "90/10", weekend: true, scalping: null,
-        minPayoutDays: "5 profitable days", minTradingDays: 2,
-      },
-      150000: {
-        drawdown: 4500, mll: 145500, dll: null, profitTarget: 9000,
-        evalConsistency: "50% max/day", fundedConsistency: "None",
-        maxContracts: "10 minis / 100 micros", mllLock: 150100,
-        split: "90/10", weekend: true, scalping: null,
-        minPayoutDays: "5 profitable days", minTradingDays: 2,
-      },
-    },
-    pro: {
-      25000: {
-        drawdown: 1000, mll: 24000, dll: null, profitTarget: 1500,
-        evalConsistency: "None", fundedConsistency: "40% max/day",
-        maxContracts: "2 minis / 20 micros", mllLock: 24900,
-        split: "90/10", weekend: true, scalping: null,
-        minPayoutDays: "5 profitable days", minTradingDays: null,
-      },
-      50000: {
-        drawdown: 2000, mll: 48000, dll: 1200, profitTarget: 3000,
-        evalConsistency: "None", fundedConsistency: "40% max/day",
-        maxContracts: "4 minis / 40 micros", mllLock: 49900,
-        split: "90/10", weekend: true, scalping: null,
-        minPayoutDays: "5 profitable days", minTradingDays: null,
-      },
-      100000: {
-        drawdown: 3000, mll: 97000, dll: 1800, profitTarget: 6000,
-        evalConsistency: "None", fundedConsistency: "40% max/day",
-        maxContracts: "6 minis / 60 micros", mllLock: 99900,
-        split: "90/10", weekend: true, scalping: null,
-        minPayoutDays: "5 profitable days", minTradingDays: null,
-      },
-      150000: {
-        drawdown: 4500, mll: 145500, dll: 2700, profitTarget: 9000,
-        evalConsistency: "None", fundedConsistency: "40% max/day",
-        maxContracts: "10 minis / 100 micros", mllLock: 149900,
-        split: "90/10", weekend: true, scalping: null,
-        minPayoutDays: "5 profitable days", minTradingDays: null,
-      },
-    },
-  },
-  "Tradeify": {
-    growth: {
-      50000: {
-        drawdown: 2000, mll: 48000, dll: 1250, profitTarget: 3000,
-        evalConsistency: "None", fundedConsistency: "35% max/day",
-        maxContracts: "4 minis / 40 micros", mllLock: 50100,
-        split: "100% first $15K, 90/10 after", weekend: false, scalping: "10-sec hold rule",
-        minPayoutDays: "7 days + 5 qualifying days", minTradingDays: null,
-      },
-      100000: {
-        drawdown: 3500, mll: 96500, dll: 2500, profitTarget: 6000,
-        evalConsistency: "None", fundedConsistency: "35% max/day",
-        maxContracts: "8 minis / 80 micros", mllLock: 100100,
-        split: "100% first $15K, 90/10 after", weekend: false, scalping: "10-sec hold rule",
-        minPayoutDays: "7 days + 5 qualifying days", minTradingDays: null,
-      },
-      150000: {
-        drawdown: 5000, mll: 145000, dll: 3750, profitTarget: 9000,
-        evalConsistency: "None", fundedConsistency: "35% max/day",
-        maxContracts: "12 minis / 120 micros", mllLock: 150100,
-        split: "100% first $15K, 90/10 after", weekend: false, scalping: "10-sec hold rule",
-        minPayoutDays: "7 days + 5 qualifying days", minTradingDays: null,
-      },
-    },
-    "select-flex": {
-      50000: {
-        drawdown: 2000, mll: 48000, dll: null, profitTarget: 2500,
-        evalConsistency: "40% max/day", fundedConsistency: "None",
-        maxContracts: "4 minis / 40 micros", mllLock: 50100,
-        split: "90/10", weekend: false, scalping: "10-sec hold rule",
-        minPayoutDays: "5 winning days", minTradingDays: 3,
-      },
-      100000: {
-        drawdown: 3000, mll: 97000, dll: null, profitTarget: 5000,
-        evalConsistency: "40% max/day", fundedConsistency: "None",
-        maxContracts: "8 minis / 80 micros", mllLock: 100100,
-        split: "90/10", weekend: false, scalping: "10-sec hold rule",
-        minPayoutDays: "5 winning days", minTradingDays: 3,
-      },
-      150000: {
-        drawdown: 4500, mll: 145500, dll: null, profitTarget: 7500,
-        evalConsistency: "40% max/day", fundedConsistency: "None",
-        maxContracts: "12 minis / 120 micros", mllLock: 150100,
-        split: "90/10", weekend: false, scalping: "10-sec hold rule",
-        minPayoutDays: "5 winning days", minTradingDays: 3,
-      },
-    },
-  },
-};
+const emptyAccountForm = (phase: PropPhase = "challenge") => {
+  const firm = FIRMS[0] as string;
+  const planKey = getDefaultProgramKey(firm, phase);
+  const planSize = planKey ? getDefaultProgramSize(planKey) : null;
+  const rules = planKey && planSize ? getProgramRuleByKeySize(planKey, planSize) : null;
+  const baseBalance = rules?.balanceMode === "pnl" ? 0 : (planSize ?? 0);
 
-const FIRM_PLANS: Record<string, { value: string; label: string }[]> = {
-  "Lucid Trading": [
-    { value: "flex", label: "LucidFlex" },
-    { value: "pro",  label: "LucidPro"  },
-  ],
-  "Tradeify": [
-    { value: "growth",      label: "Growth"      },
-    { value: "select-flex", label: "Select Flex" },
-  ],
-};
-
-const PLAN_SIZES_BY_FIRM: Record<string, Record<string, number[]>> = {
-  "Lucid Trading": {
-    flex: [25000, 50000, 100000, 150000],
-    pro:  [25000, 50000, 100000, 150000],
-  },
-  "Tradeify": {
-    growth:       [50000, 100000, 150000],
-    "select-flex": [50000, 100000, 150000],
-  },
-};
-
-const PLAN_LABELS: Record<string, string> = {
-  flex:         "LucidFlex",
-  pro:          "LucidPro",
-  growth:       "Growth",
-  "select-flex": "Select Flex",
-};
-
-function parsePlanInfo(firm: string, type: string): { plan: string; size: number } | null {
-  if (!type) return null;
-  const t = type.toLowerCase().replace(/\s+/g, "");
-
-  // Detect size: 25, 50, 100, 150 (with or without K/k)
-  const sizeMatch = t.match(/(150|100|50|25)k?/i);
-  if (!sizeMatch) return null;
-  const raw = parseInt(sizeMatch[1]);
-  const size = raw < 1000 ? raw * 1000 : raw;
-
-  let plan: string | null = null;
-  if (firm === "Lucid Trading") {
-    if (t.includes("lucidpro") || (t.includes("pro") && !t.includes("flex"))) plan = "pro";
-    else if (t.includes("flex")) plan = "flex";
-  } else if (firm === "Tradeify") {
-    if (t.includes("selectflex") || t.includes("select")) plan = "select-flex";
-    else if (t.includes("growth")) plan = "growth";
-  }
-
-  if (!plan) return null;
-  if (!PLAN_RULES[firm]?.[plan]?.[size]) return null;
-  return { plan, size };
-}
-
-function getRules(firm: string, type: string): PlanRules | null {
-  const info = parsePlanInfo(firm, type);
-  if (!info) return null;
-  return PLAN_RULES[firm]?.[info.plan]?.[info.size] ?? null;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Empty form factories                                               */
-/* ------------------------------------------------------------------ */
-
-const emptyAccountForm = () => {
-  const firm      = FIRMS[0] as string; // "Lucid Trading"
-  const firstPlan = FIRM_PLANS[firm]?.[0]?.value ?? "";
-  const sizes     = PLAN_SIZES_BY_FIRM[firm]?.[firstPlan] ?? [];
-  const firstSz   = sizes[0];
-  const rules     = firstPlan && firstSz ? PLAN_RULES[firm]?.[firstPlan]?.[firstSz] : null;
-  const label     = PLAN_LABELS[firstPlan] ?? firstPlan;
   return {
     firm,
-    planKey:        firstPlan,
-    planSize:       firstSz ? String(firstSz) : "",
-    type:           firstPlan && firstSz ? `${label} ${firstSz / 1000}K` : "",
-    name:           "",
-    status:         "Challenge" as AccountStatus,
-    balance:        "",
-    initialBalance: firstSz ? String(firstSz) : "",   // pre-fill & lock to plan size
-    sodBalance:     "",
-    mll:            rules ? String(rules.mll) : "",
-    notes:          "",
-    customFirm:     "",
+    planKey: planKey ?? "",
+    planSize: planSize ? String(planSize) : "",
+    type: planKey && planSize ? buildProgramTypeLabel(planKey, planSize) : "",
+    name: "",
+    status: phase === "funded" ? ("Funded" as AccountStatus) : ("Challenge" as AccountStatus),
+    balance: rules ? String(baseBalance) : "",
+    initialBalance: rules ? String(baseBalance) : "",
+    peakBalance: rules ? String(baseBalance) : "",
+    sodBalance: "",
+    mll: rules ? String(baseBalance - rules.drawdown) : "",
+    profitTarget: rules?.profitTarget ? String(rules.profitTarget) : "",
+    notes: "",
+    customFirm: "",
+    fundedAt: "",
+    challengeStartDate: "",
+    breachedDate: "",
   };
 };
 
 const emptyPayoutForm = (firm?: string, accountId?: string) => ({
   firm:      firm ?? (FIRMS[0] as string),
-  date:      new Date().toISOString().slice(0, 10),
+  date:      todayLocalIsoDate(),
   gross:     "",
   accountId: accountId ?? "",
   notes: "",
@@ -307,6 +145,7 @@ function FirmAnalyticsChart({
 }) {
   const bw = useBWMode();
   const [sortBy, setSortBy] = useState<"net" | "spent" | "earned">("net");
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const firmData = useMemo(() => {
     return FIRMS.map((firm) => {
@@ -319,45 +158,69 @@ function FirmAnalyticsChart({
   }, [expenses, withdrawals]);
 
   const sorted = useMemo(() => {
-    return [...firmData].sort((a, b) => {
-      if (sortBy === "net")    return b.net - a.net;
-      if (sortBy === "spent")  return b.spent - a.spent;
-      return b.earned - a.earned;
-    });
-  }, [firmData, sortBy]);
+    let data = [...firmData];
+    if (isCollapsed) {
+      // Show only top 3 firms by net P&L when collapsed
+      data = data.sort((a, b) => b.net - a.net).slice(0, 3);
+    } else {
+      // Show all firms, sorted as selected
+      data.sort((a, b) => {
+        if (sortBy === "net")    return b.net - a.net;
+        if (sortBy === "spent")  return b.spent - a.spent;
+        return b.earned - a.earned;
+      });
+    }
+    return data;
+  }, [firmData, sortBy, isCollapsed]);
 
   const maxVal = useMemo(() =>
-    Math.max(...firmData.map((f) => Math.max(f.spent, f.earned)), 1),
-    [firmData]
+    Math.max(...sorted.map((f) => Math.max(f.spent, f.earned)), 1),
+    [sorted]
   );
 
-  const totalSpent  = firmData.reduce((s, f) => s + f.spent,  0);
-  const totalEarned = firmData.reduce((s, f) => s + f.earned, 0);
+  const totalSpent  = sorted.reduce((s, f) => s + f.spent,  0);
+  const totalEarned = sorted.reduce((s, f) => s + f.earned, 0);
   const totalNet    = totalEarned - totalSpent;
 
   if (firmData.length === 0) return null;
 
   return (
     <div className="card p-5">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header with Collapse/Expand Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <div className="text-tx-4 text-[10px] uppercase tracking-widest font-medium">Firm Analytics</div>
           <div className="text-tx-1 text-sm font-semibold mt-0.5">Performance by Firm</div>
         </div>
-        <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg p-0.5">
-          {(["net", "spent", "earned"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSortBy(s)}
-              className={cn(
-                "text-[10px] px-2.5 py-1 rounded-md capitalize transition-all",
-                sortBy === s ? "bg-white/90 text-bg-base font-bold" : "text-tx-3 hover:text-tx-1"
-              )}
-            >
-              {s}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-[11px] font-semibold"
+            style={{
+              background: "rgba(var(--surface-rgb),0.06)",
+              border: "1px solid rgba(var(--border-rgb),0.12)",
+              color: "var(--tx-2)"
+            }}
+          >
+            {isCollapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+            {isCollapsed ? "Show All" : "Show Less"}
+          </button>
+          {!isCollapsed && (
+            <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg p-0.5">
+              {(["net", "spent", "earned"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSortBy(s)}
+                  className={cn(
+                    "text-[10px] px-2.5 py-1 rounded-md capitalize transition-all",
+                    sortBy === s ? "bg-white/90 text-bg-base font-bold" : "text-tx-3 hover:text-tx-1"
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -789,13 +652,15 @@ function TradingInsightsSidebar({
 
 function RulesReferencePanel() {
   const [open, setOpen] = useState(false);
-  const [firmTab, setFirmTab] = useState<"Lucid Trading" | "Tradeify">("Lucid Trading");
-  const [planTab, setPlanTab] = useState<string>("flex");
+  const [firmTab, setFirmTab] = useState<"Lucid Trading" | "Tradeify" | "Topstep">("Lucid Trading");
+  const [phaseTab, setPhaseTab] = useState<PropPhase>("challenge");
+  const [planTab, setPlanTab] = useState<PropProgramKey>("lucid-flex-challenge");
 
-  // When firm tab changes, reset plan tab to first available
-  const availablePlans = FIRM_PLANS[firmTab] ?? [];
-  const activePlan = availablePlans.some((p) => p.value === planTab) ? planTab : availablePlans[0]?.value ?? "";
-  const availableSizes = PLAN_SIZES_BY_FIRM[firmTab]?.[activePlan] ?? [];
+  const availablePlans = getProgramOptions(firmTab, phaseTab);
+  const activePlan = availablePlans.some((plan) => plan.key === planTab)
+    ? planTab
+    : (availablePlans[0]?.key ?? getDefaultProgramKey(firmTab, phaseTab) ?? "lucid-flex-challenge");
+  const availableSizes = availablePlans.find((plan) => plan.key === activePlan)?.sizes ?? [];
 
   const RuleRow = ({
     label,
@@ -821,6 +686,24 @@ function RulesReferencePanel() {
     </div>
   );
 
+  const formatDll = (rule: ReturnType<typeof getProgramRuleByKeySize>): string => {
+    if (!rule) return "None";
+    switch (rule.dll.kind) {
+      case "none":
+        return "None";
+      case "fixed":
+        return `$${rule.dll.amount.toLocaleString()}`;
+      case "threshold-fixed":
+        return `$${rule.dll.amount.toLocaleString()} -> $${rule.dll.scaledAmount.toLocaleString()} @ ${fmtUSD(rule.dll.thresholdBalance, 0)}`;
+      case "threshold-profit-percent":
+        return rule.dll.amount
+          ? `$${rule.dll.amount.toLocaleString()} -> 60% of peak profit @ ${fmtUSD(rule.dll.thresholdBalance, 0)}`
+          : `60% of peak profit @ ${fmtUSD(rule.dll.thresholdBalance, 0)}`;
+      default:
+        return "None";
+    }
+  };
+
   return (
     <div className="card overflow-hidden">
       <button
@@ -834,7 +717,7 @@ function RulesReferencePanel() {
             className="text-[10px] px-1.5 py-0.5 rounded font-medium"
             style={{ background: "rgba(var(--surface-rgb),0.08)", color: "var(--tx-2)", border: "1px solid rgba(var(--border-rgb),0.15)" }}
           >
-            Lucid · Tradeify
+            Official reference
           </span>
         </div>
         {open ? <ChevronUp size={14} className="text-tx-3" /> : <ChevronDown size={14} className="text-tx-3" />}
@@ -842,14 +725,14 @@ function RulesReferencePanel() {
 
       {open && (
         <div className="border-t border-white/[0.06]">
-          {/* Firm tabs */}
           <div className="flex px-5 pt-4 gap-1 border-b border-white/[0.06] pb-0">
-            {(["Lucid Trading", "Tradeify"] as const).map((f) => (
+            {(["Lucid Trading", "Tradeify", "Topstep"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => {
                   setFirmTab(f);
-                  setPlanTab(FIRM_PLANS[f]?.[0]?.value ?? "");
+                  const nextPlan = getDefaultProgramKey(f, phaseTab);
+                  if (nextPlan) setPlanTab(nextPlan);
                 }}
                 className={cn(
                   "px-3 py-2 text-xs font-medium rounded-t-lg border-b-2 transition-all",
@@ -863,28 +746,49 @@ function RulesReferencePanel() {
             ))}
           </div>
 
-          {/* Plan tabs */}
-          <div className="flex gap-1 px-5 pt-3">
-            {availablePlans.map((p) => (
+          <div className="flex items-center justify-between gap-3 px-5 pt-3">
+            <div className="flex gap-1">
+              {([
+                { key: "challenge" as const, label: "Challenge" },
+                { key: "funded" as const, label: "Funded" },
+              ]).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setPhaseTab(key);
+                    const nextPlan = getDefaultProgramKey(firmTab, key);
+                    if (nextPlan) setPlanTab(nextPlan);
+                  }}
+                  className={cn("tab-pill", phaseTab === key && "active")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] uppercase tracking-[0.14em] text-tx-4">
+              {phaseTab === "challenge" ? "Targets + evaluation rules" : "Trailing drawdown + payout rules"}
+            </span>
+          </div>
+
+          <div className="flex gap-1 px-5 pt-3 flex-wrap">
+            {availablePlans.map((plan) => (
               <button
-                key={p.value}
-                onClick={() => setPlanTab(p.value)}
+                key={plan.key}
+                onClick={() => setPlanTab(plan.key)}
                 className={cn(
                   "tab-pill",
-                  activePlan === p.value && "active"
+                  activePlan === plan.key && "active"
                 )}
               >
-                {p.label}
+                {plan.label}
               </button>
             ))}
           </div>
 
-          {/* Size columns */}
           <div className={cn("grid gap-4 p-5", availableSizes.length === 4 ? "grid-cols-2 xl:grid-cols-4" : "grid-cols-1 sm:grid-cols-3")}>
             {availableSizes.map((size) => {
-              const r = PLAN_RULES[firmTab]?.[activePlan]?.[size];
-              if (!r) return null;
-              const planLabel = PLAN_LABELS[activePlan] ?? activePlan;
+              const rule = getProgramRuleByKeySize(activePlan, size);
+              if (!rule) return null;
               return (
                 <div
                   key={size}
@@ -892,53 +796,58 @@ function RulesReferencePanel() {
                   style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
                 >
                   <div className="text-tx-1 font-bold text-sm mb-0.5">
-                    ${(size / 1000).toFixed(0)}K {planLabel}
+                    {(size / 1000).toFixed(0)}K {rule.label}
                   </div>
                   <div className="text-tx-3 text-[10px] mb-3">
-                    {firmTab === "Lucid Trading" ? "EOD Trailing" : "EOD Trailing (hard intraday)"}
+                    {rule.firm === "Topstep" ? "Balance-based MLL" : "EOD trailing drawdown"}
                   </div>
 
                   <RuleRow label="EOD Drawdown" highlight="neutral">
-                    ${r.drawdown.toLocaleString()}
+                    {fmtUSD(rule.drawdown)}
                   </RuleRow>
                   <RuleRow label="Initial MLL" highlight="neutral">
-                    ${r.mll.toLocaleString()}
+                    {fmtUSD(size - rule.drawdown)}
                   </RuleRow>
                   <RuleRow label="MLL Locks at" highlight="neutral">
-                    ${r.mllLock.toLocaleString()}
+                    {fmtUSD(rule.lockFloor)}
                   </RuleRow>
-                  <RuleRow label="Daily Loss Limit" highlight={r.dll ? "warn" : "good"}>
-                    {r.dll ? `$${r.dll.toLocaleString()}` : "None"}
+                  <RuleRow label="Lock Trigger" highlight="neutral">
+                    {fmtUSD(rule.lockBalance)}
                   </RuleRow>
-                  <RuleRow label="Profit Target" highlight="neutral">
-                    ${r.profitTarget.toLocaleString()}
+                  <RuleRow label="Daily Loss Limit" highlight={rule.dll.kind === "none" ? "good" : "warn"}>
+                    {formatDll(rule)}
                   </RuleRow>
-                  <RuleRow label="Eval Consistency" highlight={r.evalConsistency === "None" ? "good" : "warn"}>
-                    {r.evalConsistency}
-                  </RuleRow>
-                  <RuleRow label="Funded Consistency" highlight={r.fundedConsistency === "None" ? "good" : "warn"}>
-                    {r.fundedConsistency}
-                  </RuleRow>
-                  <RuleRow label="Max Contracts" highlight="neutral">
-                    {r.maxContracts}
-                  </RuleRow>
-                  <RuleRow label="Profit Split" highlight="neutral">
-                    {r.split}
-                  </RuleRow>
-                  <RuleRow label="Weekend Holding" highlight={r.weekend ? "good" : "warn"}>
-                    {r.weekend ? "✓ Allowed" : "✗ Not allowed"}
-                  </RuleRow>
-                  {r.scalping && (
-                    <RuleRow label="Scalping Rule" highlight="warn">
-                      {r.scalping}
+                  {rule.profitTarget !== null && (
+                    <RuleRow label="Profit Target" highlight="neutral">
+                      {fmtUSD(rule.profitTarget)}
                     </RuleRow>
                   )}
-                  <RuleRow label="Payout Requirement" highlight="neutral">
-                    {r.minPayoutDays}
+                  {rule.evalConsistency && (
+                    <RuleRow label="Eval Consistency" highlight={rule.evalConsistency.toLowerCase().includes("no") ? "good" : "warn"}>
+                      {rule.evalConsistency}
+                    </RuleRow>
+                  )}
+                  {rule.fundedConsistency && (
+                    <RuleRow label="Funded Consistency" highlight={rule.fundedConsistency.toLowerCase().includes("no") ? "good" : "warn"}>
+                      {rule.fundedConsistency}
+                    </RuleRow>
+                  )}
+                  <RuleRow label="Max Contracts" highlight="neutral">
+                    {rule.maxContracts}
                   </RuleRow>
-                  {r.minTradingDays && (
-                    <RuleRow label="Min Trading Days" highlight="neutral">
-                      {r.minTradingDays} days
+                  {rule.split && (
+                    <RuleRow label="Profit Split" highlight="neutral">
+                      {rule.split}
+                    </RuleRow>
+                  )}
+                  {rule.payoutPolicy && (
+                    <RuleRow label="Payout Rule" highlight="neutral">
+                      {rule.payoutPolicy}
+                    </RuleRow>
+                  )}
+                  {rule.weekendHolding !== null && (
+                    <RuleRow label="Weekend Holding" highlight={rule.weekendHolding ? "good" : "warn"}>
+                      {rule.weekendHolding ? "Allowed" : "Not allowed"}
                     </RuleRow>
                   )}
                 </div>
@@ -946,11 +855,9 @@ function RulesReferencePanel() {
             })}
           </div>
 
-          {/* Footer note */}
-          <div className="px-5 pb-4 text-tx-3 text-[10px]">
-            * All amounts shown in USD. MLL updates at end-of-day (EOD) and trails upward with equity.
-            {firmTab === "Tradeify" && " Tradeify drawdown is a hard intraday breach — account fails instantly if balance touches the MLL floor."}
-            {firmTab === "Lucid Trading" && " Payouts on LucidFlex do not affect the MLL. Positions must close by 4:45 PM ET daily."}
+          <div className="px-5 pb-4 text-tx-3 text-[10px] space-y-1">
+            <p>All amounts are shown in USD. The app calculates the live floor from the plan rules, the current balance, the highest recorded balance, and any linked payouts for that account.</p>
+            <p>Lucid and Tradeify funded floors can lock early on payout for products that allow it, and Topstep Express Funded accounts are modeled on the current zero-based XFA paths.</p>
           </div>
         </div>
       )}
@@ -958,346 +865,521 @@ function RulesReferencePanel() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Account Card Rules Mini-Panel                                      */
-/* ------------------------------------------------------------------ */
+function getPayoutStatus(snapshot: PropAccountSnapshot | null, funded: boolean, breached: boolean) {
+  if (!snapshot || !funded || breached || !snapshot.program.payout) {
+    return null;
+  }
 
-function AccountRulesPanel({ firm, type, status }: { firm: string; type: string; status: string }) {
-  const rules = useMemo(() => getRules(firm, type), [firm, type]);
-  const info   = useMemo(() => parsePlanInfo(firm, type), [firm, type]);
-  const [open, setOpen] = useState(false);
+  const blockers: string[] = [];
 
-  if (!rules || !info) return null;
-  const funded    = isFundedStatus(status);
-  const challenge = isChallengeStatus(status);
+  if (snapshot.payoutBufferRemaining !== null && snapshot.payoutBufferRemaining < 0) {
+    blockers.push(`${fmtUSD(Math.abs(snapshot.payoutBufferRemaining))} buffer needed`);
+  }
 
-  const RuleChip = ({
-    label, value, ok,
-  }: {
-    label: string; value: string; ok?: boolean | null;
-  }) => (
-    <div
-      className="flex items-center justify-between gap-2 text-[10px]"
-    >
-      <span className="text-tx-4">{label}</span>
-      <span
-        className={cn(
-          "font-medium",
-          ok === true  ? "text-profit" :
-          ok === false ? "text-warn"   : "text-tx-3"
-        )}
-      >
-        {value}
-      </span>
-    </div>
-  );
+  const minCycleProfit = snapshot.program.payout.minProfitGoal ?? null;
+  if (minCycleProfit !== null && (snapshot.payoutCycleProfit ?? 0) < minCycleProfit) {
+    blockers.push(`${fmtUSD(minCycleProfit - (snapshot.payoutCycleProfit ?? 0))} cycle profit left`);
+  }
 
-  return (
-    <div className="border-t border-white/[0.04] pt-2.5 mt-1">
-      <button
-        className="flex items-center gap-1.5 text-[10px] text-tx-3 hover:text-tx-2 transition-colors w-full"
-        onClick={() => setOpen((p) => !p)}
-      >
-        <BookOpen size={10} />
-        <span>Account Rules — {PLAN_LABELS[info.plan]} ${(info.size / 1000).toFixed(0)}K</span>
-        {open ? <ChevronUp size={10} className="ml-auto" /> : <ChevronDown size={10} className="ml-auto" />}
-      </button>
+  if (snapshot.payoutWinningDays !== null && (snapshot.cycleWinningDays ?? 0) < snapshot.payoutWinningDays) {
+    blockers.push(`${snapshot.payoutWinningDays - (snapshot.cycleWinningDays ?? 0)} winning day${snapshot.payoutWinningDays - (snapshot.cycleWinningDays ?? 0) === 1 ? "" : "s"} left`);
+  }
 
-      {open && (
-        <div className="mt-2 space-y-1.5 rounded-lg px-3 py-2.5" style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
-          <RuleChip label="EOD Drawdown" value={`$${rules.drawdown.toLocaleString()}`} />
-          <RuleChip label="MLL Floor" value={`$${rules.mll.toLocaleString()}`} />
-          <RuleChip label="MLL Lock" value={`$${rules.mllLock.toLocaleString()}`} />
-          <RuleChip
-            label="Daily Loss Limit"
-            value={rules.dll ? `$${rules.dll.toLocaleString()}` : "None"}
-            ok={rules.dll === null}
-          />
-          {challenge && (
-            <>
-              <RuleChip label="Profit Target" value={`$${rules.profitTarget.toLocaleString()}`} />
-              <RuleChip
-                label="Eval Consistency"
-                value={rules.evalConsistency}
-                ok={rules.evalConsistency === "None" ? true : null}
-              />
-              {rules.minTradingDays && (
-                <RuleChip label="Min Days" value={`${rules.minTradingDays} days`} />
-              )}
-            </>
-          )}
-          {funded && (
-            <>
-              <RuleChip
-                label="Funded Consistency"
-                value={rules.fundedConsistency}
-                ok={rules.fundedConsistency === "None" ? true : null}
-              />
-              <RuleChip label="Payout" value={rules.minPayoutDays} />
-              <RuleChip label="Split" value={rules.split} />
-            </>
-          )}
-          <RuleChip label="Max Contracts" value={rules.maxContracts} />
-          <RuleChip label="Weekend Holding" value={rules.weekend ? "✓ Allowed" : "✗ Not allowed"} ok={rules.weekend ? true : false} />
-          {rules.scalping && (
-            <RuleChip label="Scalping" value={rules.scalping} ok={false} />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+  if (
+    snapshot.payoutConsistencyLimit !== null &&
+    snapshot.cycleConsistencyPct !== null &&
+    snapshot.cycleConsistencyPct > snapshot.payoutConsistencyLimit
+  ) {
+    blockers.push(`${snapshot.cycleConsistencyPct.toFixed(0)}% / ${snapshot.payoutConsistencyLimit}% consistency`);
+  }
 
-/* ------------------------------------------------------------------ */
-/*  Account Card                                                       */
-/* ------------------------------------------------------------------ */
+  const ready = blockers.length === 0;
 
-function DrawdownMeter({ ratio, label, sublabel }: { ratio: number; label: string; sublabel: string }) {
-  const segments = 20;
-  const filled = Math.round((ratio / 100) * segments);
-  const color = ratio > 50 ? "#22c55e" : ratio > 20 ? "#f59e0b" : "#ef4444";
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-1.5">
-        <span className="text-[10px] text-tx-3 uppercase tracking-wider font-medium">{label}</span>
-        <span className="text-[10px] font-bold tabular-nums" style={{ color }}>{sublabel}</span>
-      </div>
-      <div className="flex gap-0.5">
-        {Array.from({ length: segments }).map((_, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-sm transition-all duration-300"
-            style={{
-              height: 6,
-              background: i < filled
-                ? (i < 4 ? "#ef4444" : i < 8 ? "#f59e0b" : "#22c55e")
-                : "rgba(var(--border-rgb,255,255,255),0.08)",
-              opacity: i < filled ? 1 : 0.4,
-            }}
-          />
-        ))}
-      </div>
-      <div className="flex justify-between mt-0.5">
-        <span className="text-[10px] text-tx-3">Danger</span>
-        <span className="text-[10px] text-tx-3">Safe</span>
-      </div>
-    </div>
-  );
+  return {
+    ready,
+    badgeText: ready ? "Payout ready" : "Payout blocked",
+    badgeTone: ready ? "text-profit" : "text-warn",
+    summary: ready
+      ? snapshot.latestPayoutDate
+        ? `Cycle reset from ${fmtDate(snapshot.latestPayoutDate)}`
+        : "Current cycle meets the payout rules"
+      : blockers[0],
+    detail: {
+      cycleProfit: snapshot.payoutCycleProfit,
+      winningDays: snapshot.cycleWinningDays,
+      requiredWinningDays: snapshot.payoutWinningDays,
+      consistencyPct: snapshot.cycleConsistencyPct,
+      consistencyLimit: snapshot.payoutConsistencyLimit,
+      bufferRemaining: snapshot.payoutBufferRemaining,
+    },
+  };
 }
 
 function AccountCard({
   account,
+  snapshotContext,
   onEdit,
   onDelete,
   onPayout,
 }: {
   account: Account;
+  snapshotContext: {
+    withdrawals: Withdrawal[];
+    tradeJournal?: import("@/types").TradeEntry[];
+  };
   onEdit: () => void;
   onDelete: () => void;
   onPayout: () => void;
 }) {
   const bw = useBWMode();
   const [confirmDelete, setConfirmDelete] = useState(false);
-
-  const funded    = isFundedStatus(account.status);
-  const challenge = isChallengeStatus(account.status);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const snapshot = useMemo(
+    () => getPropAccountSnapshot(account, snapshotContext),
+    [account, snapshotContext]
+  );
+  const derivedPhase = snapshot?.phase ?? getAccountPhase(account) ?? "challenge";
+  const funded = derivedPhase === "funded";
+  const challenge = derivedPhase === "challenge";
   const breached  = isBreachedStatus(account.status);
-
-  const mllProgress = useMemo(() => {
-    if (!funded || !account.mll || !account.balance) return null;
-    const bal  = toNum(account.balance);
-    const mll  = toNum(account.mll);
-    const init = toNum(account.initialBalance ?? 0);
-    const buffer    = bal - mll;
-    const maxBuffer = init ? init - mll : bal * 0.1;
-    const ratio = (buffer / Math.max(maxBuffer, 1)) * 100;
-    return { buffer, ratio: Math.max(0, Math.min(ratio, 100)) };
-  }, [funded, account.mll, account.balance, account.initialBalance]);
-
-  // Use actual profit target from PLAN_RULES, fallback to 10% of initial balance
-  const acctRules = useMemo(() => getRules(account.firm, account.type), [account.firm, account.type]);
-  const profitTarget = acctRules?.profitTarget ?? (account.initialBalance ? toNum(account.initialBalance) * 0.10 : null);
-
-  const challengeProgress = useMemo(() => {
-    if (!challenge || !account.initialBalance) return null;
-    const equity = toNum(account.balance) - toNum(account.initialBalance);
-    const target = profitTarget ?? toNum(account.initialBalance) * 0.10;
-    const progress = target > 0 ? Math.max(0, Math.min((equity / target) * 100, 100)) : 0;
-    return { equity, target, progress };
-  }, [challenge, account.balance, account.initialBalance, profitTarget]);
-
   const displayName = account.name || account.type || "—";
-  const hasRules    = !!(account.firm === "Lucid Trading" || account.firm === "Tradeify");
-
   const statusColor = funded ? "#22c55e" : challenge ? "#f59e0b" : "#ef4444";
-  const statusBg    = funded ? "rgba(34,197,94,0.06)" : challenge ? "rgba(245,158,11,0.06)" : "rgba(239,68,68,0.04)";
+  const statusBg    = funded ? "rgba(34,197,94,0.05)" : challenge ? "rgba(245,158,11,0.05)" : "rgba(239,68,68,0.05)";
   const firmColor   = bwColor(getFirmColor(account.firm), bw);
+  const initialBalance = snapshot?.initialBalance ?? toNum(account.initialBalance ?? account.balance);
+  const balance = toNum(account.balance);
+  const pnl = balance - initialBalance;
+  const pnlPercent = initialBalance > 0 ? pct(pnl, initialBalance) : 0;
+  const phaseLabel = funded ? "Funded" : "Challenge";
+  const bufferRatio = snapshot?.drawdownRemainingPct ?? 0;
+  const performanceLabel = `${pnl >= 0 ? "+" : ""}${fmtUSD(pnl)} · ${pnlPercent >= 0 ? "+" : ""}${pnlPercent.toFixed(1)}%`;
+  const targetValue = snapshot
+    ? challenge && snapshot.profitTarget !== null
+      ? fmtUSD(snapshot.profitTarget)
+      : fmtUSD(snapshot.mllFloor)
+    : "Manual";
+  const targetMeta = snapshot
+    ? challenge && snapshot.amountToPass !== null
+      ? `${fmtUSD(snapshot.amountToPass)} left`
+      : `${fmtUSD(snapshot.distanceToMll)} buffer`
+    : "No preset matched";
+  const progressLabel = snapshot
+    ? challenge
+      ? `${snapshot.progressPct?.toFixed(0) ?? "0"}% to pass`
+      : snapshot.bufferHealth === "critical"
+        ? "Critical buffer"
+        : snapshot.bufferHealth === "tight"
+          ? "Tight buffer"
+          : "Healthy buffer"
+    : "No preset matched";
+  const progressMeta = snapshot
+    ? challenge
+      ? `Start ${fmtUSD(snapshot.initialBalance)}`
+      : `${snapshot.locked ? "Locked" : "Trail"} ${fmtUSD(snapshot.lockFloor)} · peak ${fmtUSD(snapshot.peakBalance)}`
+    : "";
+  const progressWidth = challenge ? snapshot?.progressPct ?? 0 : bufferRatio;
+  const payoutStatus = getPayoutStatus(snapshot, funded, breached);
+  const closeDetail = () => setDetailOpen(false);
+  const handleEdit = () => {
+    closeDetail();
+    onEdit();
+  };
+  const handlePayout = () => {
+    closeDetail();
+    onPayout();
+  };
+  const handleConfirmDelete = () => {
+    setConfirmDelete(false);
+    closeDetail();
+    onDelete();
+  };
+  const actionControls = (
+    <>
+      {funded && !breached && (
+        <button onClick={handlePayout} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-profit" title="Record payout">
+          <PoundSterling size={12} />
+        </button>
+      )}
+      <button onClick={handleEdit} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-tx-1" title="Edit">
+        <Edit2 size={12} />
+      </button>
+      {!confirmDelete ? (
+        <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-loss" title="Delete">
+          <Trash2 size={12} />
+        </button>
+      ) : (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleConfirmDelete}
+            className="px-2 py-1 rounded text-[10px] font-semibold transition-all"
+            style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}
+          >
+            Confirm
+          </button>
+          <button
+            onClick={() => setConfirmDelete(false)}
+            className="px-2 py-1 rounded text-[10px] font-semibold transition-all"
+            style={{ background: "rgba(var(--surface-rgb),0.07)", color: "var(--tx-3)" }}
+          >
+            No
+          </button>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl flex flex-col gap-0",
-        breached && "opacity-60"
+        "relative overflow-hidden rounded-2xl",
+        breached && "opacity-75"
       )}
       style={{
         background: statusBg,
         border: `1px solid ${statusColor}20`,
-        boxShadow: `0 2px 12px ${statusColor}08`,
       }}
     >
-      {/* Colored left accent bar */}
-      <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-full" style={{ background: statusColor }} />
+      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-full" style={{ background: statusColor }} />
+      <div className="sm:hidden px-3.5 py-3">
+        <div className="flex items-start gap-2.5">
+          <button
+            type="button"
+            onClick={() => setDetailOpen(true)}
+            className="min-w-0 flex-1 text-left"
+          >
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+              <span className={cn("badge text-[10px]", getStatusBg(account.status))}>{account.status}</span>
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                style={{ background: `${firmColor}15`, color: firmColor, border: `1px solid ${firmColor}30` }}
+              >
+                {FIRM_SHORT[account.firm] ?? account.firm.split(" ")[0]}
+              </span>
+              {snapshot?.program && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-white/[0.08] text-tx-3">
+                  {snapshot.program.label}
+                </span>
+              )}
+              {payoutStatus && (
+                <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-white/[0.08]", payoutStatus.badgeTone)}>
+                  {payoutStatus.badgeText}
+                </span>
+              )}
+            </div>
+            <div className="text-tx-1 text-sm font-bold leading-tight truncate">{displayName}</div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="rounded-xl px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.07)" }}>
+                <p className="text-[9px] uppercase tracking-[0.16em] text-tx-4">Balance</p>
+                <p className={cn("mt-1 text-sm font-black tabular-nums", breached ? "text-tx-3" : "text-tx-1")}>{fmtUSD(balance)}</p>
+              </div>
+              <div className="rounded-xl px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.07)" }}>
+                <p className="text-[9px] uppercase tracking-[0.16em] text-tx-4">{challenge ? "Need" : "Buffer"}</p>
+                <p className="mt-1 text-sm font-bold tabular-nums text-tx-1">{challenge ? targetValue : fmtUSD(snapshot?.distanceToMll ?? 0)}</p>
+              </div>
+            </div>
+          </button>
+          <div className="flex items-start gap-1 shrink-0">
+            {actionControls}
+          </div>
+        </div>
 
-      {/* Firm color top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: `linear-gradient(90deg, ${firmColor}80, transparent)` }} />
+        <div className="mt-2.5 rounded-xl px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+          <div className="flex items-center justify-between gap-2 text-[10px]">
+            <span className="min-w-0 truncate text-tx-3">{progressLabel}</span>
+            <button
+              type="button"
+              onClick={() => setDetailOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[10px] font-semibold text-tx-2"
+            >
+              <BookOpen size={10} />
+              Details
+            </button>
+          </div>
+          <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
+            <div
+              className="h-full transition-all duration-500"
+              style={{
+                width: `${progressWidth}%`,
+                background: challenge
+                  ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                  : bufferRatio > 40
+                    ? "linear-gradient(90deg,#16a34a,#4ade80)"
+                    : bufferRatio > 15
+                      ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                      : "linear-gradient(90deg,#dc2626,#ef4444)",
+              }}
+            />
+          </div>
+        </div>
 
-      {/* Header */}
-      <div className="pl-4 pr-3 pt-3.5 pb-2.5 flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+        {payoutStatus && (
+          <div className="mt-2 rounded-xl px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+            <div className="flex items-center justify-between gap-2 text-[10px]">
+              <span className={cn("font-semibold", payoutStatus.badgeTone)}>{payoutStatus.badgeText}</span>
+              {payoutStatus.detail.cycleProfit !== null && (
+                <span className="tabular-nums text-tx-2">{fmtUSD(payoutStatus.detail.cycleProfit)}</span>
+              )}
+            </div>
+            <p className="mt-1 text-[10px] text-tx-3">{payoutStatus.summary}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="hidden sm:grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto]">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
             <span className={cn("badge text-[10px]", getStatusBg(account.status))}>{account.status}</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-              style={{ background: `${firmColor}15`, color: firmColor, border: `1px solid ${firmColor}30` }}>
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+              style={{ background: `${firmColor}15`, color: firmColor, border: `1px solid ${firmColor}30` }}
+            >
               {FIRM_SHORT[account.firm] ?? account.firm.split(" ")[0]}
             </span>
+            {snapshot?.program && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-white/[0.08] text-tx-3">
+                {snapshot.program.label}
+              </span>
+            )}
+            {payoutStatus && (
+              <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-white/[0.08]", payoutStatus.badgeTone)}>
+                {payoutStatus.badgeText}
+              </span>
+            )}
+            {breached && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-white/[0.08] text-tx-3">
+                Was {phaseLabel}
+              </span>
+            )}
           </div>
-          <div className="text-tx-1 text-sm font-bold leading-tight truncate">{account.firm}</div>
-          <div className="text-tx-4 text-[10px] mt-0.5 truncate">{displayName}</div>
+          <div className="text-tx-1 text-sm font-bold leading-tight truncate">{displayName}</div>
+          <div className="text-tx-4 text-[11px] mt-0.5 truncate">{account.firm}</div>
+          {account.notes && (
+            <p className="text-[10px] text-tx-4 mt-2 leading-relaxed">{account.notes}</p>
+          )}
+          {payoutStatus && (
+            <p className="text-[10px] text-tx-3 mt-2 leading-relaxed">
+              {payoutStatus.summary}
+            </p>
+          )}
         </div>
 
-        <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
-          {!breached && (
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-tx-4 mb-1">Balance</p>
+          <p className={cn("text-lg font-black tabular-nums", breached ? "text-tx-3" : "text-tx-1")}>{fmtUSD(balance)}</p>
+          <p className={cn("text-[11px] font-semibold tabular-nums mt-1", pnl >= 0 ? "text-profit" : "text-loss")}>
+            {performanceLabel}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-tx-4 mb-1">{challenge ? "Pass Target" : "MLL Floor"}</p>
+          {snapshot ? (
             <>
-              {funded && (
-                <button onClick={onPayout} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-profit"
-                  title="Record Payout">
-                  <PoundSterling size={12} />
-                </button>
-              )}
-              <button onClick={onEdit} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-tx-1"
-                title="Edit">
-                <Edit2 size={12} />
-              </button>
+              <p className="text-sm font-bold tabular-nums text-tx-1">
+                {challenge && snapshot.profitTarget !== null ? fmtUSD(snapshot.profitTarget) : fmtUSD(snapshot.mllFloor)}
+              </p>
+              <p className="text-[11px] text-tx-3 mt-1">
+                {challenge && snapshot.amountToPass !== null
+                  ? `${fmtUSD(snapshot.amountToPass)} left to pass`
+                  : `${fmtUSD(snapshot.distanceToMll)} buffer`}
+              </p>
             </>
-          )}
-          {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-loss"
-              title="Delete">
-              <Trash2 size={12} />
-            </button>
           ) : (
-            <div className="flex items-center gap-1">
-              <button onClick={() => { setConfirmDelete(false); onDelete(); }}
-                className="px-2 py-1 rounded text-[10px] font-semibold transition-all"
-                style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}>
-                Confirm
-              </button>
-              <button onClick={() => setConfirmDelete(false)}
-                className="px-2 py-1 rounded text-[10px] font-semibold transition-all"
-                style={{ background: "rgba(var(--surface-rgb),0.07)", color: "var(--tx-3)" }}>
-                No
-              </button>
-            </div>
+            <p className="text-sm font-bold tabular-nums text-tx-1">Manual</p>
           )}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-tx-4 mb-1">{challenge ? "Progress" : "Risk"}</p>
+          {snapshot ? (
+            <>
+              <div className="flex items-center justify-between text-[11px] mb-1">
+                <span className="text-tx-3">
+                  {challenge
+                    ? `${snapshot.progressPct?.toFixed(0) ?? "0"}% of target`
+                    : snapshot.bufferHealth === "critical"
+                      ? "Critical buffer"
+                      : snapshot.bufferHealth === "tight"
+                        ? "Tight buffer"
+                        : "Healthy buffer"}
+                </span>
+                {snapshot.currentDll !== null && (
+                  <span className="font-medium text-tx-2">DLL {fmtUSD(snapshot.currentDll)}</span>
+                )}
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
+                <div
+                  className="h-full transition-all duration-500"
+                  style={{
+                    width: `${challenge ? snapshot.progressPct ?? 0 : bufferRatio}%`,
+                    background: challenge
+                      ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                      : bufferRatio > 40
+                        ? "linear-gradient(90deg,#16a34a,#4ade80)"
+                        : bufferRatio > 15
+                          ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                          : "linear-gradient(90deg,#dc2626,#ef4444)",
+                  }}
+                />
+              </div>
+              <p className="text-[10px] text-tx-4 mt-1">
+                {challenge
+                  ? `Start ${fmtUSD(snapshot.initialBalance)}`
+                  : `${snapshot.locked ? "Locked" : "Trail"} ${fmtUSD(snapshot.lockFloor)} · peak ${fmtUSD(snapshot.peakBalance)}`}
+              </p>
+            </>
+          ) : (
+            <p className="text-[11px] text-tx-3">No preset matched</p>
+          )}
+        </div>
+
+        <div className="flex items-start gap-1 justify-end">
+          {actionControls}
         </div>
       </div>
 
-      {/* Balance + mini stats */}
-      <div className="pl-4 pr-3 pb-3">
-        <div className={cn("text-2xl font-black tabular-nums mb-2", breached ? "text-tx-4" : "text-tx-1")}>
-          {fmtUSD(toNum(account.balance))}
-        </div>
-
-        {/* Stats row */}
-        {account.initialBalance && !breached && (
-          <div className="flex gap-3 mb-3">
-            {(() => {
-              const equity = toNum(account.balance) - toNum(account.initialBalance);
-              const epct   = pct(equity, toNum(account.initialBalance));
-              return (
-                <>
-                  <div>
-                    <p className="text-[10px] text-tx-3 uppercase tracking-wider">P&L</p>
-                    <p className="text-[11px] font-bold tabular-nums" style={{ color: equity >= 0 ? "#22c55e" : "#ef4444" }}>
-                      {equity >= 0 ? "+" : ""}{fmtUSD(equity)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-tx-3 uppercase tracking-wider">% Change</p>
-                    <p className="text-[11px] font-bold tabular-nums" style={{ color: equity >= 0 ? "#22c55e" : "#ef4444" }}>
-                      {epct >= 0 ? "+" : ""}{epct.toFixed(1)}%
-                    </p>
-                  </div>
-                  {account.mll && (
-                    <div>
-                      <p className="text-[10px] text-tx-3 uppercase tracking-wider">MLL</p>
-                      <p className="text-[11px] font-bold tabular-nums text-tx-3">{fmtUSD(account.mll)}</p>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* Drawdown meter for funded accounts */}
-        {funded && mllProgress !== null && (
-          <DrawdownMeter
-            ratio={mllProgress.ratio}
-            label="Drawdown Buffer"
-            sublabel={`${fmtUSD(mllProgress.buffer)} · ${mllProgress.ratio.toFixed(0)}% safe`}
-          />
-        )}
-
-        {/* Challenge profit target progress */}
-        {challengeProgress && (
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[10px] text-tx-4 uppercase tracking-wider font-medium">Profit Target</span>
-              <span className="text-[10px] font-bold tabular-nums font-mono" style={{ color: challengeProgress.equity >= 0 ? "#22c55e" : "#ef4444" }}>
-                {challengeProgress.equity >= 0 ? "+" : ""}{fmtUSD(challengeProgress.equity)} / {fmtUSD(challengeProgress.target)}
+      <Modal open={detailOpen} onClose={closeDetail} title={displayName} size="sm">
+        <div className="space-y-3">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={cn("badge text-[10px]", getStatusBg(account.status))}>{account.status}</span>
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+              style={{ background: `${firmColor}15`, color: firmColor, border: `1px solid ${firmColor}30` }}
+            >
+              {account.firm}
+            </span>
+            {snapshot?.program && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-white/[0.08] text-tx-3">
+                {snapshot.program.label}
               </span>
+            )}
+            {payoutStatus && (
+              <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-white/[0.08]", payoutStatus.badgeTone)}>
+                {payoutStatus.badgeText}
+              </span>
+            )}
+            {breached && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-white/[0.08] text-tx-3">
+                Was {phaseLabel}
+              </span>
+            )}
+          </div>
+
+          {account.notes && (
+            <p className="text-sm leading-relaxed text-tx-3">{account.notes}</p>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-tx-4">Balance</p>
+              <p className={cn("mt-1 text-base font-black tabular-nums", breached ? "text-tx-3" : "text-tx-1")}>{fmtUSD(balance)}</p>
+              <p className={cn("mt-1 text-[11px] font-semibold tabular-nums", pnl >= 0 ? "text-profit" : "text-loss")}>
+                {performanceLabel}
+              </p>
             </div>
-            <div className="h-2 rounded-full overflow-hidden relative" style={{ background: "rgba(var(--border-rgb,255,255,255),0.06)" }}>
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-tx-4">{challenge ? "Need to pass" : "MLL floor"}</p>
+              <p className="mt-1 text-base font-black tabular-nums text-tx-1">{targetValue}</p>
+              <p className="mt-1 text-[11px] text-tx-3">{targetMeta}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3 py-3">
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="text-tx-2">{progressLabel}</span>
+              {snapshot && snapshot.currentDll !== null && (
+                <span className="text-tx-3">DLL {fmtUSD(snapshot.currentDll)}</span>
+              )}
+            </div>
+            <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
               <div
-                className="h-full rounded-full transition-all duration-700"
+                className="h-full transition-all duration-500"
                 style={{
-                  width: `${challengeProgress.progress}%`,
-                  background: challengeProgress.equity >= 0
-                    ? "linear-gradient(90deg,#16a34a,#22c55e,#4ade80)"
-                    : "linear-gradient(90deg,#dc2626,#ef4444)",
+                  width: `${progressWidth}%`,
+                  background: challenge
+                    ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                    : bufferRatio > 40
+                      ? "linear-gradient(90deg,#16a34a,#4ade80)"
+                      : bufferRatio > 15
+                        ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                        : "linear-gradient(90deg,#dc2626,#ef4444)",
                 }}
               />
-              <div className="absolute right-0 top-0 bottom-0 w-0.5" style={{ background: "rgba(var(--border-rgb,255,255,255),0.25)" }} />
             </div>
-            <div className="flex justify-between mt-0.5">
-              <span className="text-[10px] text-tx-3">Start</span>
-              <span className="text-[10px] text-tx-3">{challengeProgress.progress.toFixed(0)}% complete</span>
+            {progressMeta && (
+              <p className="mt-2 text-[11px] text-tx-3">{progressMeta}</p>
+            )}
+          </div>
+
+          {payoutStatus && (
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3 py-3">
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <span className={cn("font-semibold", payoutStatus.badgeTone)}>{payoutStatus.badgeText}</span>
+                {payoutStatus.detail.cycleProfit !== null && (
+                  <span className="tabular-nums text-tx-2">{fmtUSD(payoutStatus.detail.cycleProfit)}</span>
+                )}
+              </div>
+              <p className="mt-2 text-[11px] text-tx-3">{payoutStatus.summary}</p>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-[11px]">
+                {payoutStatus.detail.winningDays !== null && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-tx-4">Winning Days</p>
+                    <p className="mt-1 font-semibold text-tx-1">
+                      {payoutStatus.detail.winningDays}
+                      {payoutStatus.detail.requiredWinningDays !== null ? ` / ${payoutStatus.detail.requiredWinningDays}` : ""}
+                    </p>
+                  </div>
+                )}
+                {payoutStatus.detail.bufferRemaining !== null && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-tx-4">Payout Buffer</p>
+                    <p className={cn("mt-1 font-semibold", payoutStatus.detail.bufferRemaining >= 0 ? "text-profit" : "text-warn")}>
+                      {fmtUSD(payoutStatus.detail.bufferRemaining)}
+                    </p>
+                  </div>
+                )}
+                {payoutStatus.detail.consistencyPct !== null && (
+                  <div className="col-span-2">
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-tx-4">Consistency</p>
+                    <p className="mt-1 font-semibold text-tx-1">
+                      {payoutStatus.detail.consistencyPct.toFixed(0)}%
+                      {payoutStatus.detail.consistencyLimit !== null ? ` / ${payoutStatus.detail.consistencyLimit}% max` : ""}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Breached note */}
-        {breached && account.initialBalance && (
-          <div className="flex items-center gap-1.5 mt-1">
-            <XCircle size={11} style={{ color: "#ef4444" }} />
-            <span className="text-[11px] font-medium" style={{ color: "#f87171" }}>Account breached · Cost: {fmtUSD(toNum(account.initialBalance))}</span>
+          <div className="modal-action-bar">
+            {funded && !breached && (
+              <button className="btn-success btn flex-1" onClick={handlePayout}>
+                <PoundSterling size={14} />
+                Log Payout
+              </button>
+            )}
+            <button className="btn-primary btn flex-1" onClick={handleEdit}>
+              <Edit2 size={14} />
+              Edit
+            </button>
+            {!confirmDelete ? (
+              <button className="btn-ghost btn" onClick={() => setConfirmDelete(true)}>
+                <Trash2 size={14} />
+                Delete
+              </button>
+            ) : (
+              <>
+                <button className="btn-danger btn flex-1" onClick={handleConfirmDelete}>
+                  Confirm Delete
+                </button>
+                <button className="btn-ghost btn" onClick={() => setConfirmDelete(false)}>
+                  Keep
+                </button>
+              </>
+            )}
           </div>
-        )}
-
-        {/* Notes */}
-        {account.notes && (
-          <div className="text-tx-4 text-[10px] leading-relaxed border-t mt-2 pt-2" style={{ borderColor: "rgba(var(--border-rgb,255,255,255),0.06)" }}>
-            {account.notes}
-          </div>
-        )}
-
-        {/* Rules mini-panel — funded accounts only */}
-        {hasRules && funded && !breached && (
-          <AccountRulesPanel firm={account.firm} type={account.type} status={account.status} />
-        )}
-      </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -1309,25 +1391,36 @@ function AccountCard({
 export default function PropAccounts() {
   const { data, update } = useAppData();
   const location = useLocation();
-  const navigate = useNavigate();
+  const handledLocationAction = useRef<string | null>(null);
 
-  const [tab, setTab] = useState<FilterTab>("Challenge");
+  const [tab, setTab] = useState<FilterTab>("all");
   const [addOpen, setAddOpen] = useState(false);
   const [addQty, setAddQty] = useState(1);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [payoutOpen, setPayoutOpen] = useState(false);
 
   useEffect(() => {
-    const action = (location.state as { action?: string } | null)?.action;
-    if (action === "addAccount") {
-      setAddOpen(true);
-      navigate(location.pathname, { replace: true, state: {} });
-    } else if (action === "logPayout") {
-      setPayoutOpen(true);
-      navigate(location.pathname, { replace: true, state: {} });
+    const quickAction = getQuickActionState(location.state);
+    const requestKey = quickAction?.quickActionId ?? null;
+
+    if (!quickAction?.action) {
+      handledLocationAction.current = null;
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (handledLocationAction.current === requestKey) return;
+
+    if (quickAction.action === "addAccount") {
+      handledLocationAction.current = requestKey;
+      setEditAccount(null);
+      setForm(emptyAccountForm());
+      setAddOpen(true);
+    } else if (quickAction.action === "logPayout") {
+      handledLocationAction.current = requestKey;
+      setEditPayoutId(null);
+      setPayoutForm(emptyPayoutForm());
+      setPayoutOpen(true);
+    }
+  }, [location.state]);
 
   const [form, setForm] = useState(emptyAccountForm());
   const [payoutForm, setPayoutForm] = useState(emptyPayoutForm());
@@ -1341,60 +1434,124 @@ export default function PropAccounts() {
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.prop, isBW);
   const [filters, setFilters] = useState({ status: "all", sort: "balance" });
+  const propContext = useMemo(
+    () => ({
+      withdrawals: data.withdrawals,
+      tradeJournal: data.tradeJournal,
+    }),
+    [data.tradeJournal, data.withdrawals]
+  );
 
-  /* ---- Detect if selected firm has plan rules ---- */
-  const firmHasPlans = !!FIRM_PLANS[form.firm];
-  const availablePlans = FIRM_PLANS[form.firm] ?? [];
-  const activePlanKey  = availablePlans.some((p) => p.value === form.planKey)
-    ? form.planKey
-    : availablePlans[0]?.value ?? "";
-  const availablePlanSizes = PLAN_SIZES_BY_FIRM[form.firm]?.[activePlanKey] ?? [];
+  const fallbackPhase = editAccount?.phaseHint ?? "challenge";
+  const formPhase = getPhaseForStatus(form.status, fallbackPhase);
+  const availablePlans = getProgramOptions(form.firm, formPhase);
+  const firmHasPlans = availablePlans.length > 0;
+  const activePlanKey = availablePlans.some((plan) => plan.key === form.planKey)
+    ? (form.planKey as PropProgramKey)
+    : (availablePlans[0]?.key ?? "");
+  const availablePlanSizes = availablePlans.find((plan) => plan.key === activePlanKey)?.sizes ?? [];
 
-  /* ---- Auto-fill MLL + initialBalance when plan + size are set ---- */
-  function handlePlanKeyChange(planKey: string) {
-    const sizes = PLAN_SIZES_BY_FIRM[form.firm]?.[planKey] ?? [];
-    const sz    = form.planSize && sizes.includes(Number(form.planSize)) ? Number(form.planSize) : sizes[0];
-    const rules = PLAN_RULES[form.firm]?.[planKey]?.[sz];
-    const label = PLAN_LABELS[planKey] ?? planKey;
-    setForm((p) => ({
-      ...p,
-      planKey,
-      planSize:       sz ? String(sz) : "",
-      type:           sz ? `${label} ${sz / 1000}K` : label,
-      mll:            rules ? String(rules.mll) : p.mll,
-      initialBalance: sz ? String(sz) : p.initialBalance,
+  useEffect(() => {
+    const normalizedAccounts = data.accounts.map((account) => normalizeAccountWithPropRules(account, propContext));
+    const changed = normalizedAccounts.some((account, index) => {
+      const current = data.accounts[index];
+      return (
+        account.status !== current.status ||
+        account.type !== current.type ||
+        account.fundedAt !== current.fundedAt ||
+        account.balance !== current.balance ||
+        account.mll !== current.mll ||
+        account.initialBalance !== current.initialBalance ||
+        account.peakBalance !== current.peakBalance ||
+        account.sodBalance !== current.sodBalance ||
+        account.phaseHint !== current.phaseHint ||
+        account.payoutCycleStartBalance !== current.payoutCycleStartBalance
+      );
+    });
+
+    if (!changed) return;
+
+    update((prev) => ({
+      ...prev,
+      accounts: prev.accounts.map((account) => normalizeAccountWithPropRules(account, propContext)),
     }));
+  }, [data.accounts, propContext, update]);
+
+  function applyProgramSelection(nextPlanKey: PropProgramKey, nextSize?: number, nextStatus?: AccountStatus) {
+    const phase = getPhaseForStatus(nextStatus ?? form.status, formPhase);
+    const nextPlans = getProgramOptions(form.firm, phase);
+    const fallbackPlan = nextPlans.find((plan) => plan.key === nextPlanKey) ? nextPlanKey : (nextPlans[0]?.key ?? nextPlanKey);
+    const planSizes = nextPlans.find((plan) => plan.key === fallbackPlan)?.sizes ?? [];
+    const resolvedSize = nextSize && planSizes.includes(nextSize) ? nextSize : planSizes[0];
+    const rules = resolvedSize ? getProgramRuleByKeySize(fallbackPlan, resolvedSize) : null;
+    const baseBalance = rules?.balanceMode === "pnl" ? 0 : (resolvedSize ?? 0);
+
+    setForm((prev) => ({
+      ...prev,
+      status: nextStatus ?? prev.status,
+      planKey: fallbackPlan,
+      planSize: resolvedSize ? String(resolvedSize) : "",
+      type: resolvedSize ? buildProgramTypeLabel(fallbackPlan, resolvedSize) : prev.type,
+      initialBalance: rules ? String(baseBalance) : prev.initialBalance,
+      balance: !editAccount && rules ? String(baseBalance) : prev.balance,
+      peakBalance: !editAccount && rules ? String(baseBalance) : prev.peakBalance,
+      mll: rules ? String(baseBalance - rules.drawdown) : prev.mll,
+      profitTarget: rules?.profitTarget ? String(rules.profitTarget) : "",
+    }));
+  }
+
+  function handlePlanKeyChange(planKey: string) {
+    applyProgramSelection(planKey as PropProgramKey, form.planSize ? Number(form.planSize) : undefined);
   }
 
   function handlePlanSizeChange(sizeStr: string) {
-    const sz    = Number(sizeStr);
-    const rules = PLAN_RULES[form.firm]?.[activePlanKey]?.[sz];
-    const label = PLAN_LABELS[activePlanKey] ?? activePlanKey;
-    setForm((p) => ({
-      ...p,
-      planSize:       sizeStr,
-      type:           sz ? `${label} ${sz / 1000}K` : p.type,
-      mll:            rules ? String(rules.mll) : p.mll,
-      initialBalance: sizeStr,   // lock initial balance to plan size
-    }));
+    const nextSize = Number(sizeStr);
+    applyProgramSelection(activePlanKey, nextSize);
+  }
+
+  function handleStatusChange(nextStatus: AccountStatus) {
+    if (!firmHasPlans) {
+      setForm((prev) => ({ ...prev, status: nextStatus }));
+      return;
+    }
+
+    const nextPhase = getPhaseForStatus(nextStatus, formPhase);
+    const nextPlans = getProgramOptions(form.firm, nextPhase);
+    const nextPlan = nextPlans.find((plan) => plan.key === form.planKey)?.key ?? nextPlans[0]?.key;
+    applyProgramSelection(nextPlan ?? activePlanKey, form.planSize ? Number(form.planSize) : undefined, nextStatus);
   }
 
   function handleFirmChange(firm: string) {
-    const plans     = FIRM_PLANS[firm] ?? [];
-    const firstPlan = plans[0]?.value ?? "";
-    const sizes     = PLAN_SIZES_BY_FIRM[firm]?.[firstPlan] ?? [];
-    const firstSz   = sizes[0];
-    const rules     = PLAN_RULES[firm]?.[firstPlan]?.[firstSz];
-    const label     = PLAN_LABELS[firstPlan] ?? firstPlan;
-    setForm((p) => ({
-      ...p,
+    if (firm === "__other__") {
+      setForm((prev) => ({
+        ...prev,
+        firm,
+        customFirm: "",
+        planKey: "",
+        planSize: "",
+        type: "",
+        profitTarget: "",
+      }));
+      return;
+    }
+
+    const nextPlans = getProgramOptions(firm, formPhase);
+    const nextPlan = nextPlans[0]?.key ?? "";
+    const nextSize = nextPlans[0]?.sizes[0];
+    const rules = nextPlan && nextSize ? getProgramRuleByKeySize(nextPlan, nextSize) : null;
+    const baseBalance = rules?.balanceMode === "pnl" ? 0 : (nextSize ?? 0);
+    setForm((prev) => ({
+      ...prev,
       firm,
-      customFirm:     "",
-      planKey:        firstPlan,
-      planSize:       firstSz ? String(firstSz) : "",
-      type:           firstPlan && firstSz ? `${label} ${firstSz / 1000}K` : "",
-      mll:            rules ? String(rules.mll) : "",
-      initialBalance: firstSz ? String(firstSz) : "",
+      customFirm: "",
+      planKey: nextPlan,
+      planSize: nextSize ? String(nextSize) : "",
+      type: nextPlan && nextSize ? buildProgramTypeLabel(nextPlan, nextSize) : prev.type,
+      initialBalance: rules ? String(baseBalance) : prev.initialBalance,
+      balance: !editAccount && rules ? String(baseBalance) : prev.balance,
+      peakBalance: !editAccount && rules ? String(baseBalance) : prev.peakBalance,
+      mll: rules ? String(baseBalance - rules.drawdown) : prev.mll,
+      profitTarget: rules?.profitTarget ? String(rules.profitTarget) : "",
     }));
   }
 
@@ -1449,45 +1606,137 @@ export default function PropAccounts() {
     [data.withdrawals]
   );
 
+  const payoutAccountOptions = useMemo(
+    () =>
+      [...data.accounts]
+        .sort((a, b) => {
+          const activityDelta = Number(isActiveAccount(b)) - Number(isActiveAccount(a));
+          if (activityDelta !== 0) return activityDelta;
+          return (a.name || a.type).localeCompare(b.name || b.type) || a.firm.localeCompare(b.firm);
+        })
+        .map((account) => ({
+          value: account.id,
+          label: formatAccountOptionLabel(account, { includeFirm: false }),
+          firm: account.firm,
+          active: isActiveAccount(account),
+        })),
+    [data.accounts]
+  );
+
+  const payoutAccountLabels = useMemo(
+    () =>
+      new Map(
+        data.accounts.map((account) => [
+          account.id,
+          formatAccountOptionLabel(account, { includeFirm: false }),
+        ])
+      ),
+    [data.accounts]
+  );
+
   /* ---- Save account ---- */
   const handleSaveAccount = () => {
     if (!form.balance) return;
     const firmName = form.firm === "__other__" ? form.customFirm.trim() : form.firm;
     if (!firmName) return;
-    const bal     = parseFloat(form.balance);
-    const initBal = form.initialBalance ? parseFloat(form.initialBalance) : bal;
-    const sodBal  = form.sodBalance ? parseFloat(form.sodBalance) : bal;
-    const mll     = form.mll ? parseFloat(form.mll) : undefined;
-
-    // Auto-promote: if saving a Challenge account whose balance has reached the profit target,
-    // automatically set status to Funded and record the pass in history.
+    const accountId = editAccount?.id ?? generateId();
+    const bal = parseFloat(form.balance);
+    const selectedPlanKey = firmHasPlans && activePlanKey ? activePlanKey : null;
+    const selectedSize = form.planSize ? Number(form.planSize) : parseAccountSize(form.type);
+    let finalType = selectedPlanKey && selectedSize ? buildProgramTypeLabel(selectedPlanKey, selectedSize) : form.type;
+    const initBal = form.initialBalance ? parseFloat(form.initialBalance) : selectedSize ?? bal;
+    const sodBal = form.sodBalance ? parseFloat(form.sodBalance) : bal;
+    const manualMll = form.mll ? parseFloat(form.mll) : undefined;
+    const previousPhase = editAccount ? getPhaseForStatus(editAccount.status, editAccount.phaseHint ?? "challenge") : null;
+    const preservedFundedAt = editAccount
+      ? (editAccount.fundedAt ?? getAccountFundingDate(editAccount, data.passedChallenges ?? []) ?? undefined)
+      : undefined;
+    let phaseHint = getPhaseForStatus(form.status, fallbackPhase);
     let finalStatus: AccountStatus = form.status;
     let passRecord: import("@/types").PassedChallenge | null = null;
+    let peakBalance = Math.max(
+      bal,
+      initBal,
+      editAccount?.peakBalance ?? 0,
+      form.peakBalance ? parseFloat(form.peakBalance) : 0
+    );
 
-    if (isChallengeStatus(form.status)) {
-      const planRules = getRules(firmName, form.type);
-      const target = planRules?.profitTarget ?? (initBal * 0.10);
-      const equity = bal - initBal;
-      if (equity >= target) {
-        finalStatus = "Funded";
-        passRecord = {
-          id:             generateId(),
-          firm:           firmName,
-          type:           form.type,
-          name:           form.name || undefined,
-          passedDate:     new Date().toISOString().slice(0, 10),
-          finalBalance:   bal,
-          initialBalance: initBal,
-          profitTarget:   target,
-        };
+    let snapshot = getPropAccountSnapshot({
+      id: accountId,
+      firm: firmName,
+      type: finalType,
+      status: finalStatus,
+      phaseHint,
+      balance: bal,
+      initialBalance: initBal,
+      peakBalance,
+      payoutCycleStartBalance: editAccount?.payoutCycleStartBalance,
+    }, propContext);
+
+    if (snapshot && phaseHint === "challenge" && snapshot.amountToPass !== null && snapshot.amountToPass <= 0) {
+      const promotedKey = selectedPlanKey ? getPromotedProgramKey(selectedPlanKey) : null;
+      finalStatus = "Funded";
+      phaseHint = "funded";
+      if (promotedKey && selectedSize) {
+        finalType = buildProgramTypeLabel(promotedKey, selectedSize);
       }
+      passRecord = {
+        id: generateId(),
+        accountId,
+        firm: firmName,
+        type: finalType,
+        name: form.name || undefined,
+        passedDate: todayLocalIsoDate(),
+        finalBalance: bal,
+        initialBalance: initBal,
+        profitTarget: snapshot.profitTarget ?? 0,
+      };
+      snapshot = getPropAccountSnapshot({
+        id: accountId,
+        firm: firmName,
+        type: finalType,
+        status: finalStatus,
+        phaseHint,
+        balance: bal,
+        initialBalance: initBal,
+        peakBalance,
+        payoutCycleStartBalance: editAccount?.payoutCycleStartBalance,
+      }, propContext);
     }
+
+    const finalPhase = getPhaseForStatus(finalStatus, phaseHint);
+    const fundedAt = finalPhase === "funded"
+      ? (preservedFundedAt ?? passRecord?.passedDate ?? (previousPhase === "funded" ? editAccount?.fundedAt : todayLocalIsoDate()))
+      : undefined;
+
+    const baseAccount: Account = {
+      id: accountId,
+      firm: firmName,
+      type: finalType,
+      name: form.name || undefined,
+      status: finalStatus,
+      phaseHint,
+      fundedAt,
+      challengeStartDate: form.challengeStartDate || undefined,
+      breachedDate: form.breachedDate || (form.status === "Breached" ? todayLocalIsoDate() : undefined),
+      balance: bal,
+      initialBalance: initBal,
+      peakBalance,
+      sodBalance: sodBal,
+      mll: snapshot?.mllFloor ?? manualMll,
+      payoutCycleStartBalance: editAccount?.payoutCycleStartBalance ?? snapshot?.payoutCycleStartBalance ?? undefined,
+      notes: form.notes || undefined,
+      pnlHistory: editAccount?.pnlHistory ?? [],
+      pnlEntries: editAccount?.pnlEntries,
+      linkedExpenseId: editAccount?.linkedExpenseId,
+    };
+    const normalizedAccount = normalizeAccountWithPropRules(baseAccount, propContext);
 
     if (editAccount) {
       update((prev) => {
         const updatedAccounts = prev.accounts.map((a) =>
           a.id === editAccount.id
-            ? { ...a, firm: firmName, type: form.type, name: form.name || undefined, status: finalStatus, balance: bal, initialBalance: initBal, sodBalance: sodBal, mll, notes: form.notes || undefined }
+            ? { ...a, ...normalizedAccount }
             : a
         );
         return passRecord
@@ -1497,17 +1746,9 @@ export default function PropAccounts() {
     } else {
       const qty = Math.max(1, Math.min(addQty, 50));
       const newAccounts: Account[] = Array.from({ length: qty }, () => ({
-        id:             generateId(),
-        firm:           firmName,
-        type:           form.type,
-        name:           form.name || undefined,
-        status:         form.status,
-        balance:        bal,
-        initialBalance: initBal,
-        sodBalance:     sodBal,
-        mll,
-        notes:          form.notes || undefined,
-        pnlHistory:     [],
+        ...normalizedAccount,
+        id: generateId(),
+        pnlHistory: normalizedAccount.pnlHistory ?? [],
       }));
       update((prev) => ({ ...prev, accounts: [...newAccounts, ...prev.accounts] }));
       toast.success('Account added');
@@ -1523,20 +1764,27 @@ export default function PropAccounts() {
   /* ---- Open edit ---- */
   const handleOpenEdit = (account: Account) => {
     setEditAccount(account);
-    const info = parsePlanInfo(account.firm, account.type);
+    const inferredKey = inferProgramKey(account);
+    const inferredSize = parseAccountSize(account.type);
+    const rules = getProgramRule(account);
     setForm({
       firm:           account.firm,
-      planKey:        info?.plan ?? "",
-      planSize:       info ? String(info.size) : "",
+      planKey:        inferredKey ?? "",
+      planSize:       inferredSize ? String(inferredSize) : "",
       type:           account.type,
       name:           account.name ?? "",
       status:         account.status,
       balance:        String(account.balance),
       initialBalance: account.initialBalance ? String(account.initialBalance) : "",
+      peakBalance:    account.peakBalance ? String(account.peakBalance) : "",
       sodBalance:     account.sodBalance ? String(account.sodBalance) : "",
       mll:            account.mll ? String(account.mll) : "",
+      profitTarget:   rules?.profitTarget ? String(rules.profitTarget) : "",
       notes:          account.notes ?? "",
       customFirm:     "",
+      fundedAt:       account.fundedAt ?? "",
+      challengeStartDate: account.challengeStartDate ?? "",
+      breachedDate:   account.breachedDate ?? "",
     });
     setAddOpen(true);
   };
@@ -1583,45 +1831,85 @@ export default function PropAccounts() {
   const handleSavePayout = () => {
     if (!payoutForm.gross) return;
     const grossAmt = parseFloat(payoutForm.gross);
+    const nextWithdrawalPatch = {
+      date: payoutForm.date,
+      firm: payoutForm.firm,
+      gross: grossAmt,
+      accountId: payoutForm.accountId || undefined,
+      notes: payoutForm.notes.trim() || undefined,
+    };
+
     if (editPayoutId) {
-      const oldW     = data.withdrawals.find((w) => w.id === editPayoutId);
-      const oldGross = oldW ? toNum(oldW.gross) : 0;
-      const diff     = grossAmt - oldGross;
       update((prev) => {
-        const updatedWithdrawals = prev.withdrawals.map((w) =>
-          w.id === editPayoutId
-            ? { ...w, date: payoutForm.date, firm: payoutForm.firm, gross: grossAmt, notes: payoutForm.notes || undefined }
-            : w
+        const oldWithdrawal = prev.withdrawals.find((withdrawal) => withdrawal.id === editPayoutId);
+        if (!oldWithdrawal) return prev;
+
+        const draftWithdrawal: Withdrawal = {
+          ...oldWithdrawal,
+          ...nextWithdrawalPatch,
+        };
+
+        const draftWithdrawals = prev.withdrawals.map((withdrawal) =>
+          withdrawal.id === editPayoutId ? draftWithdrawal : withdrawal
         );
-        const updatedAccounts = payoutForm.accountId && diff !== 0
-          ? prev.accounts.map((a) =>
-              a.id === payoutForm.accountId
-                ? { ...a, balance: Math.max(0, toNum(a.balance) - diff) }
-                : a
-            )
-          : prev.accounts;
-        return { ...prev, withdrawals: updatedWithdrawals, accounts: updatedAccounts };
+        const provisionalAccounts = reconcileLinkedPayoutAccounts(prev.accounts, oldWithdrawal, draftWithdrawal, {
+          withdrawals: draftWithdrawals,
+          tradeJournal: prev.tradeJournal,
+        });
+        const linkedAccount = draftWithdrawal.accountId
+          ? provisionalAccounts.find((account) => account.id === draftWithdrawal.accountId)
+          : undefined;
+        const updatedWithdrawal: Withdrawal = {
+          ...draftWithdrawal,
+          postBalance: linkedAccount?.balance,
+        };
+        const finalWithdrawals = prev.withdrawals.map((withdrawal) =>
+          withdrawal.id === editPayoutId ? updatedWithdrawal : withdrawal
+        );
+
+        return {
+          ...prev,
+          withdrawals: finalWithdrawals,
+          accounts: reconcileLinkedPayoutAccounts(prev.accounts, oldWithdrawal, updatedWithdrawal, {
+            withdrawals: finalWithdrawals,
+            tradeJournal: prev.tradeJournal,
+          }),
+        };
       });
+      toast.success("Payout updated");
     } else {
-      const w: Withdrawal = {
-        id:    generateId(),
-        date:  payoutForm.date,
-        firm:  payoutForm.firm,
+      const draftWithdrawal: Withdrawal = {
+        id: generateId(),
+        date: payoutForm.date,
+        firm: payoutForm.firm,
         gross: grossAmt,
-        notes: payoutForm.notes || undefined,
+        accountId: payoutForm.accountId || undefined,
+        notes: payoutForm.notes.trim() || undefined,
       };
-      update((prev) => ({
-        ...prev,
-        withdrawals: [w, ...prev.withdrawals],
-        // Deduct payout from linked funded account balance
-        accounts: payoutForm.accountId
-          ? prev.accounts.map((a) =>
-              a.id === payoutForm.accountId
-                ? { ...a, balance: Math.max(0, toNum(a.balance) - grossAmt) }
-                : a
-            )
-          : prev.accounts,
-      }));
+      update((prev) => {
+        const provisionalWithdrawals = [draftWithdrawal, ...prev.withdrawals];
+        const provisionalAccounts = reconcileLinkedPayoutAccounts(prev.accounts, null, draftWithdrawal, {
+          withdrawals: provisionalWithdrawals,
+          tradeJournal: prev.tradeJournal,
+        });
+        const linkedAccount = draftWithdrawal.accountId
+          ? provisionalAccounts.find((account) => account.id === draftWithdrawal.accountId)
+          : undefined;
+        const withdrawal: Withdrawal = {
+          ...draftWithdrawal,
+          postBalance: linkedAccount?.balance,
+        };
+        const withdrawals = [withdrawal, ...prev.withdrawals];
+
+        return {
+          ...prev,
+          withdrawals,
+          accounts: reconcileLinkedPayoutAccounts(prev.accounts, null, withdrawal, {
+            withdrawals,
+            tradeJournal: prev.tradeJournal,
+          }),
+        };
+      });
       toast.success('Payout logged');
     }
     setPayoutOpen(false);
@@ -1633,10 +1921,34 @@ export default function PropAccounts() {
   const handleDeletePayout = (id: string) => {
     const deleted = data.withdrawals.find((w) => w.id === id);
     if (!deleted) return;
-    update((prev) => ({ ...prev, withdrawals: prev.withdrawals.filter((w) => w.id !== id) }));
+    update((prev) => {
+      const withdrawals = prev.withdrawals.filter((w) => w.id !== id);
+      return {
+        ...prev,
+        withdrawals,
+        accounts: reconcileLinkedPayoutAccounts(prev.accounts, deleted, null, {
+          withdrawals,
+          tradeJournal: prev.tradeJournal,
+        }),
+      };
+    });
     setDeletingPayoutId(null);
     toast('Payout deleted', {
-      action: { label: 'Undo', onClick: () => update((prev) => ({ ...prev, withdrawals: [...prev.withdrawals, deleted] })) },
+      action: {
+        label: 'Undo',
+        onClick: () =>
+          update((prev) => {
+            const withdrawals = [deleted, ...prev.withdrawals];
+            return {
+              ...prev,
+              withdrawals,
+              accounts: reconcileLinkedPayoutAccounts(prev.accounts, null, deleted, {
+                withdrawals,
+                tradeJournal: prev.tradeJournal,
+              }),
+            };
+          }),
+      },
       duration: 5000,
     });
   };
@@ -1649,7 +1961,13 @@ export default function PropAccounts() {
 
   const openEditPayout = (w: Withdrawal) => {
     setEditPayoutId(w.id);
-    setPayoutForm({ firm: w.firm, date: w.date, gross: String(w.gross), notes: w.notes ?? "", accountId: "" });
+    setPayoutForm({
+      firm: w.firm,
+      date: w.date,
+      gross: String(w.gross),
+      notes: w.notes ?? "",
+      accountId: w.accountId ?? "",
+    });
     setPayoutOpen(true);
   };
 
@@ -1664,11 +1982,51 @@ export default function PropAccounts() {
   /* ---- Preview rules for selected plan in modal ---- */
   const modalRules = useMemo(() => {
     if (!firmHasPlans || !activePlanKey || !form.planSize) return null;
-    return PLAN_RULES[form.firm]?.[activePlanKey]?.[Number(form.planSize)] ?? null;
+    return getProgramRuleByKeySize(activePlanKey, Number(form.planSize));
   }, [firmHasPlans, form.firm, activePlanKey, form.planSize]);
+  const modalSnapshot = useMemo(() => {
+    if (!firmHasPlans) return null;
+    const balance = form.balance ? parseFloat(form.balance) : 0;
+    const fallbackSize = form.planSize ? Number(form.planSize) : parseAccountSize(form.type) ?? 0;
+    const initialBalance = form.initialBalance ? parseFloat(form.initialBalance) : fallbackSize;
+    const peakBalance = Math.max(
+      balance,
+      initialBalance,
+      form.peakBalance ? parseFloat(form.peakBalance) : 0
+    );
+    const resolvedType = activePlanKey && fallbackSize
+      ? buildProgramTypeLabel(activePlanKey, fallbackSize)
+      : form.type;
+
+    return getPropAccountSnapshot({
+      id: editAccount?.id ?? "__modal-preview__",
+      firm: form.firm,
+      type: resolvedType,
+      status: form.status,
+      phaseHint: getPhaseForStatus(form.status, fallbackPhase),
+      balance,
+      initialBalance,
+      peakBalance,
+      payoutCycleStartBalance: editAccount?.payoutCycleStartBalance,
+    }, propContext);
+  }, [
+    activePlanKey,
+    editAccount?.id,
+    editAccount?.payoutCycleStartBalance,
+    fallbackPhase,
+    firmHasPlans,
+    form.balance,
+    form.firm,
+    form.initialBalance,
+    form.peakBalance,
+    form.planSize,
+    form.status,
+    form.type,
+    propContext,
+  ]);
 
   return (
-    <div className="space-y-5 w-full page-enter">
+    <div className="space-y-5 w-full">
       {/* Header */}
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Prop</div>
@@ -1760,17 +2118,20 @@ export default function PropAccounts() {
             </div>
           </div>
 
-          {/* Account cards grid */}
-          <div className={cn(
-            "grid gap-3",
-            tab === "Challenge"
-              ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
-              : "grid-cols-1 md:grid-cols-2"
-          )}>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <div className="grid gap-3 px-4 py-3 border-b border-white/[0.06] lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto] hidden lg:grid">
+              {["Account", "Balance", "Target / MLL", "Progress / Risk", "Actions"].map((label) => (
+                <span key={label} className="text-[10px] uppercase tracking-[0.16em] text-tx-4">
+                  {label}
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2 p-2.5 sm:gap-3 sm:p-3">
             {filtered.map((account, i) => (
               <div key={account.id} className="animate-fade-up" style={{ animationDelay: `${Math.min(i * 30, 180)}ms`, animationFillMode: "both" }}>
                 <AccountCard
                   account={account}
+                  snapshotContext={propContext}
                   onEdit={() => handleOpenEdit(account)}
                   onDelete={() => handleDelete(account.id)}
                   onPayout={() => openPayout(account.firm, account.id)}
@@ -1778,27 +2139,69 @@ export default function PropAccounts() {
               </div>
             ))}
             {filtered.length === 0 && data.accounts.length === 0 && (
-              <div className="col-span-full card p-10 text-center flex flex-col items-center gap-3">
-                <Briefcase size={32} className="text-tx-4" />
-                <div>
-                  <p className="text-sm font-semibold text-tx-2">No prop accounts yet</p>
-                  <p className="text-xs text-tx-4 mt-1">Add a challenge or funded account to track your progress.</p>
+              <div className="col-span-full task-empty">
+                <div className="task-empty-copy">
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-tx-4">
+                    <Briefcase size={12} />
+                    Prop Workspace
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold text-tx-1">Add the first challenge or funded account.</p>
+                    <p className="mt-1 text-sm text-tx-3">
+                      Nexus will track pass targets, trailing MLL, breach status, and payout history once the account is live.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {[
+                      "Auto-calculate MLL and targets",
+                      "See funded and challenge health together",
+                      "Link payouts back to the exact account",
+                    ].map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-tx-3"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  className="btn-primary btn-sm"
-                  onClick={() => {
-                    setEditAccount(null);
-                    setForm(emptyAccountForm());
-                    setAddOpen(true);
-                  }}
-                >
-                  <Plus size={14} /> Add Account
-                </button>
+                <div className="task-empty-actions mt-4">
+                  <button
+                    className="btn-primary btn-sm"
+                    onClick={() => {
+                      setEditAccount(null);
+                      setForm(emptyAccountForm());
+                      setAddOpen(true);
+                    }}
+                  >
+                    <Plus size={14} /> Add Account
+                  </button>
+                </div>
               </div>
             )}
             {filtered.length === 0 && data.accounts.length > 0 && (
-              <div className="col-span-full py-16 text-center text-tx-3 text-sm">No accounts match this filter.</div>
+              <div className="task-empty">
+                <div className="task-empty-copy">
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-tx-4">
+                    <Shield size={12} />
+                    Filter View
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold text-tx-1">No accounts match this view.</p>
+                    <p className="mt-1 text-sm text-tx-3">
+                      Switch back to All to review every account, then narrow down again if needed.
+                    </p>
+                  </div>
+                </div>
+                <div className="task-empty-actions mt-4">
+                  <button className="btn-ghost btn-sm" onClick={() => setTab("all")}>
+                    Show All Accounts
+                  </button>
+                </div>
+              </div>
             )}
+            </div>
           </div>
 
           {/* Payout History */}
@@ -1829,6 +2232,7 @@ export default function PropAccounts() {
                     const isTop = amount === maxPayout;
                     const isFirst = idx === sorted.length - 1;
                     const runningTotal = runningMap[w.id] ?? 0;
+                    const linkedAccountLabel = w.accountId ? payoutAccountLabels.get(w.accountId) : null;
                     return (
                       <div
                         key={w.id}
@@ -1846,6 +2250,11 @@ export default function PropAccounts() {
                               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: wFirmCol }} />
                               <span className="text-sm font-medium text-tx-1 break-words">{w.firm}</span>
                             </div>
+                            {linkedAccountLabel && (
+                              <div className="mt-1 text-[11px] text-tx-3 break-words">
+                                {linkedAccountLabel}
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             {deletingPayoutId === w.id ? (
@@ -1934,6 +2343,7 @@ export default function PropAccounts() {
                         const isTop = amount === maxPayout;
                         const isFirst = idx === sorted.length - 1;
                         const runningTotal = runningMap[w.id] ?? 0;
+                        const linkedAccountLabel = w.accountId ? payoutAccountLabels.get(w.accountId) : null;
                         return (
                           <tr key={w.id} className="group transition-colors"
                             style={{ background: isTop ? "rgba(34,197,94,0.04)" : undefined }}>
@@ -1945,9 +2355,14 @@ export default function PropAccounts() {
                               </div>
                             </td>
                             <td className="py-2.5 pr-4">
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: wFirmCol }} />
-                                <span className="text-tx-1 font-medium text-xs">{w.firm}</span>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: wFirmCol }} />
+                                  <span className="text-tx-1 font-medium text-xs">{w.firm}</span>
+                                </div>
+                                {linkedAccountLabel && (
+                                  <div className="mt-1 text-[11px] text-tx-3">{linkedAccountLabel}</div>
+                                )}
                               </div>
                             </td>
                             <td className="py-2.5 pr-4 font-bold font-mono tabular-nums text-right"
@@ -2122,7 +2537,7 @@ export default function PropAccounts() {
                 </div>
                 <div>
                   <label className="text-tx-3 text-xs block mb-1">Status</label>
-                  <select className="nx-select" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as AccountStatus }))}>
+                  <select className="nx-select" value={form.status} onChange={(e) => handleStatusChange(e.target.value as AccountStatus)}>
                     <option value="Challenge">Challenge</option>
                     <option value="Funded">Funded</option>
                     <option value="Breached">Breached</option>
@@ -2140,7 +2555,7 @@ export default function PropAccounts() {
                       value={activePlanKey}
                       onChange={(e) => handlePlanKeyChange(e.target.value)}
                     >
-                      {availablePlans.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                      {availablePlans.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
                     </select>
                   </div>
                   <div>
@@ -2169,6 +2584,102 @@ export default function PropAccounts() {
                 <input className="nx-input" type="number" placeholder="50000" value={form.balance} onChange={(e) => setForm((p) => ({ ...p, balance: e.target.value }))} />
               </div>
 
+              <div>
+                <label className="text-tx-3 text-xs block mb-1">Highest Balance Recorded ($)</label>
+                <input
+                  className="nx-input"
+                  type="number"
+                  placeholder="Used for trailing MLL"
+                  value={form.peakBalance ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, peakBalance: e.target.value }))}
+                />
+              </div>
+
+              {/* MLL & Profit Target */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Current MLL Floor ($)</label>
+                  <input
+                    className="nx-input"
+                    type="number"
+                    placeholder="24000"
+                    value={firmHasPlans ? String(modalSnapshot?.mllFloor ?? "") : form.mll}
+                    readOnly={firmHasPlans}
+                    onChange={(e) => setForm((p) => ({ ...p, mll: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Profit Target ($)</label>
+                  <input
+                    className="nx-input"
+                    type="number"
+                    placeholder="1250"
+                    value={form.profitTarget}
+                    readOnly={firmHasPlans}
+                    onChange={(e) => setForm((p) => ({ ...p, profitTarget: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Account Dates */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Challenge Started</label>
+                  <input
+                    type="date"
+                    className="nx-input"
+                    value={form.challengeStartDate ?? ""}
+                    onChange={(e) => setForm((p) => ({ ...p, challengeStartDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Funded Date</label>
+                  <input
+                    type="date"
+                    className="nx-input"
+                    value={form.fundedAt ?? ""}
+                    onChange={(e) => setForm((p) => ({ ...p, fundedAt: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-tx-3 text-xs block mb-1">Breached Date</label>
+                  <input
+                    type="date"
+                    className="nx-input"
+                    value={form.breachedDate ?? ""}
+                    onChange={(e) => setForm((p) => ({ ...p, breachedDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {modalSnapshot && !isNaN(modalSnapshot.distanceToMll) && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl px-3 py-2 text-[11px] text-tx-3 border border-white/[0.08] bg-white/[0.03]">
+                    <div className="uppercase tracking-[0.14em] text-[10px] text-tx-4">Drawdown Left</div>
+                    <div className="mt-1 text-sm font-semibold text-tx-1">{fmtUSD(modalSnapshot.distanceToMll)}</div>
+                  </div>
+                  <div className="rounded-xl px-3 py-2 text-[11px] text-tx-3 border border-white/[0.08] bg-white/[0.03]">
+                    <div className="uppercase tracking-[0.14em] text-[10px] text-tx-4">Floor State</div>
+                    <div className="mt-1 text-sm font-semibold text-tx-1">
+                      {modalSnapshot.locked ? `Locked at ${fmtUSD(modalSnapshot.lockFloor)}` : `Trailing from peak ${fmtUSD(modalSnapshot.peakBalance)}`}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {modalRules && (
+                <div className="rounded-xl px-3 py-2.5 text-[11px] text-tx-3 border border-white/[0.08] bg-white/[0.03]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{modalRules.label} {(modalRules.size / 1000).toFixed(0)}K</span>
+                    <span>{fmtUSD(modalRules.drawdown)} drawdown</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-1">
+                    <span>Locks at {fmtUSD(modalRules.lockFloor)}</span>
+                    <span>{modalRules.profitTarget !== null ? `${fmtUSD(modalRules.profitTarget)} target` : "Funded rule set"}</span>
+                  </div>
+                </div>
+              )}
+
               {!editAccount && (
                 <div>
                   <label className="text-tx-3 text-xs block mb-1">Quantity <span className="opacity-50 text-[10px]">(add multiple at once)</span></label>
@@ -2183,7 +2694,7 @@ export default function PropAccounts() {
                 </div>
               )}
 
-              <div className="flex gap-2 pt-2">
+              <div className="modal-action-bar">
                 <button className="btn-primary btn flex-1" onClick={handleSaveAccount}>
                   {editAccount ? "Update Account" : addQty > 1 ? `Add ${addQty} Accounts` : "Add Account"}
                 </button>
@@ -2204,29 +2715,32 @@ export default function PropAccounts() {
         size="sm"
       >
         <div className="space-y-3">
-          {/* Linked account info banner */}
-          {payoutForm.accountId && (() => {
-            const linkedAcc = data.accounts.find((a) => a.id === payoutForm.accountId);
-            if (!linkedAcc) return null;
-            const col = bwColor(getFirmColor(linkedAcc.firm), isBW);
-            return (
-              <div className="flex items-center gap-2 rounded-xl px-3 py-2"
-                style={{ background: `${col}10`, border: `1px solid ${col}22` }}>
-                <CheckCircle2 size={12} style={{ color: col }} />
-                <div className="flex-1 min-w-0">
-                  <span className="text-[11px] font-semibold text-tx-1">{linkedAcc.firm}</span>
-                  <span className="text-[10px] text-tx-4 ml-1.5">{linkedAcc.name || linkedAcc.type}</span>
-                </div>
-                <span className="text-[10px] text-tx-4">
-                  Balance: <span className="font-mono font-semibold text-tx-2">{fmtUSD(toNum(linkedAcc.balance))}</span>
-                </span>
-              </div>
-            );
-          })()}
           <div>
             <label className="text-tx-3 text-xs block mb-1">Firm</label>
             <select className="nx-select" value={payoutForm.firm} onChange={(e) => setPayoutForm((p) => ({ ...p, firm: e.target.value }))}>
               {FIRMS.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-tx-3 text-xs block mb-1">Linked Account</label>
+            <select
+              className="nx-select"
+              value={payoutForm.accountId}
+              onChange={(e) => {
+                const nextAccount = payoutAccountOptions.find((option) => option.value === e.target.value);
+                setPayoutForm((prev) => ({
+                  ...prev,
+                  accountId: e.target.value,
+                  firm: nextAccount?.firm ?? prev.firm,
+                }));
+              }}
+            >
+              <option value="">No linked account</option>
+              {payoutAccountOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}{option.active ? "" : " - Inactive"}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -2240,7 +2754,16 @@ export default function PropAccounts() {
             </label>
             <input className="nx-input" type="number" placeholder="0.00" value={payoutForm.gross} onChange={(e) => setPayoutForm((p) => ({ ...p, gross: e.target.value }))} />
           </div>
-          <div className="flex gap-2 pt-2">
+          <div>
+            <label className="text-tx-3 text-xs block mb-1">Notes</label>
+            <textarea
+              className="nx-input min-h-[88px] resize-y"
+              placeholder="Optional"
+              value={payoutForm.notes}
+              onChange={(e) => setPayoutForm((p) => ({ ...p, notes: e.target.value }))}
+            />
+          </div>
+          <div className="modal-action-bar">
             <button className="btn-success btn flex-1" onClick={handleSavePayout}>
               <Banknote size={14} />
               {editPayoutId ? "Update Payout" : "Save Payout"}
@@ -2328,7 +2851,7 @@ function EditChallengeModal({
           <label className="text-tx-3 text-xs block mb-1">Profit Target ($)</label>
           <input className="nx-input" type="number" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} min="0" step="100" />
         </div>
-        <div className="col-span-2 flex gap-2 pt-1">
+        <div className="modal-action-bar col-span-2">
           <button className="btn-ghost flex-1 btn-sm" onClick={onClose}>Cancel</button>
           <button className="btn-primary flex-1 btn-sm" onClick={handleSave}>Save Changes</button>
         </div>

@@ -1,232 +1,147 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
-import { Bell, X, RefreshCw, AlertTriangle, Check } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Bell, X, RefreshCw, AlertTriangle, Check, Landmark, PiggyBank, Briefcase } from "lucide-react";
 import { useAppData } from "@/lib/store";
-import { fmtGBP } from "@/lib/utils";
-
-function daysUntil(dateStr: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr + "T00:00:00");
-  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function fmtRenewalDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-}
+import { buildAppNotifications, buildRawAppNotifications, getNotificationCount } from "@/lib/notifications";
+import Modal from "@/components/Modal";
 
 export default function NotificationBell({ collapsed }: { collapsed: boolean }) {
-  const { data } = useAppData();
-  const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
+  const { data, update } = useAppData();
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const notifications = useMemo(() => buildAppNotifications(data), [data]);
+  const dismissedCount = data.userSettings?.dismissedNotificationIds?.length ?? 0;
+  const count = notifications.length;
 
-  const leadDays = data.userSettings?.subscriptionRenewalDays ?? 7;
-
-  const upcoming = (data.subscriptions ?? [])
-    .map((sub) => ({ ...sub, daysLeft: daysUntil(sub.nextRenewal) }))
-    .filter((sub) => sub.daysLeft >= 0 && sub.daysLeft <= leadDays)
-    .sort((a, b) => a.daysLeft - b.daysLeft);
-
-  const count = upcoming.length;
-
-  const computePos = useCallback(() => {
-    if (!btnRef.current) return;
-    const rect = btnRef.current.getBoundingClientRect();
-    // Panel appears to the right of the sidebar button (when collapsed)
-    // or above the button (when expanded, enough room to the right)
-    const panelWidth = 288; // w-72
-    const leftPos = collapsed
-      ? rect.right + 8
-      : rect.right - panelWidth;
-    const topPos = rect.top - 8; // align top edge near button, panel grows down
-    // Clamp so it doesn't go off-screen bottom
-    const panelHeight = 340;
-    const clampedTop = Math.min(topPos, window.innerHeight - panelHeight - 8);
-    setPanelPos({ top: Math.max(8, clampedTop), left: Math.max(8, leftPos) });
-  }, [collapsed]);
-
-  function handleToggle() {
-    if (!open) computePos();
-    setOpen((v) => !v);
+  function dismissNotification(id: string) {
+    update((prev) => {
+      const existing = prev.userSettings?.dismissedNotificationIds ?? [];
+      if (existing.includes(id)) return prev;
+      return {
+        ...prev,
+        userSettings: {
+          ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }),
+          dismissedNotificationIds: [...existing, id],
+        },
+      };
+    });
   }
 
-  useEffect(() => {
-    if (!open) return;
-    function handleOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        panelRef.current && !panelRef.current.contains(target) &&
-        btnRef.current && !btnRef.current.contains(target)
-      ) {
-        setOpen(false);
-      }
-    }
-    function handleScroll() { computePos(); }
-    document.addEventListener("mousedown", handleOutside);
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", computePos);
-    return () => {
-      document.removeEventListener("mousedown", handleOutside);
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", computePos);
-    };
-  }, [open, computePos]);
+  function resetDismissedNotifications() {
+    update((prev) => {
+      if (!prev.userSettings?.dismissedNotificationIds?.length) return prev;
+      return {
+        ...prev,
+        userSettings: {
+          ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }),
+          dismissedNotificationIds: [],
+        },
+      };
+    });
+  }
 
-  const panel = open ? (
-    <div
-      ref={panelRef}
-      style={{
-        position: "fixed",
-        top: panelPos.top,
-        left: panelPos.left,
-        width: 288,
-        zIndex: 9999,
-        background: "var(--bg-base)",
-        border: "1px solid rgba(var(--border-rgb),0.1)",
-        borderRadius: 12,
-        overflow: "hidden",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-      }}
-    >
+  function dismissAllNotifications() {
+    const allIds = buildRawAppNotifications(data).map((notification) => notification.id);
+    update((prev) => ({
+      ...prev,
+      userSettings: {
+        ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }),
+        dismissedNotificationIds: allIds,
+      },
+    }));
+  }
+
+  const notificationList = (
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 16px",
-          borderBottom: "1px solid rgba(var(--border-rgb),0.08)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Bell size={12} style={{ color: "var(--color-warn)" }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tx-1)" }}>Notifications</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+        <div className="flex items-center gap-2">
+          <Bell size={12} className="text-warn" />
+          <span className="text-xs font-bold text-tx-1">Notifications</span>
           {count > 0 && (
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                padding: "2px 6px",
-                borderRadius: 999,
-                background: "rgba(245,158,11,0.15)",
-                color: "var(--color-warn)",
-                border: "1px solid rgba(245,158,11,0.25)",
-              }}
-            >
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-warn/10 text-warn border border-warn/20">
               {count} pending
             </span>
           )}
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          style={{
-            width: 20,
-            height: 20,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 4,
-            color: "var(--tx-4)",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-          }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--tx-1)")}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--tx-4)")}
-        >
-          <X size={11} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {count > 0 && (
+            <button
+              onClick={dismissAllNotifications}
+              className="text-[9px] font-bold px-2 py-1 rounded-full text-tx-3 bg-surface-1/4 border border-border-subtle hover:text-tx-1 transition-colors"
+            >
+              Dismiss all
+            </button>
+          )}
+          <button
+            onClick={() => setNotificationOpen(false)}
+            className="w-5 h-5 flex items-center justify-center rounded text-tx-4 hover:text-tx-1 hover:bg-bg-hover transition-all"
+          >
+            <X size={11} />
+          </button>
+        </div>
       </div>
 
       {/* List */}
-      <div style={{ maxHeight: 260, overflowY: "auto" }}>
-        {upcoming.length === 0 ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 8,
-              padding: "32px 16px",
-            }}
-          >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "rgba(34,197,94,0.1)",
-                border: "1px solid rgba(34,197,94,0.2)",
-              }}
-            >
-              <Check size={14} style={{ color: "var(--color-profit)" }} />
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {notifications.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 p-8">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-profit/10 border border-profit/20">
+              <Check size={14} className="text-profit" />
             </div>
-            <p style={{ fontSize: 12, fontWeight: 500, color: "var(--tx-3)", margin: 0 }}>All clear</p>
-            <p style={{ fontSize: 10, color: "var(--tx-4)", textAlign: "center", margin: 0 }}>
-              No renewals in the next {leadDays} day{leadDays !== 1 ? "s" : ""}
+            <p className="text-xs font-medium text-tx-3 m-0">All clear</p>
+            <p className="text-[10px] text-tx-4 text-center m-0">
+              No urgent alerts across subscriptions, prop risk, debt, or tax.
             </p>
           </div>
         ) : (
-          <div style={{ padding: "4px 0" }}>
-            {upcoming.map((sub) => {
-              const isUrgent  = sub.daysLeft <= 2;
-              const isWarning = sub.daysLeft <= 5;
-              const dotColor  = isUrgent ? "var(--color-loss)" : isWarning ? "var(--color-warn)" : "var(--color-blue)";
-              const amount    = typeof sub.amount === "number" ? sub.amount : parseFloat(String(sub.amount)) || 0;
+          <div className="py-1">
+            {notifications.map((item) => {
+              const dotColor =
+                item.severity === "critical"
+                  ? "var(--color-loss)"
+                  : item.severity === "warn"
+                    ? "var(--color-warn)"
+                    : "var(--color-blue)";
+
+              const Icon =
+                item.category === "subscription"
+                  ? RefreshCw
+                  : item.category === "prop"
+                    ? Briefcase
+                    : item.category === "debt"
+                      ? Landmark
+                      : PiggyBank;
 
               return (
                 <div
-                  key={sub.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                    padding: "10px 16px",
-                    transition: "background 0.15s",
-                  }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(var(--surface-rgb),0.03)")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                  key={item.id}
+                  className="flex items-start gap-3 px-4 py-2.5 hover:bg-surface-1/3 transition-colors"
                 >
                   <div
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 8,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      marginTop: 2,
-                      background: `${dotColor}18`,
-                      border: `1px solid ${dotColor}30`,
-                    }}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: `${dotColor}18`, border: `1px solid ${dotColor}30` }}
                   >
-                    {isUrgent
+                    {item.severity === "critical"
                       ? <AlertTriangle size={10} style={{ color: dotColor }} />
-                      : <RefreshCw size={10} style={{ color: dotColor }} />
+                      : <Icon size={10} style={{ color: dotColor }} />
                     }
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--tx-1)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {sub.name}
-                    </p>
-                    <p style={{ fontSize: 10, color: "var(--tx-4)", margin: 0 }}>
-                      {fmtGBP(amount)}/{sub.frequency === "monthly" ? "mo" : sub.frequency === "yearly" ? "yr" : "wk"}
-                      {" · "}
-                      {fmtRenewalDate(sub.nextRenewal)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-tx-1 m-0 truncate">{item.title}</p>
+                    <p className="text-[10px] text-tx-4 m-0">{item.detail}</p>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <p className="text-[11px] font-black tabular-nums m-0" style={{ color: dotColor }}>
+                      {item.sideLabel}
                     </p>
                   </div>
-                  <div style={{ flexShrink: 0, textAlign: "right" }}>
-                    <p style={{ fontSize: 11, fontWeight: 900, color: dotColor, margin: 0, fontVariantNumeric: "tabular-nums" }}>
-                      {sub.daysLeft === 0 ? "Today" : sub.daysLeft === 1 ? "Tomorrow" : `${sub.daysLeft}d`}
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Dismiss ${item.title}`}
+                    onClick={() => dismissNotification(item.id)}
+                    className="w-5 h-5 flex items-center justify-center rounded-md border border-border-subtle bg-surface-1/4 text-tx-4 hover:text-tx-1 hover:bg-surface-1/8 transition-colors flex-shrink-0 mt-0.5"
+                  >
+                    <X size={10} />
+                  </button>
                 </div>
               );
             })}
@@ -235,39 +150,42 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
       </div>
 
       {/* Footer */}
-      <div
-        style={{
-          padding: "8px 16px",
-          borderTop: "1px solid rgba(var(--border-rgb),0.06)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <span style={{ fontSize: 9, color: "var(--tx-4)" }}>Alerting {leadDays}d ahead</span>
-        <span style={{ fontSize: 9, color: "var(--tx-4)" }}>Change in Settings ⚙</span>
+      <div className="px-4 py-2 border-t border-border-subtle/60 flex items-center justify-between">
+        <span className="text-[9px] text-tx-4">
+          {dismissedCount > 0 ? `${dismissedCount} dismissed` : "Operational alerts"}
+        </span>
+        {dismissedCount > 0 ? (
+          <button
+            type="button"
+            onClick={resetDismissedNotifications}
+            className="text-[9px] text-tx-3 bg-transparent border-none cursor-pointer p-0 hover:text-tx-1 transition-colors"
+          >
+            Reset dismissed
+          </button>
+        ) : (
+          <span className="text-[9px] text-tx-4">Sync + settings aware</span>
+        )}
       </div>
     </div>
-  ) : null;
+  );
 
   return (
     <>
       <button
-        ref={btnRef}
-        onClick={handleToggle}
+        onClick={() => setNotificationOpen(true)}
         title="Notifications"
         className="relative flex items-center justify-center w-7 h-7 rounded-lg transition-all"
         style={{
           color: count > 0 ? "var(--color-warn)" : "var(--tx-4)",
-          background: open ? "rgba(var(--surface-rgb),0.08)" : "rgba(var(--surface-rgb),0.03)",
-          border: `1px solid ${open ? "rgba(var(--border-rgb),0.12)" : "rgba(var(--border-rgb),0.07)"}`,
+          background: notificationOpen ? "rgba(var(--surface-rgb),0.08)" : "rgba(var(--surface-rgb),0.03)",
+          border: `1px solid ${notificationOpen ? "rgba(var(--border-rgb),0.12)" : "rgba(var(--border-rgb),0.07)"}`,
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLElement).style.background = "rgba(var(--surface-rgb),0.08)";
           (e.currentTarget as HTMLElement).style.color = count > 0 ? "var(--color-warn)" : "var(--tx-2)";
         }}
         onMouseLeave={(e) => {
-          if (!open) {
+          if (!notificationOpen) {
             (e.currentTarget as HTMLElement).style.background = "rgba(var(--surface-rgb),0.03)";
             (e.currentTarget as HTMLElement).style.color = count > 0 ? "var(--color-warn)" : "var(--tx-4)";
           }
@@ -284,7 +202,14 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
         )}
       </button>
 
-      {createPortal(panel, document.body)}
+      <Modal
+        open={notificationOpen}
+        onClose={() => setNotificationOpen(false)}
+        title="Notifications"
+        size="md"
+      >
+        {notificationList}
+      </Modal>
     </>
   );
 }

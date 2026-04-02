@@ -23,7 +23,7 @@ const NAV: { path: string; label: string; Icon: React.ElementType; themeKey: Pag
   { path: "/ideas",       label: "Ideas",         Icon: Lightbulb,     themeKey: "ideas"       },
 ];
 
-export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette?: () => void }) {
+export default function Sidebar({ onOpenCommandPalette, onOpenPropRules }: { onOpenCommandPalette?: () => void; onOpenPropRules?: () => void }) {
   const { data } = useAppData();
   const loc = useLocation();
   const [now, setNow] = useState(new Date());
@@ -45,6 +45,18 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
       return next;
     });
   }
+
+  // Global keyboard shortcut for prop rules
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey && e.shiftKey && e.key === "R") {
+        e.preventDefault();
+        onOpenPropRules?.();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onOpenPropRules]);
 
   // Computed values
   const totalWithdrawals = data.withdrawals.reduce((s, w) => s + toNum(w.gross), 0);
@@ -210,6 +222,15 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
               <div className="flex items-center gap-1">
                 <NotificationBell collapsed={false} />
                 <button
+                  onClick={() => onOpenPropRules?.()}
+                  aria-label="Prop Trading Rules"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg"
+                  style={{ color: "var(--tx-4)", background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
+                  title="Prop Trading Rules"
+                >
+                  <Scale size={11} />
+                </button>
+                <button
                   onClick={() => setSettingsOpen(true)}
                   aria-label="Open settings"
                   className="w-7 h-7 flex items-center justify-center rounded-lg"
@@ -226,6 +247,15 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
                 {avatarUrl ? <img src={avatarUrl} alt={username} className="w-full h-full object-cover" /> : initials}
               </div>
               <NotificationBell collapsed={true} />
+              <button
+                onClick={() => onOpenPropRules?.()}
+                aria-label="Prop Trading Rules"
+                className="w-7 h-7 flex items-center justify-center rounded-lg"
+                style={{ color: "var(--tx-4)", background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
+                title="Prop Trading Rules"
+              >
+                <Scale size={11} />
+              </button>
               <button onClick={() => setSettingsOpen(true)}
                 aria-label="Open settings"
                 className="w-7 h-7 flex items-center justify-center rounded-lg"
