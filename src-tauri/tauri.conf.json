@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Nexus",
+  "version": "1.2.0",
+  "identifier": "com.nexus.trader",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Nexus — Trader Dashboard",
+        "width": 1440,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.supabase.co; connect-src 'self' https://*.supabase.co https://live.trading212.com wss://*.supabase.co; frame-ancestors 'none'; object-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "fs": {
+      "requireLiteralLeadingDot": false
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcyOEI0N0I3NERFOUVCNTcKUldSWDYrbE50MGVMY3BQMXZJOUpmRzdHT28vYnBXQVh0OC9rMnhWdHdNTWNEQXU3NktkekVqdUUK",
+      "endpoints": [
+        "https://github.com/Logi4k/Nexus-Dash/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
