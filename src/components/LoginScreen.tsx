@@ -1,29 +1,51 @@
 import { useState } from "react";
-import { signIn } from "@/lib/supabase";
+import { signIn, signUp } from "@/lib/supabase";
 
 interface Props {
   onSignIn: () => Promise<void>;
   onUseOffline: () => void;
 }
 
+type Mode = "signin" | "signup";
+
 export default function LoginScreen({ onSignIn, onUseOffline }: Props) {
-  const [email, setEmail]       = useState("");
+  const [mode, setMode] = useState<Mode>("signin");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const emailInputId = "login-email";
   const passwordInputId = "login-password";
+  const confirmInputId = "login-confirm";
   const errorId = "login-error";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSuccess("");
+
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await signIn(email, password);
-      await onSignIn();
+      if (mode === "signup") {
+        await signUp(email, password);
+        setSuccess("Account created. Check your email to confirm, then sign in.");
+        setMode("signin");
+        setPassword("");
+        setConfirmPassword("");
+      } else {
+        await signIn(email, password);
+        await onSignIn();
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed");
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -42,8 +64,36 @@ export default function LoginScreen({ onSignIn, onUseOffline }: Props) {
             Nexus
           </p>
           <p className="text-sm mt-1 text-tx-4">
-            Sign in to sync with Supabase, or continue locally.
+            {mode === "signin"
+              ? "Sign in to sync with Supabase, or continue locally."
+              : "Create an account to sync your workspace."}
           </p>
+        </div>
+
+        {/* Mode toggle */}
+        <div className="flex gap-1 mb-6 p-1 rounded-lg bg-[rgba(var(--border-rgb),0.06)]">
+          <button
+            type="button"
+            onClick={() => { setMode("signin"); setError(""); setSuccess(""); }}
+            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${
+              mode === "signin"
+                ? "bg-bg-surface text-tx-1"
+                : "text-tx-4 hover:text-tx-3"
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode("signup"); setError(""); setSuccess(""); }}
+            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${
+              mode === "signup"
+                ? "bg-bg-surface text-tx-1"
+                : "text-tx-4 hover:text-tx-3"
+            }`}
+          >
+            Sign Up
+          </button>
         </div>
 
         {/* Form */}
@@ -74,19 +124,47 @@ export default function LoginScreen({ onSignIn, onUseOffline }: Props) {
               id={passwordInputId}
               type="password"
               placeholder="Enter your password"
-              autoComplete="current-password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={mode === "signup" ? 6 : undefined}
               aria-describedby={error ? errorId : undefined}
               aria-invalid={!!error}
               className="nx-input"
             />
           </div>
 
+          {mode === "signup" && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={confirmInputId} className="text-xs font-medium text-tx-3">
+                Confirm Password
+              </label>
+              <input
+                id={confirmInputId}
+                type="password"
+                placeholder="Confirm your password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                aria-describedby={error ? errorId : undefined}
+                aria-invalid={!!error}
+                className="nx-input"
+              />
+            </div>
+          )}
+
           {error && (
             <p id={errorId} className="text-xs text-loss" role="alert">
               {error}
+            </p>
+          )}
+
+          {success && (
+            <p className="text-xs text-profit" role="status">
+              {success}
             </p>
           )}
 
@@ -95,7 +173,9 @@ export default function LoginScreen({ onSignIn, onUseOffline }: Props) {
             disabled={loading}
             className="btn-primary mt-1 py-3"
           >
-            {loading ? "Signing in…" : "Sign In"}
+            {loading
+              ? mode === "signin" ? "Signing in..." : "Creating account..."
+              : mode === "signin" ? "Sign In" : "Create Account"}
           </button>
 
           <button

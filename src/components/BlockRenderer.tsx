@@ -270,14 +270,25 @@ export default function BlockRenderer({ block, blockIndex, theme, onChange, onKe
 
     case "image":
       return (
-        <div
-          className="flex items-center justify-center px-6 py-12 rounded-2xl"
-          style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px dashed rgba(var(--border-rgb),0.12)" }}
-        >
-          <span className="text-[12px]" style={{ color: "var(--tx-4)" }}>
-            Image placeholder
-          </span>
-        </div>
+        block.content ? (
+          <div className="overflow-hidden rounded-2xl border border-border-subtle bg-bg-hover">
+            <img
+              src={block.content}
+              alt="Note attachment"
+              className="h-auto w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        ) : (
+          <div
+            className="flex items-center justify-center px-6 py-12 rounded-2xl"
+            style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px dashed rgba(var(--border-rgb),0.12)" }}
+          >
+            <span className="text-[12px]" style={{ color: "var(--tx-4)" }}>
+              Add an image to this block
+            </span>
+          </div>
+        )
       );
 
     case "link-bookmark":

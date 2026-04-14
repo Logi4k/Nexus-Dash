@@ -2,15 +2,15 @@
 // To retheme any page or do a full colour rework, change this file only.
 
 export const PAGE_THEMES = {
-  dashboard:   { accent: "#8b9eb5", dim: "rgba(139,158,181,0.08)",  border: "rgba(139,158,181,0.18)",  glow: "rgba(139,158,181,0.08)",  name: "Slate"     },
-  market:      { accent: "#7ea8b8", dim: "rgba(126,168,184,0.08)",  border: "rgba(126,168,184,0.18)",  glow: "rgba(126,168,184,0.08)",  name: "Steel Blue"},
-  journal:     { accent: "#c4a35a", dim: "rgba(196,163,90,0.07)",   border: "rgba(196,163,90,0.15)",   glow: "rgba(196,163,90,0.07)",   name: "Antique"   },
-  prop:        { accent: "#5a9e8f", dim: "rgba(90,158,143,0.08)",   border: "rgba(90,158,143,0.16)",   glow: "rgba(90,158,143,0.07)",   name: "Jade"      },
-  expenses:    { accent: "#b87070", dim: "rgba(184,112,112,0.08)",  border: "rgba(184,112,112,0.16)",  glow: "rgba(184,112,112,0.07)",  name: "Dusty Rose"},
-  debt:        { accent: "#a05050", dim: "rgba(160,80,80,0.08)",     border: "rgba(160,80,80,0.16)",    glow: "rgba(160,80,80,0.07)",    name: "Brick"     },
-  investments: { accent: "#5a8f8f", dim: "rgba(90,143,143,0.08)",    border: "rgba(90,143,143,0.16)",   glow: "rgba(90,143,143,0.07)",   name: "Patina"    },
-  tax:         { accent: "#b09060", dim: "rgba(176,144,96,0.08)",   border: "rgba(176,144,96,0.16)",   glow: "rgba(176,144,96,0.07)",   name: "Bronze"    },
-  ideas:       { accent: "#7882b0", dim: "rgba(120,130,176,0.08)",   border: "rgba(120,130,176,0.16)",   glow: "rgba(120,130,176,0.07)",   name: "Storm"     },
+  dashboard:   { accent: "#b98b54", dim: "rgba(185,139,84,0.12)",  border: "rgba(185,139,84,0.26)",  glow: "rgba(185,139,84,0.13)",  name: "Ledger"   },
+  market:      { accent: "#86939f", dim: "rgba(134,147,159,0.11)", border: "rgba(134,147,159,0.24)", glow: "rgba(134,147,159,0.11)", name: "Steel"    },
+  journal:     { accent: "#6ba5a5", dim: "rgba(107,165,165,0.12)", border: "rgba(107,165,165,0.25)", glow: "rgba(107,165,165,0.12)", name: "Teal"     },
+  prop:        { accent: "#7f9084", dim: "rgba(127,144,132,0.11)", border: "rgba(127,144,132,0.23)", glow: "rgba(127,144,132,0.11)", name: "Sage"     },
+  expenses:    { accent: "#aa7b60", dim: "rgba(170,123,96,0.11)",  border: "rgba(170,123,96,0.23)",  glow: "rgba(170,123,96,0.11)",  name: "Copper"   },
+  debt:        { accent: "#927375", dim: "rgba(146,115,117,0.11)", border: "rgba(146,115,117,0.23)", glow: "rgba(146,115,117,0.11)", name: "Merlot"   },
+  investments: { accent: "#789191", dim: "rgba(120,145,145,0.11)", border: "rgba(120,145,145,0.23)", glow: "rgba(120,145,145,0.11)", name: "Patina"   },
+  tax:         { accent: "#8a7ab5", dim: "rgba(138,122,181,0.11)", border: "rgba(138,122,181,0.23)", glow: "rgba(138,122,181,0.11)", name: "Violet"   },
+  ideas:       { accent: "#85879a", dim: "rgba(133,135,154,0.11)", border: "rgba(133,135,154,0.23)", glow: "rgba(133,135,154,0.11)", name: "Dusk"     },
 } as const;
 
 export type PageThemeKey = keyof typeof PAGE_THEMES;

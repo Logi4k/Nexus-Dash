@@ -16,6 +16,11 @@ export async function signIn(email: string, password: string): Promise<void> {
   if (error) throw new Error("Sign in failed. Please check your credentials.");
 }
 
+export async function signUp(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) throw new Error(error.message);
+}
+
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
 }

@@ -2,10 +2,11 @@ import { useState, useMemo } from "react";
 import { Bell, X, RefreshCw, AlertTriangle, Check, Landmark, PiggyBank, Briefcase } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import type { AppData } from "@/types";
-import { buildAppNotifications, buildRawAppNotifications, getNotificationCount } from "@/lib/notifications";
+import { buildAppNotifications, buildRawAppNotifications } from "@/lib/notifications";
 import Modal from "@/components/Modal";
+import { IconButton } from "@/components/ui/icon-button";
 
-export default function NotificationBell({ collapsed }: { collapsed: boolean }) {
+export default function NotificationBell({ collapsed: _collapsed }: { collapsed: boolean }) {
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -73,12 +74,13 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
               Dismiss all
             </button>
           )}
-          <button
+          <IconButton
             onClick={() => setNotificationOpen(false)}
-            className="w-5 h-5 flex items-center justify-center rounded text-tx-4 hover:text-tx-1 hover:bg-bg-hover transition-all"
+            label="Close notifications"
+            className="h-5 w-5 rounded text-tx-4"
           >
             <X size={11} />
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -177,7 +179,7 @@ export default function NotificationBell({ collapsed }: { collapsed: boolean }) 
         onClick={() => setNotificationOpen(true)}
         aria-label="Notifications"
         title="Notifications"
-        className="relative flex items-center justify-center w-7 h-7 rounded-lg transition-all"
+        className="relative flex h-7 w-7 items-center justify-center rounded-lg transition-[background-color,border-color,color,transform] duration-150"
         style={{
           color: count > 0 ? "var(--color-warn)" : "var(--tx-4)",
           background: notificationOpen ? "rgba(var(--surface-rgb),0.08)" : "rgba(var(--surface-rgb),0.03)",

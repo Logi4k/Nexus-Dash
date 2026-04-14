@@ -63,7 +63,7 @@ export default function FilterBar({ filters, values, onChange, onClear, theme, s
             return null;
           })}
           {hasActive && (
-            <button onClick={onClear} className="text-[11px] font-medium px-3 py-1.5 rounded-lg transition-all text-tx-4">
+            <button onClick={onClear} className="rounded-lg px-3 py-1.5 text-[11px] font-medium text-tx-4 transition-colors hover:text-tx-1">
               Clear
             </button>
           )}
@@ -176,7 +176,7 @@ function PillGroup({ def, value, onChange, theme }: { def: { options: PillGroupO
         return (
           <button type="button" key={opt.value} onClick={() => onChange(opt.value)}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border",
+              "px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-[background-color,border-color,color] border",
               !isActive && "text-tx-4 border-transparent"
             )}
             style={isActive
@@ -204,8 +204,10 @@ function SearchFilter({ def, value, onChange, theme }: { def: FilterDef & { type
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder={def.placeholder || "Search..."}
+        placeholder={def.placeholder || "Search…"}
         className="w-40 rounded-xl border border-border bg-accent-muted py-2 pl-8 pr-3 text-[12px] font-medium text-tx-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(var(--accent-rgb),0.3)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(var(--bg-base-rgb),1)] md:w-48"
+        autoComplete="off"
+        name={inputId}
         style={value ? { borderColor: theme.border } : undefined}
       />
       <svg className="absolute left-2.5 w-3.5 h-3.5 text-tx-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

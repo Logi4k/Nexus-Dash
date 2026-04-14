@@ -2,30 +2,40 @@ import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface Props {
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   icon?: ReactNode;
+  meta?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }
 
-export default function PageHeader({ title, subtitle, icon, actions, className }: Props) {
+export default function PageHeader({ eyebrow, title, subtitle, icon, meta, actions, className }: Props) {
   return (
-    <div className={cn("flex items-start justify-between mb-6", className)}>
-      <div className="flex items-center gap-3">
+    <div className={cn("mb-7 flex flex-col gap-3 xl:mb-8 md:flex-row md:items-start md:justify-between", className)}>
+      <div className="min-w-0 flex-1">
+        {eyebrow && (
+          <div className="mb-1 text-[11px] font-semibold" style={{ color: "var(--accent)", letterSpacing: "0.04em" }}>
+            {eyebrow}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
         {icon && (
           <div className="w-10 h-10 rounded-xl bg-bg-elevated border border-[rgba(var(--border-rgb),0.08)] flex items-center justify-center text-accent">
             {icon}
           </div>
         )}
         <div>
-          <h1 className="text-xl font-bold text-tx-1">{title}</h1>
+          <h1 className="page-title">{title}</h1>
           {subtitle && (
             <p className="text-tx-3 text-sm mt-0.5">{subtitle}</p>
           )}
         </div>
+        {meta}
+        </div>
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">{actions}</div>}
     </div>
   );
 }

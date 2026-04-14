@@ -21,10 +21,20 @@ export default function AnimatedNumber({
   colorize = false,
 }: Props) {
   const [display, setDisplay] = useState(value);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const rafRef = useRef<number>();
   const startRef = useRef<number>();
   const fromRef = useRef(value);
   const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReducedMotion(media.matches);
+    apply();
+    media.addEventListener?.("change", apply);
+    return () => media.removeEventListener?.("change", apply);
+  }, []);
 
   useEffect(() => {
     if (!hydratedRef.current) {
@@ -36,6 +46,11 @@ export default function AnimatedNumber({
 
     const from = fromRef.current;
     const to = value;
+    if (reducedMotion || duration <= 0) {
+      fromRef.current = to;
+      setDisplay(to);
+      return;
+    }
     startRef.current = undefined;
 
     const animate = (ts: number) => {
@@ -57,7 +72,7 @@ export default function AnimatedNumber({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [value, duration]);
+  }, [value, duration, reducedMotion]);
 
   const formatted = new Intl.NumberFormat("en-GB", {
     minimumFractionDigits: decimals,

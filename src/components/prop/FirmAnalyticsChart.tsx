@@ -94,7 +94,7 @@ export function FirmAnalyticsChart({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-[11px] font-semibold"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors"
             style={{
               background: "rgba(var(--surface-rgb),0.06)",
               border: "1px solid rgba(var(--border-rgb),0.12)",
@@ -111,7 +111,7 @@ export function FirmAnalyticsChart({
                   key={s}
                   onClick={() => setSortBy(s)}
                   className={cn(
-                    "text-[10px] px-2.5 py-1 rounded-md capitalize transition-all",
+                    "rounded-md px-2.5 py-1 text-[10px] capitalize transition-colors",
                     sortBy === s ? "font-bold" : "text-tx-3 hover:text-tx-1"
                   )}
                 >
@@ -173,7 +173,7 @@ export function FirmAnalyticsChart({
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-tx-3 w-10 text-right shrink-0">spent</span>
                   <div className="flex-1 h-1.5 rounded-full rgba(var(--surface-rgb),0.08) overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500"
+                    <div className="h-full rounded-full transition-[width,background] duration-500"
                       style={{ width: `${spentPct}%`, background: "var(--color-loss)" }} />
                   </div>
                   <span className="text-[10px] text-tx-3 tabular-nums font-mono w-16 text-right shrink-0">{fmtGBP(f.spent)}</span>
@@ -181,7 +181,7 @@ export function FirmAnalyticsChart({
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-tx-3 w-10 text-right shrink-0">earned</span>
                   <div className="flex-1 h-1.5 rounded-full rgba(var(--surface-rgb),0.08) overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500"
+                    <div className="h-full rounded-full transition-[width,background] duration-500"
                       style={{ width: `${earnPct}%`, background: `${firmCol}cc` }} />
                   </div>
                   <span className="text-[10px] text-tx-3 tabular-nums font-mono w-16 text-right shrink-0">{fmtGBP(f.earned)}</span>

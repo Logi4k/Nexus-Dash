@@ -52,7 +52,6 @@ export default function DatePicker({ value, onChange, min, max, className }: Pro
   });
   const [portalStyle, setPortalStyle] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleResize() {
@@ -62,15 +61,6 @@ export default function DatePicker({ value, onChange, min, max, className }: Pro
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    function handler(e: PointerEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("pointerdown", handler);
-    return () => document.removeEventListener("pointerdown", handler);
-  }, [open]);
 
   // Sync view when value changes externally
   useEffect(() => {
@@ -199,7 +189,7 @@ export default function DatePicker({ value, onChange, min, max, className }: Pro
                 disabled={disabled}
                 onClick={() => selectDate(day)}
                 className={cn(
-                  "aspect-square rounded-lg text-[12px] font-medium transition-all",
+                  "aspect-square rounded-lg text-[12px] font-medium transition-colors",
                   isSelected && "text-[var(--bg-base)]",
                   !isSelected && disabled && "opacity-30 cursor-not-allowed",
                   !isSelected && !disabled && "hover:bg-[rgba(var(--surface-rgb),0.1)]",
@@ -222,13 +212,13 @@ export default function DatePicker({ value, onChange, min, max, className }: Pro
   }
 
   return (
-    <div ref={containerRef} className={cn("relative", className)}>
+    <div className={cn("relative", className)}>
       <button
         ref={triggerRef}
         type="button"
         onClick={openDropdown}
         className={cn(
-          "w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] transition-all",
+          "w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] transition-colors",
           "border border-transparent hover:border-[rgba(var(--border-rgb),0.15)]",
           "bg-[rgba(var(--surface-rgb),0.04)] hover:bg-[rgba(var(--surface-rgb),0.07)]",
           "text-[var(--tx-1)]"
@@ -236,7 +226,7 @@ export default function DatePicker({ value, onChange, min, max, className }: Pro
         style={{ minWidth: "100%" }}
       >
         <Calendar size={13} style={{ color: "var(--accent)" }} />
-        <span className="font-medium">{fmtDisplay(value) || "Select date"}</span>
+        <span className="font-medium">{fmtDisplay(value) || "Select date…"}</span>
       </button>
 
       {/* Desktop: portal with fixed positioning */}
@@ -280,12 +270,15 @@ export default function DatePicker({ value, onChange, min, max, className }: Pro
               boxShadow: "0 -18px 50px rgba(0,0,0,0.45)",
               animation: "dpSlideUp 0.2s ease-out",
             }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1.5 w-12 rounded-full" style={{ background: "rgba(var(--surface-rgb),0.12)" }} />
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-tx-4 font-semibold">Date</p>
-                <p className="text-sm font-semibold text-tx-1">{fmtDisplay(value) || "Select date"}</p>
+                <p className="text-sm font-semibold text-tx-1">{fmtDisplay(value) || "Select date…"}</p>
               </div>
               <button
                 type="button"

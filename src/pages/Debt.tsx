@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { toast } from 'sonner';
-import { PAGE_THEMES } from "@/lib/theme";
 import {
   CreditCard,
   Plus,
@@ -10,7 +9,6 @@ import {
   Trash2,
   History,
   AlertTriangle,
-  Calendar,
   TrendingDown,
   Zap,
   Snowflake,
@@ -20,7 +18,7 @@ import {
   Target,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
-import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
+import { useBWMode, bwColor } from "@/lib/useBWMode";
 import type { Debt, DebtPayment, AppData } from "@/types";
 import {
   fmtGBP,
@@ -35,23 +33,24 @@ import {
 import Modal from "@/components/Modal";
 import DatePicker from "@/components/DatePicker";
 import StatCard from "@/components/StatCard";
+import PageHeader from "@/components/PageHeader";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getCardAccent(name: string): { color: string; network: string; bg: string } {
   const n = name.toLowerCase();
   if (n.includes("barclaycard") || n.includes("barclay")) {
-    return { color: "#5b8bbf", network: "VISA", bg: "rgba(91,139,191,0.08)" };
+    return { color: "#7f99ac", network: "VISA", bg: "rgba(127,153,172,0.10)" };
   }
   if (n.includes("american express") || n.includes("amex")) {
-    return { color: "#d4a84a", network: "AMEX", bg: "rgba(212,168,74,0.08)" };
+    return { color: "#c4a06b", network: "AMEX", bg: "rgba(196,160,107,0.10)" };
   }
   if (n.includes("mastercard") || n.includes("master")) {
-    return { color: "#c49060", network: "MC", bg: "rgba(196,144,96,0.08)" };
+    return { color: "#b98966", network: "MC", bg: "rgba(185,137,102,0.10)" };
   }
   if (n.includes("hsbc")) {
-    return { color: "#b84040", network: "VISA", bg: "rgba(184,64,64,0.08)" };
+    return { color: "#95656a", network: "VISA", bg: "rgba(149,101,106,0.10)" };
   }
-  return { color: "#9b8ec2", network: "VISA", bg: "rgba(155,142,194,0.08)" };
+  return { color: "#8f88aa", network: "VISA", bg: "rgba(143,136,170,0.10)" };
 }
 
 function utilizationColor(u: number) {
@@ -281,7 +280,7 @@ function DebtRow({
           <div className="mt-1.5 flex items-center gap-2">
             <div className="flex-1 h-1 rounded-full bg-[rgba(var(--border-rgb),0.07)] overflow-hidden">
               <div
-                className={cn("h-full rounded-full transition-all duration-700", colors.bar)}
+                className={cn("h-full rounded-full transition-[width,background] duration-700", colors.bar)}
                 style={{ width: `${Math.min(utilPct, 100)}%` }}
               />
             </div>
@@ -320,19 +319,19 @@ function DebtRow({
         <div className="flex items-center gap-1 shrink-0 ml-2">
           {deleteConfirm ? (
             <>
-              <button onClick={onDeleteConfirm} className="text-[10px] px-2 py-1 rounded text-loss hover:opacity-90 transition-all font-semibold" style={{ background: "rgba(var(--color-loss),0.15)" }}>Delete</button>
-              <button onClick={onDeleteCancel} className="text-[10px] px-2 py-1 rounded bg-[rgba(var(--border-rgb),0.05)] text-tx-3 hover:text-tx-1 transition-all">Cancel</button>
+              <button onClick={onDeleteConfirm} className="text-[10px] px-2 py-1 rounded text-loss hover:opacity-90 transition-opacity font-semibold" style={{ background: "rgba(var(--color-loss),0.15)" }}>Delete</button>
+              <button onClick={onDeleteCancel} className="text-[10px] px-2 py-1 rounded bg-[rgba(var(--border-rgb),0.05)] text-tx-3 hover:text-tx-1 transition-colors">Cancel</button>
             </>
           ) : (
             <>
               <button onClick={onLogPayment} className="btn-success btn-sm text-[11px] px-2.5 py-1">Pay</button>
-              <button onClick={onEdit} className="p-1.5 rounded hover:bg-[rgba(var(--border-rgb),0.07)] text-tx-3 hover:text-tx-1 transition-all">
+              <button onClick={onEdit} className="p-1.5 rounded hover:bg-[rgba(var(--border-rgb),0.07)] text-tx-3 hover:text-tx-1 transition-colors" aria-label={`Edit ${debt.name}`}>
                 <Edit2 size={12} />
               </button>
-              <button onClick={onDelete} className="p-1.5 rounded hover:bg-loss/10 text-tx-4 hover:text-loss transition-all">
+              <button onClick={onDelete} className="p-1.5 rounded hover:bg-loss/10 text-tx-4 hover:text-loss transition-colors" aria-label={`Delete ${debt.name}`}>
                 <Trash2 size={12} />
               </button>
-              <button onClick={onToggle} className="p-1.5 rounded hover:bg-[rgba(var(--border-rgb),0.07)] text-tx-4 transition-all">
+              <button onClick={onToggle} className="p-1.5 rounded hover:bg-[rgba(var(--border-rgb),0.07)] text-tx-4 transition-colors" aria-label={expanded ? `Collapse ${debt.name}` : `Expand ${debt.name}`}>
                 {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
             </>
@@ -349,7 +348,7 @@ function DebtRow({
           </div>
           <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.07)" }}>
             <div
-              className="h-full rounded-full transition-all"
+              className="h-full rounded-full transition-[width,background]"
               style={{ width: `${Math.min(paidOffPct, 100)}%`, background: paidOffPct >= 75 ? "var(--color-profit)" : paidOffPct >= 40 ? "var(--color-warn)" : "var(--color-loss)" }}
             />
           </div>
@@ -373,7 +372,7 @@ function DebtRow({
           </div>
           <div className="h-1.5 rounded-full bg-[rgba(var(--border-rgb),0.07)] overflow-hidden mb-4">
             <div
-              className={cn("h-full rounded-full transition-all duration-700", colors.bar)}
+              className={cn("h-full rounded-full transition-[width,background] duration-700", colors.bar)}
               style={{ width: `${Math.min(utilPct, 100)}%` }}
             />
           </div>
@@ -408,8 +407,6 @@ function DebtRow({
 function StrategyPanel({ debts }: { debts: Debt[] }) {
   const isBW = useBWMode();
   const [extraMonthly, setExtraMonthly] = useState(50);
-
-  const totalMinimum = debts.reduce((s, d) => s + d.monthly, 0);
   const totalInterest0 = useMemo(() =>
     debts.reduce((s, d) => {
       const r = calcPayoff(d.currentBalance, d.rate, d.monthly);
@@ -567,9 +564,9 @@ export default function DebtPage() {
   const [editDebt, setEditDebt] = useState<Debt | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [extraMonthlyPayment, setExtraMonthlyPayment] = useState("150");
 
   const isBW = useBWMode();
-  const theme = bwPageTheme(PAGE_THEMES.debt, isBW);
   const bwAccent = (name: string) => {
     const raw = getCardAccent(name);
     return { color: bwColor(raw.color, isBW), network: raw.network, bg: bwColor(raw.bg, isBW) };
@@ -600,6 +597,28 @@ export default function DebtPage() {
     })();
     return { totalDebt, totalLimit, overallUtil, totalInterest, totalPayoff, soonest, totalPaid, paydownPct, originalTotal, debtFreedomMonths, debtFreedomDate };
   }, [debts]);
+
+  const scenario = useMemo(() => {
+    const extra = Math.max(0, Number(extraMonthlyPayment) || 0);
+    if (debts.length === 0) return null;
+
+    const baselineMonths = debts.map((d) => calcPayoff(d.currentBalance, d.rate, d.monthly)?.months ?? 0);
+    const acceleratedMonths = debts.map((d) => calcPayoff(d.currentBalance, d.rate, d.monthly + extra)?.months ?? 0);
+    const baselineMax = baselineMonths.length > 0 ? Math.max(...baselineMonths) : 0;
+    const acceleratedMax = acceleratedMonths.length > 0 ? Math.max(...acceleratedMonths) : 0;
+
+    return {
+      extra,
+      monthsSaved: Math.max(0, baselineMax - acceleratedMax),
+      newFreedomDate: acceleratedMax > 0
+        ? (() => {
+            const dt = new Date();
+            dt.setMonth(dt.getMonth() + acceleratedMax);
+            return dt.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+          })()
+        : null,
+    };
+  }, [debts, extraMonthlyPayment]);
 
   function handleLogPayment(debtId: string, payment: DebtPayment) {
     update((prev) => ({
@@ -637,27 +656,25 @@ export default function DebtPage() {
     });
   }
 
-  const utilColors = utilizationColor(stats.overallUtil);
-
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6 xl:gap-7">
       {/* ── Header ── */}
-      <div className="mb-6">
-        <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Debt</div>
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="page-title">Debt Tracker</h1>
+      <PageHeader
+        eyebrow="Debt"
+        title="Debt Tracker"
+        actions={
           <button className="btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
             <Plus size={14} />
             Add Card
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Two column layout ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6 xl:gap-7">
 
         {/* ── LEFT: Cards list + projections ── */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5 xl:gap-6">
 
           {/* Summary strip */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -695,6 +712,41 @@ export default function DebtPage() {
               delay={180}
             />
           </div>
+
+          {scenario && (
+            <div className="card p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.16em] text-tx-4">Scenario planner</div>
+                  <div className="mt-1 text-sm font-semibold text-tx-1">Model how extra overpayments change your debt freedom date.</div>
+                </div>
+                <div className="w-full md:w-[200px]">
+                  <label className="text-[10px] uppercase tracking-[0.12em] text-tx-4">Extra monthly overpayment</label>
+                  <input
+                    value={extraMonthlyPayment}
+                    onChange={(e) => setExtraMonthlyPayment(e.target.value)}
+                    inputMode="decimal"
+                    className="nx-input mt-1"
+                    placeholder="150"
+                  />
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-border-subtle bg-bg-hover px-4 py-4">
+                  <div className="text-[10px] uppercase tracking-[0.12em] text-tx-4">Current freedom date</div>
+                  <div className="mt-2 text-lg font-semibold text-tx-1">{stats.debtFreedomDate ?? "—"}</div>
+                </div>
+                <div className="rounded-2xl border border-border-subtle bg-bg-hover px-4 py-4">
+                  <div className="text-[10px] uppercase tracking-[0.12em] text-tx-4">Accelerated date</div>
+                  <div className="mt-2 text-lg font-semibold text-tx-1">{scenario.newFreedomDate ?? "—"}</div>
+                </div>
+                <div className="rounded-2xl border border-border-subtle bg-bg-hover px-4 py-4">
+                  <div className="text-[10px] uppercase tracking-[0.12em] text-tx-4">Time saved</div>
+                  <div className="mt-2 text-lg font-semibold text-profit">{scenario.monthsSaved > 0 ? fmtMonths(scenario.monthsSaved) : "No change"}</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Cards list */}
           {debts.length === 0 ? (
@@ -873,7 +925,7 @@ export default function DebtPage() {
                             </div>
                             <div className="h-4 rounded-lg bg-[rgba(var(--border-rgb),0.06)] overflow-hidden">
                               <div
-                                className="h-full rounded-lg transition-all duration-700 flex items-center justify-end pr-2"
+                                className="h-full rounded-lg transition-[width,background] duration-700 flex items-center justify-end pr-2"
                                 style={{ width: `${widthPct}%`, background: `linear-gradient(90deg, ${d.accent.color}55, ${d.accent.color})` }}
                               >
                                 <span className="text-[10px] text-tx-2 font-bold tabular-nums shrink-0">{fmtGBP(d.currentBalance)}</span>
@@ -898,8 +950,7 @@ export default function DebtPage() {
             const SIZE = 80, CX = 40, CY = 40, R = 32;
             const circ = 2 * Math.PI * R;
             const dash = (Math.min(stats.paydownPct, 100) / 100) * circ;
-      const progressColor = stats.paydownPct >= 75 ? "var(--color-profit)" : stats.paydownPct >= 40 ? "var(--color-teal)" : "var(--color-warn)";
-            const gradBase = stats.paydownPct >= 75 ? "linear-gradient(90deg,var(--color-profit),var(--color-teal))" : stats.paydownPct >= 40 ? "linear-gradient(90deg,var(--color-profit),var(--color-teal))" : "linear-gradient(90deg,var(--color-profit),var(--color-teal))";
+            const progressColor = stats.paydownPct >= 75 ? "var(--color-profit)" : stats.paydownPct >= 40 ? "var(--color-teal)" : "var(--color-warn)";
             return (
               <div className="card p-4" style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, transparent 100%)", borderColor: "rgba(34,197,94,0.15)" }}>
                 <div className="flex items-center gap-2 mb-3">
@@ -932,7 +983,7 @@ export default function DebtPage() {
                     <p className="text-[10px] text-tx-4 mt-0.5 mb-3">projected debt-free · {fmtMonths(stats.debtFreedomMonths)} away</p>
                     <div className="h-1.5 rounded-full bg-[rgba(var(--border-rgb),0.06)] overflow-hidden mb-1.5">
                       <div
-                        className="h-full rounded-full transition-all duration-700"
+                        className="h-full rounded-full transition-[width,background] duration-700"
                         style={{ width: `${Math.min(100, stats.paydownPct)}%`, background: "linear-gradient(90deg, var(--color-profit), var(--color-teal))" }}
                       />
                     </div>
@@ -1005,7 +1056,7 @@ export default function DebtPage() {
                         </div>
                         <div className="h-1.5 rounded-full bg-[rgba(var(--border-rgb),0.06)] overflow-hidden">
                           <div
-                            className="h-full rounded-full transition-all duration-700"
+                            className="h-full rounded-full transition-[width,background] duration-700"
                             style={{ width: `${seg.pct}%`, background: `linear-gradient(90deg, ${seg.color}80, ${seg.color})` }}
                           />
                         </div>
@@ -1038,7 +1089,7 @@ export default function DebtPage() {
                     const isSoon = days >= 0 && days <= 7;
                     return (
                       <div key={d.id} className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl transition-all",
+                        "flex items-center gap-3 p-3 rounded-xl transition-[background-color,border-color]",
                         isPast ? "bg-[rgba(var(--color-loss),0.05)] border-[rgba(var(--color-loss),0.15)]" :
                         isSoon ? "bg-[rgba(var(--color-warn),0.05)] border-[rgba(var(--color-warn),0.15)]" :
                         "bg-[rgba(var(--border-rgb),0.03)] border-[rgba(var(--border-rgb),0.07)]"

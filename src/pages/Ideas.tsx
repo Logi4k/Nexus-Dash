@@ -3,10 +3,12 @@ import { useLocation } from "react-router-dom";
 import { ArrowLeft, BookOpen, FolderPen, Lightbulb, PanelLeft, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { getQuickActionState } from "@/lib/quickActions";
+import { getViewIntentState } from "@/lib/viewIntents";
 import { PAGE_THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { useBWMode, bwPageTheme } from "@/lib/useBWMode";
 import NoteEditor from "@/components/NoteEditor";
+import { useRegisterPageView } from "@/components/PageViewContext";
 import type { IdeaNote, IdeaTopic } from "@/types";
 import type { AppData } from "@/types";
 
@@ -57,7 +59,7 @@ function NoteDeleteButton({
           e.stopPropagation();
           onConfirm();
         }}
-        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-loss/15 text-loss hover:bg-loss/25 transition-all"
+        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-loss/15 text-loss hover:bg-loss/25 transition-colors"
       >
         Delete
       </button>
@@ -66,7 +68,7 @@ function NoteDeleteButton({
           e.stopPropagation();
           onCancel();
         }}
-        className="px-2 py-0.5 rounded text-[10px] font-semibold text-tx-3 hover:text-tx-1 transition-all"
+        className="px-2 py-0.5 rounded text-[10px] font-semibold text-tx-3 hover:text-tx-1 transition-colors"
         style={{ background: "rgba(var(--surface-rgb),0.05)" }}
       >
         No
@@ -107,7 +109,7 @@ function TopicDeleteButton({
           e.stopPropagation();
           onConfirm();
         }}
-        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-loss/15 text-loss hover:bg-loss/25 transition-all"
+        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-loss/15 text-loss hover:bg-loss/25 transition-colors"
       >
         Delete
       </button>
@@ -116,7 +118,7 @@ function TopicDeleteButton({
           e.stopPropagation();
           onCancel();
         }}
-        className="px-2 py-0.5 rounded text-[10px] font-semibold text-tx-3 hover:text-tx-1 transition-all"
+        className="px-2 py-0.5 rounded text-[10px] font-semibold text-tx-3 hover:text-tx-1 transition-colors"
         style={{ background: "rgba(var(--surface-rgb),0.05)" }}
       >
         No
@@ -134,6 +136,7 @@ export default function Ideas() {
   const topics = data.ideaTopics ?? DEFAULT_TOPICS;
   const notes = data.ideaNotes ?? [];
   const handledLocationAction = useRef<string | null>(null);
+  const handledViewIntent = useRef<string | null>(null);
 
   const [activeTopicId, setActiveTopicId] = useState<string>(topics[0]?.id ?? "");
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -155,6 +158,21 @@ export default function Ideas() {
   const [isMobile, setIsMobile] = useState(false);
   const [workspaceVisible, setWorkspaceVisible] = useState(true);
   const draftCommitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentView = useMemo(
+    () => ({
+      route: "/ideas",
+      title: "Ideas workspace view",
+      description: "Topic, note, and workspace search state",
+      state: {
+        search,
+        activeTopicId,
+        activeNoteId,
+        mobileView,
+      },
+    }),
+    [activeNoteId, activeTopicId, mobileView, search]
+  );
+  useRegisterPageView(currentView);
 
   useEffect(() => {
     const updateViewport = () => setIsMobile(window.innerWidth < 768);
@@ -201,6 +219,40 @@ export default function Ideas() {
       setNoteDeleteConfirmId(null);
     }
   }, [activeTopicId, location.state, update]);
+
+  useEffect(() => {
+    const viewIntent = getViewIntentState(location.state);
+    const requestKey = viewIntent?.id ?? null;
+
+    if (!viewIntent || viewIntent.route !== "/ideas") {
+      handledViewIntent.current = null;
+      return;
+    }
+    if (handledViewIntent.current === requestKey) return;
+
+    if (typeof viewIntent.state.search === "string") {
+      setSearch(viewIntent.state.search);
+    }
+    if (typeof viewIntent.state.activeTopicId === "string") {
+      setActiveTopicId(viewIntent.state.activeTopicId);
+    }
+    if ("activeNoteId" in viewIntent.state) {
+      setActiveNoteId(
+        typeof viewIntent.state.activeNoteId === "string"
+          ? viewIntent.state.activeNoteId
+          : null
+      );
+    }
+    if (
+      viewIntent.state.mobileView === "topics" ||
+      viewIntent.state.mobileView === "notes" ||
+      viewIntent.state.mobileView === "editor"
+    ) {
+      setMobileView(viewIntent.state.mobileView);
+    }
+
+    handledViewIntent.current = requestKey;
+  }, [location.state]);
 
   const storedActiveNote = notes.find((note) => note.id === activeNoteId) ?? null;
   const notesWithDraft = useMemo(
@@ -430,7 +482,7 @@ export default function Ideas() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search pages..."
+                placeholder="Search pages…"
                 className="w-full pl-9 pr-3 py-2.5 rounded-2xl text-[12px] outline-none"
                 style={{ background: "var(--bg-input)", border: "1px solid rgba(var(--border-rgb),0.06)", color: "var(--tx-1)" }}
               />
@@ -463,7 +515,9 @@ export default function Ideas() {
               return (
                 <div
                   key={topic.id}
-                  className="group rounded-2xl px-3 py-3 transition-all cursor-pointer"
+                  className="group rounded-2xl px-3 py-3 transition-[background-color,border-color] cursor-pointer"
+                  role="button"
+                  tabIndex={0}
                   style={
                     isActive
                       ? { background: "rgba(var(--surface-rgb),0.06)", border: `1px solid ${theme.border}` }
@@ -476,6 +530,17 @@ export default function Ideas() {
                     setActiveNoteId(null);
                     setMobileView("notes");
                     setZenMode(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      commitDraft(draftNote, { immediate: true });
+                      if (isEditing) return;
+                      setActiveTopicId(topic.id);
+                      setActiveNoteId(null);
+                      setMobileView("notes");
+                      setZenMode(false);
+                    }
                   }}
                 >
                   <div className="flex items-start gap-3">
@@ -543,14 +608,14 @@ export default function Ideas() {
                     if (e.key === "Escape") setAddingTopic(false);
                   }}
                   className="w-full rounded-2xl px-3 py-2.5 text-[12px] outline-none"
-                  placeholder="New space..."
+                  placeholder="New space…"
                   style={{ background: "var(--bg-input)", border: "1px solid rgba(var(--border-rgb),0.06)", color: "var(--tx-1)" }}
                 />
               </div>
             ) : (
               <button
                 onClick={() => setAddingTopic(true)}
-                className="w-full mt-2 flex items-center gap-2 px-3 py-3 rounded-2xl text-[12px] font-medium transition-all"
+                className="w-full mt-2 flex items-center gap-2 px-3 py-3 rounded-2xl text-[12px] font-medium transition-[background-color,border-color,color]"
                 style={{ background: theme.dim, border: `1px dashed ${theme.border}`, color: theme.accent }}
               >
                 <Plus size={13} />
@@ -623,7 +688,9 @@ export default function Ideas() {
                 return (
                   <div
                     key={note.id}
-                    className="group rounded-2xl px-4 py-3 cursor-pointer transition-all"
+                    className="group rounded-2xl px-4 py-3 cursor-pointer transition-[background-color,border-color]"
+                    role="button"
+                    tabIndex={0}
                     style={
                       isActive
                         ? { background: "rgba(var(--surface-rgb),0.07)", border: `1px solid ${theme.border}` }
@@ -634,6 +701,15 @@ export default function Ideas() {
                       setActiveNoteId(note.id);
                       setMobileView("editor");
                       if (!isMobile) setWorkspaceVisible(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        commitDraft(draftNote, { immediate: true });
+                        setActiveNoteId(note.id);
+                        setMobileView("editor");
+                        if (!isMobile) setWorkspaceVisible(false);
+                      }
                     }}
                   >
                     <div className="flex items-start gap-3">
@@ -683,11 +759,11 @@ export default function Ideas() {
         )}
 
         {showEditorPane && activeNote && (
-          <section className={cn("relative flex-1 min-w-0 overflow-hidden z-10", mobileView === "editor" ? "block" : "hidden md:block")}>
+          <section className={cn("relative flex-1 min-w-0 overflow-hidden z-[var(--z-base)]", mobileView === "editor" ? "block" : "hidden md:block")}>
             {!isMobile && !workspaceVisible && (
               <button
                 onClick={() => setWorkspaceVisible(true)}
-                className="absolute top-4 left-4 z-[var(--z-dropdown)] flex items-center gap-2 pl-2.5 pr-4 py-2 rounded-2xl text-[12px] font-semibold shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+                className="absolute top-4 left-4 z-[var(--z-dropdown)] flex items-center gap-2 pl-2.5 pr-4 py-2 rounded-2xl text-[12px] font-semibold shadow-xl transition-[background-color,box-shadow,transform] duration-200 hover:scale-105 active:scale-95"
                 style={{
                   background: "var(--accent)",
                   color: "var(--bg-base)",

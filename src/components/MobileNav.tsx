@@ -24,7 +24,6 @@ import {
   Moon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { PAGE_THEMES, type PageTheme } from "@/lib/theme";
 import { syncNow, useAppData, useSyncStatus } from "@/lib/store";
 import SettingsModal from "@/components/SettingsModal";
 import { DEFAULT_MOBILE_NAV_ITEMS, MOBILE_NAV_OPTIONS, sanitizeMobileNavItems } from "@/lib/mobileNav";
@@ -99,10 +98,14 @@ function Avatar({ avatarUrl, username, avatarColor, size }: {
 export default function MobileNav({
   onOpenCommandPalette,
   onQuickAction,
+  onOpenWorkspaceDrawer,
+  onOpenExportCenter,
   navVisible = true,
 }: {
   onOpenCommandPalette?: () => void;
   onQuickAction?: (action: QuickAction) => void;
+  onOpenWorkspaceDrawer?: () => void;
+  onOpenExportCenter?: () => void;
   navVisible?: boolean;
 }) {
   const loc = useLocation();
@@ -247,14 +250,6 @@ export default function MobileNav({
   const { activate: activateTheme, ripple } = useThemeTransition(toggleTheme);
   const themeBtnRef = useRef<HTMLButtonElement>(null);
 
-  const syncLabel = syncStatus.lastError
-    ? "Sync issue"
-    : syncStatus.syncInFlight
-      ? "Syncing..."
-      : syncStatus.syncedAt
-        ? `Synced ${new Date(syncStatus.syncedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
-        : "Sync ready";
-
   const rowStyle: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 8,
     width: "100%", padding: "7px 6px", borderRadius: 8,
@@ -273,7 +268,6 @@ export default function MobileNav({
         return {
           ...config,
           Icon: ICONS[id],
-          theme: PAGE_THEMES[config.themeKey],
         };
       })
       .filter(Boolean) as {
@@ -281,7 +275,6 @@ export default function MobileNav({
         label: string;
         path: string;
         Icon: ElementType;
-        theme: PageTheme;
       }[];
   }, [data.userSettings?.mobileNavItems]);
 
@@ -290,7 +283,6 @@ export default function MobileNav({
     return MOBILE_NAV_OPTIONS.map((config) => ({
       ...config,
       Icon: ICONS[config.id],
-      theme: PAGE_THEMES[config.themeKey],
     }));
   }, []);
 
@@ -300,11 +292,9 @@ export default function MobileNav({
   function NavItem({
     path,
     Icon,
-    theme,
   }: {
     path: string;
     Icon: ElementType;
-    theme: PageTheme;
   }) {
     const isActive = path === "/" ? loc.pathname === "/" : loc.pathname.startsWith(path);
 
@@ -397,7 +387,9 @@ export default function MobileNav({
                 />
               </button>
               {showNotificationBell && (
-                <div
+                <button
+                  type="button"
+                  onClick={() => setNotificationsOpen((o) => !o)}
                   style={{
                     position: "absolute",
                     top: -5,
@@ -414,11 +406,12 @@ export default function MobileNav({
                     color: "var(--tx-1)",
                     border: "2.5px solid var(--bg-base)",
                     zIndex: "var(--z-base)",
+                    cursor: "pointer",
                   }}
                   aria-label={notificationCount + " notifications"}
                 >
                   {notificationCount > 9 ? "9+" : notificationCount}
-                </div>
+                </button>
               )}
             </div>
         </div>
@@ -779,17 +772,47 @@ export default function MobileNav({
 
               {/* Search */}
               {onOpenCommandPalette && (
-                <button
-                  onClick={() => { setMoreOpen(false); onOpenCommandPalette(); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl mb-4 transition-all"
-                  style={{
-                    background: "rgba(var(--surface-rgb),0.05)",
-                    border: "1px solid rgba(var(--border-rgb),0.1)",
-                  }}
-                >
-                  <Search size={14} className="text-tx-3" />
-                  <span className="text-sm text-tx-3">Search & Command Palette</span>
-                </button>
+                <div className="grid grid-cols-1 gap-2 mb-4">
+                  <button
+                    onClick={() => { setMoreOpen(false); onOpenCommandPalette(); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all"
+                    style={{
+                      background: "rgba(var(--surface-rgb),0.05)",
+                      border: "1px solid rgba(var(--border-rgb),0.1)",
+                    }}
+                  >
+                    <Search size={14} className="text-tx-3" />
+                    <span className="text-sm text-tx-3">Search & Command Palette</span>
+                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    {onOpenWorkspaceDrawer && (
+                      <button
+                        onClick={() => { setMoreOpen(false); onOpenWorkspaceDrawer(); }}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl transition-all"
+                        style={{
+                          background: "rgba(var(--surface-rgb),0.05)",
+                          border: "1px solid rgba(var(--border-rgb),0.1)",
+                        }}
+                      >
+                        <Settings size={13} className="text-tx-3" />
+                        <span className="text-xs text-tx-3">Workspace</span>
+                      </button>
+                    )}
+                    {onOpenExportCenter && (
+                      <button
+                        onClick={() => { setMoreOpen(false); onOpenExportCenter(); }}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl transition-all"
+                        style={{
+                          background: "rgba(var(--surface-rgb),0.05)",
+                          border: "1px solid rgba(var(--border-rgb),0.1)",
+                        }}
+                      >
+                        <RefreshCw size={13} className="text-tx-3" />
+                        <span className="text-xs text-tx-3">Exports</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* Page grid */}

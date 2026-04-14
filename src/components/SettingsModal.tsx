@@ -4,7 +4,6 @@ import {
   Bell,
   Save,
   Camera,
-  X,
   Palette,
   Smartphone,
   Download,
@@ -12,11 +11,13 @@ import {
   RefreshCw,
   ArrowDownToLine,
   AlertTriangle,
+  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import Modal from "@/components/Modal";
 import AvatarCropModal from "@/components/AvatarCropModal";
 import { forcePullFromCloud, syncNow, useAppData, useSyncStatus } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 import { deleteAvatar, uploadAvatar } from "@/lib/avatarStorage";
 import {
   checkDesktopUpdate,
@@ -185,6 +186,9 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [theme, setTheme] = useState<"dark" | "bw">(
     () => data.userSettings?.theme ?? "dark"
   );
+  const [density, setDensity] = useState<"comfortable" | "compact">(
+    () => data.userSettings?.density ?? "comfortable"
+  );
   const [mobileNavItems, setMobileNavItems] = useState<MobileNavItemId[]>(
     () => sanitizeMobileNavItems(data.userSettings?.mobileNavItems).length > 0
       ? sanitizeMobileNavItems(data.userSettings?.mobileNavItems)
@@ -207,6 +211,7 @@ export default function SettingsModal({ open, onClose }: Props) {
     setRenewalDays(data.userSettings?.subscriptionRenewalDays ?? 7);
     setSubscriptionAlertsEnabled(data.userSettings?.subscriptionAlertsEnabled ?? true);
     setTheme(data.userSettings?.theme ?? "dark");
+    setDensity(data.userSettings?.density ?? "comfortable");
     setMobileNavItems(
       sanitizeMobileNavItems(data.userSettings?.mobileNavItems).length > 0
         ? sanitizeMobileNavItems(data.userSettings?.mobileNavItems)
@@ -259,10 +264,6 @@ export default function SettingsModal({ open, onClose }: Props) {
     e.target.value = "";
   }
 
-  function handleRemovePhoto() {
-    setAvatarUrl(undefined);
-  }
-
   async function handleSave() {
     if (isSaving) return;
 
@@ -293,6 +294,7 @@ export default function SettingsModal({ open, onClose }: Props) {
         subscriptionRenewalDays: renewalDays,
         subscriptionAlertsEnabled,
         theme,
+        density,
         mobileNavItems,
       },
     }));
@@ -318,7 +320,10 @@ export default function SettingsModal({ open, onClose }: Props) {
         subscriptionRenewalDays: 7,
         subscriptionAlertsEnabled: true,
         theme: "dark",
+        density: "comfortable",
         mobileNavItems: DEFAULT_MOBILE_NAV_ITEMS,
+        savedViews: [],
+        recentEntries: [],
       },
     }));
     toast.success("Settings reset to defaults");
@@ -682,6 +687,32 @@ export default function SettingsModal({ open, onClose }: Props) {
                 ))}
               </div>
             </div>
+
+            <div
+              className="mt-4 pt-4 flex items-center justify-between"
+              style={{ borderTop: "1px solid rgba(var(--border-rgb),0.05)" }}
+            >
+              <div>
+                <p className="text-xs font-medium text-tx-2">Density</p>
+                <p className="text-[10px] mt-0.5 text-tx-3">Choose a roomy or compact workspace</p>
+              </div>
+              <div className="flex items-center rounded-xl p-0.5" style={{ background: "rgba(var(--surface-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
+                {(["comfortable","compact"] as const).map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setDensity(v)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all",
+                      density === v
+                        ? "bg-accent-muted border border-border-accent text-tx-1"
+                        : "text-tx-3 border border-transparent"
+                    )}
+                  >
+                    {v === "comfortable" ? "Comfort" : "Compact"}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* ── Sync Card ── */}
@@ -752,6 +783,36 @@ export default function SettingsModal({ open, onClose }: Props) {
                 Pull
               </button>
             </div>
+
+            {/* Sign Out button */}
+            {syncStatus.enabled ? (
+              <button
+                onClick={async () => {
+                  if (confirm("Sign out? Local data will remain on this device.")) {
+                    await supabase?.auth.signOut();
+                    localStorage.removeItem("nexus.offlineMode");
+                    window.location.reload();
+                  }
+                }}
+                className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold transition-all text-tx-3 hover:text-tx-1"
+                style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
+              >
+                <LogOut size={11} />
+                Sign out
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  localStorage.removeItem("nexus.offlineMode");
+                  window.location.reload();
+                }}
+                className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold transition-all"
+                style={{ background: "rgba(107,155,191,0.15)", border: "1px solid rgba(107,155,191,0.25)", color: "var(--tx-1)" }}
+              >
+                <LogOut size={11} />
+                Sign in
+              </button>
+            )}
           </div>
 
           {/* ── Desktop Updates ── */}
@@ -965,6 +1026,41 @@ export default function SettingsModal({ open, onClose }: Props) {
                 Roll back last import ({new Date(lastImportBackupAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })})
               </button>
             )}
+          </div>
+
+          {/* ── Danger Zone ── */}
+          <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(239,68,68,0.1)", background: "rgba(239,68,68,0.02)" }}>
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-loss">Danger Zone</span>
+            <p className="text-[10px] mt-1 mb-3 text-tx-4">Permanently delete all data on this device. This cannot be undone.</p>
+            <button
+              onClick={() => {
+                if (window.confirm("This will permanently delete ALL data on this device and sign you out. Are you sure?")) {
+                  // Clear all Nexus localStorage keys
+                  const keysToClear = [
+                    "nexus_data",
+                    "nexus_savedAt",
+                    "nexus_custom_instruments",
+                    "nexus_custom_sessions",
+                    "nexus_custom_firms",
+                    "nexus_custom_cats",
+                    "nexus.offlineMode",
+                    "nexus_tax_goal_override",
+                    "nexus_tax_salary",
+                    "nexus_tax_saved",
+                    "sidebarCollapsed",
+                  ];
+                  for (const key of keysToClear) localStorage.removeItem(key);
+
+                  // Sign out of Supabase so next launch starts fresh
+                  void supabase.auth.signOut().finally(() => {
+                    window.location.reload();
+                  });
+                }
+              }}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-medium bg-loss/10 text-loss hover:bg-loss/20 transition-colors border border-loss/20"
+            >
+              Clear All Data
+            </button>
           </div>
 
           {/* ── Actions ── */}

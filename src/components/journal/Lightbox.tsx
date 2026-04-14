@@ -85,7 +85,7 @@ export function Lightbox({
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-tx-1 transition-colors hover:bg-white/20 md:right-6 md:top-6"
+          className="absolute right-4 top-4 z-[var(--z-base)] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-tx-1 transition-colors hover:bg-white/20 md:right-6 md:top-6"
           style={{
             top: "calc(env(safe-area-inset-top) + 0.75rem)",
             right: "max(1rem, env(safe-area-inset-right))",
@@ -100,7 +100,7 @@ export function Lightbox({
                 e.stopPropagation();
                 onNavigate((index - 1 + images.length) % images.length);
               }}
-              className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-tx-1 transition-colors hover:bg-white/20 md:left-6"
+              className="absolute left-4 top-1/2 z-[var(--z-base)] flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-tx-1 transition-colors hover:bg-white/20 md:left-6"
             >
               <ChevronLeft size={18} />
             </button>
@@ -109,7 +109,7 @@ export function Lightbox({
                 e.stopPropagation();
                 onNavigate((index + 1) % images.length);
               }}
-              className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-tx-1 transition-colors hover:bg-white/20 md:right-6"
+              className="absolute right-4 top-1/2 z-[var(--z-base)] flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-tx-1 transition-colors hover:bg-white/20 md:right-6"
               style={{ right: "max(1rem, env(safe-area-inset-right))" }}
             >
               <ChevronRight size={18} />
@@ -118,7 +118,7 @@ export function Lightbox({
         )}
         {canNavigate && (
           <div
-            className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-black/35 px-3 py-1 text-[11px] font-semibold text-white/90"
+            className="absolute left-1/2 top-4 z-[var(--z-base)] -translate-x-1/2 rounded-full bg-black/35 px-3 py-1 text-[11px] font-semibold text-white/90"
             style={{ top: "calc(env(safe-area-inset-top) + 0.85rem)" }}
           >
             {index + 1} / {images.length}

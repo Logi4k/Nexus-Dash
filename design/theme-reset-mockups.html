@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus Theme Reset Mockups</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Inter, sans-serif; background: #0b0d11; color: #f3eee5; }
+    .wrap { width: min(100%, 84rem); margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    .eyebrow { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: #c4a06b; }
+    h1 { margin: .35rem 0 .75rem; font-size: clamp(2rem, 4vw, 3.5rem); line-height: .95; letter-spacing: -.05em; }
+    p { margin: 0; color: #aaa39a; line-height: 1.55; }
+    .stack { display: grid; gap: 1.25rem; margin-top: 1.75rem; }
+    .direction { border: 1px solid rgba(255,255,255,.08); border-radius: 1.5rem; overflow: hidden; background: #12161d; box-shadow: 0 18px 42px rgba(0,0,0,.3); }
+    .head { display: grid; gap: .75rem; padding: 1.35rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .head h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.04em; }
+    .boards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 1rem 1.25rem 1.25rem; }
+    .board { border-radius: 1.25rem; overflow: hidden; min-height: 25rem; border: 1px solid rgba(255,255,255,.08); }
+    .top { display: flex; justify-content: space-between; align-items: center; padding: .9rem 1rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .brand { font-size: .8rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    .chip { padding: .42rem .75rem; border-radius: 999px; font-size: .74rem; }
+    .body { display: grid; grid-template-columns: 11rem 1fr; min-height: 21rem; }
+    .side { padding: .95rem .8rem; border-right: 1px solid rgba(255,255,255,.08); }
+    .worth, .hero, .card, .rail { border-radius: 1rem; border: 1px solid rgba(255,255,255,.08); }
+    .worth { padding: .85rem; margin-bottom: .9rem; }
+    .worth small, .hero small, .card small, .rail small { display: block; font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; opacity: .8; }
+    .worth strong, .card strong, .hero strong { display: block; margin-top: .4rem; font-size: 1.45rem; letter-spacing: -.05em; }
+    .nav { padding: .68rem .75rem; border-radius: .9rem; margin-bottom: .32rem; font-size: .88rem; }
+    .nav.active { font-weight: 600; }
+    .content { padding: 1rem; display: grid; gap: .85rem; }
+    .title { display: flex; justify-content: space-between; gap: 1rem; }
+    .title h3 { margin: .2rem 0 0; font-size: 1.9rem; line-height: .95; letter-spacing: -.05em; }
+    .hero { padding: 1rem; }
+    .hero-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: .75rem; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; }
+    .card { min-height: 5.2rem; padding: .85rem; }
+    .grid { display: grid; grid-template-columns: 1.35fr .9fr; gap: .75rem; }
+    .rail { padding: .85rem; }
+    .bars { display: flex; gap: .4rem; align-items: end; height: 8rem; margin-top: .85rem; }
+    .month { flex: 1 1 0; min-width: 0; text-align: center; }
+    .pair { display: flex; gap: .16rem; align-items: end; height: 6.5rem; }
+    .bar { flex: 1 1 0; border-radius: .28rem .28rem 0 0; }
+    .label { font-size: .66rem; margin-top: .35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .palette { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .55rem; padding: 0 1.25rem 1.25rem; }
+    .sw { border: 1px solid rgba(255,255,255,.08); border-radius: .9rem; padding: .7rem; }
+    .sw i { display: block; height: .55rem; border-radius: 999px; margin-bottom: .45rem; }
+    .sw b { display: block; font-size: .72rem; margin-bottom: .16rem; }
+    .sw span { font-size: .68rem; color: #aaa39a; }
+    .profit { color: #28c267; } .loss { color: #ef7a7a; } .warn { color: #cf9f61; }
+    .ledger .dark { background: #0e1218; color: #f5efe5; }
+    .ledger .light { background: #f5f0e7; color: #19140f; }
+    .ledger .dark .worth, .ledger .dark .hero { background: linear-gradient(135deg, rgba(196,160,107,.11), rgba(255,255,255,.02)); }
+    .ledger .light .worth, .ledger .light .hero { background: linear-gradient(135deg, rgba(196,160,107,.18), rgba(255,255,255,.55)); }
+    .ledger .active, .ledger .chip, .ledger .accent { color: #c4a06b; background: rgba(196,160,107,.12); }
+    .slate .dark { background: #0d131b; color: #edf3fa; }
+    .slate .light { background: #edf2f6; color: #15202b; }
+    .slate .dark .worth, .slate .dark .hero { background: linear-gradient(135deg, rgba(141,165,191,.12), rgba(118,153,141,.07)); }
+    .slate .light .worth, .slate .light .hero { background: linear-gradient(135deg, rgba(141,165,191,.18), rgba(255,255,255,.55)); }
+    .slate .active, .slate .chip, .slate .accent { color: #8da5bf; background: rgba(141,165,191,.12); }
+    .porcelain .dark { background: #121113; color: #f6ede8; }
+    .porcelain .light { background: #f7f2ee; color: #211916; }
+    .porcelain .dark .worth, .porcelain .dark .hero { background: linear-gradient(135deg, rgba(167,127,98,.13), rgba(143,136,170,.07)); }
+    .porcelain .light .worth, .porcelain .light .hero { background: linear-gradient(135deg, rgba(167,127,98,.18), rgba(255,255,255,.55)); }
+    .porcelain .active, .porcelain .chip, .porcelain .accent { color: #a77f62; background: rgba(167,127,98,.12); }
+    @media (max-width: 960px) { .boards, .body, .hero-grid, .stats, .grid, .palette { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Nexus Theme Reset</div>
+    <h1>Three color-system directions to review before implementation.</h1>
+    <p>Each direction keeps section identity through accents only. Surfaces, spacing, text contrast, and card hierarchy stay unified in both dark and light mode.</p>
+
+    <div class="stack">
+      <section class="direction ledger">
+        <div class="head">
+          <h2><span class="accent">Direction A</span> Ledger Brass</h2>
+          <p>Warm graphite in dark mode, parchment ivory in light mode. Best fit if you want Nexus to feel premium, calm, and finance-led without reading generic fintech.</p>
+        </div>
+        <div class="boards">
+          <div class="board dark">
+            <div class="top"><div class="brand">Nexus</div><div class="chip">Wed 8 Apr · 23:22</div></div>
+            <div class="body">
+              <aside class="side">
+                <div class="worth"><small>Net Worth</small><strong>£182.4k</strong></div>
+                <div class="nav active">Dashboard</div><div class="nav">Market</div><div class="nav">Journal</div><div class="nav">Prop</div><div class="nav">Expenses</div>
+              </aside>
+              <div class="content">
+                <div class="title"><div><div class="eyebrow">Dashboard</div><h3>Portfolio Overview</h3></div><div class="chip">4 sections live</div></div>
+                <div class="hero"><div class="hero-grid"><div><small>Net Trading P&amp;L</small><strong class="profit" style="font-size:3rem">+£24.8k</strong></div><div><div class="card"><small>Funded</small><strong>3</strong></div></div></div></div>
+                <div class="stats"><div class="card"><small>Prop Income</small><strong class="profit">£31.2k</strong></div><div class="card"><small>Burn</small><strong class="warn">£1.1k</strong></div><div class="card"><small>Portfolio</small><strong>£92.6k</strong></div><div class="card"><small>Debt</small><strong class="loss">£8.9k</strong></div></div>
+                <div class="grid"><div class="rail"><small>Monthly Breakdown</small><div class="bars"><div class="month"><div class="pair"><div class="bar" style="height:60%;background:#76998d"></div><div class="bar" style="height:30%;background:#ef7a7a"></div></div><div class="label">Jan</div></div><div class="month"><div class="pair"><div class="bar" style="height:82%;background:#76998d"></div><div class="bar" style="height:22%;background:#ef7a7a"></div></div><div class="label">Feb</div></div><div class="month"><div class="pair"><div class="bar" style="height:72%;background:#76998d"></div><div class="bar" style="height:28%;background:#ef7a7a"></div></div><div class="label">Mar</div></div></div></div><div class="rail"><small>Quick Actions</small><strong>Add Expense</strong></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="board light">
+            <div class="top"><div class="brand">Nexus</div><div class="chip">Wed 8 Apr · 23:22</div></div>
+            <div class="body">
+              <aside class="side">
+                <div class="worth"><small>Net Worth</small><strong>£182.4k</strong></div>
+                <div class="nav active">Dashboard</div><div class="nav">Market</div><div class="nav">Journal</div><div class="nav">Prop</div><div class="nav">Expenses</div>
+              </aside>
+              <div class="content">
+                <div class="title"><div><div class="eyebrow">Dashboard</div><h3>Portfolio Overview</h3></div><div class="chip">4 sections live</div></div>
+                <div class="hero"><div class="hero-grid"><div><small>Net Trading P&amp;L</small><strong class="profit" style="font-size:3rem">+£24.8k</strong></div><div><div class="card"><small>Funded</small><strong>3</strong></div></div></div></div>
+                <div class="stats"><div class="card"><small>Prop Income</small><strong class="profit">£31.2k</strong></div><div class="card"><small>Burn</small><strong class="warn">£1.1k</strong></div><div class="card"><small>Portfolio</small><strong>£92.6k</strong></div><div class="card"><small>Debt</small><strong class="loss">£8.9k</strong></div></div>
+                <div class="grid"><div class="rail"><small>Monthly Breakdown</small><div class="bars"><div class="month"><div class="pair"><div class="bar" style="height:60%;background:#76998d"></div><div class="bar" style="height:30%;background:#ef7a7a"></div></div><div class="label">Jan</div></div><div class="month"><div class="pair"><div class="bar" style="height:82%;background:#76998d"></div><div class="bar" style="height:22%;background:#ef7a7a"></div></div><div class="label">Feb</div></div><div class="month"><div class="pair"><div class="bar" style="height:72%;background:#76998d"></div><div class="bar" style="height:28%;background:#ef7a7a"></div></div><div class="label">Mar</div></div></div></div><div class="rail"><small>Quick Actions</small><strong>Add Expense</strong></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="palette">
+          <div class="sw"><i style="background:#9ea9b4"></i><b>Dashboard</b><span>graphite</span></div>
+          <div class="sw"><i style="background:#7f99ac"></i><b>Market</b><span>steel</span></div>
+          <div class="sw"><i style="background:#8f88aa"></i><b>Journal</b><span>ash violet</span></div>
+          <div class="sw"><i style="background:#76998d"></i><b>Prop</b><span>sage</span></div>
+          <div class="sw"><i style="background:#b98966"></i><b>Expenses</b><span>copper</span></div>
+          <div class="sw"><i style="background:#95656a"></i><b>Debt</b><span>merlot</span></div>
+        </div>
+      </section>
+
+      <section class="direction slate">
+        <div class="head">
+          <h2><span class="accent">Direction B</span> Exchange Slate</h2>
+          <p>Cooler and more operational. Better if you want the app to feel like a trading workstation first and a personal finance surface second.</p>
+        </div>
+        <div class="boards">
+          <div class="board dark"><div class="top"><div class="brand">Nexus</div><div class="chip">Live session · ET</div></div><div class="body"><aside class="side"><div class="worth"><small>Performance</small><strong>63% WR</strong></div><div class="nav active">Dashboard</div><div class="nav">Market</div><div class="nav">Journal</div><div class="nav">Prop</div></aside><div class="content"><div class="title"><div><div class="eyebrow" style="color:#8da5bf">Dashboard</div><h3>Trading Command</h3></div><div class="chip">Preview</div></div><div class="hero"><div class="hero-grid"><div><small>Net Exposure</small><strong style="font-size:3rem">£78.4k</strong></div><div><div class="card"><small>London</small><strong>opens soon</strong></div></div></div></div><div class="stats"><div class="card"><small>Monthly</small><strong>£9.8k</strong></div><div class="card"><small>Funded</small><strong class="profit">4</strong></div><div class="card"><small>Challenges</small><strong>2</strong></div><div class="card"><small>Costs</small><strong class="loss">£780</strong></div></div><div class="grid"><div class="rail"><small>Cumulative P&amp;L</small><div class="bars"><div class="month"><div class="pair"><div class="bar" style="height:44%;background:#8da5bf"></div><div class="bar" style="height:22%;background:#76998d"></div></div><div class="label">Jan</div></div><div class="month"><div class="pair"><div class="bar" style="height:70%;background:#8da5bf"></div><div class="bar" style="height:28%;background:#76998d"></div></div><div class="label">Feb</div></div><div class="month"><div class="pair"><div class="bar" style="height:76%;background:#8da5bf"></div><div class="bar" style="height:31%;background:#76998d"></div></div><div class="label">Mar</div></div></div></div><div class="rail"><small>Market Pulse</small><strong>London next</strong></div></div></div></div></div>
+          <div class="board light"><div class="top"><div class="brand">Nexus</div><div class="chip">Live session · ET</div></div><div class="body"><aside class="side"><div class="worth"><small>Performance</small><strong>63% WR</strong></div><div class="nav active">Dashboard</div><div class="nav">Market</div><div class="nav">Journal</div><div class="nav">Prop</div></aside><div class="content"><div class="title"><div><div class="eyebrow" style="color:#8da5bf">Dashboard</div><h3>Trading Command</h3></div><div class="chip">Preview</div></div><div class="hero"><div class="hero-grid"><div><small>Net Exposure</small><strong style="font-size:3rem">£78.4k</strong></div><div><div class="card"><small>London</small><strong>opens soon</strong></div></div></div></div><div class="stats"><div class="card"><small>Monthly</small><strong>£9.8k</strong></div><div class="card"><small>Funded</small><strong class="profit">4</strong></div><div class="card"><small>Challenges</small><strong>2</strong></div><div class="card"><small>Costs</small><strong class="loss">£780</strong></div></div><div class="grid"><div class="rail"><small>Cumulative P&amp;L</small><div class="bars"><div class="month"><div class="pair"><div class="bar" style="height:44%;background:#8da5bf"></div><div class="bar" style="height:22%;background:#76998d"></div></div><div class="label">Jan</div></div><div class="month"><div class="pair"><div class="bar" style="height:70%;background:#8da5bf"></div><div class="bar" style="height:28%;background:#76998d"></div></div><div class="label">Feb</div></div><div class="month"><div class="pair"><div class="bar" style="height:76%;background:#8da5bf"></div><div class="bar" style="height:31%;background:#76998d"></div></div><div class="label">Mar</div></div></div></div><div class="rail"><small>Market Pulse</small><strong>London next</strong></div></div></div></div></div>
+        </div>
+      </section>
+
+      <section class="direction porcelain">
+        <div class="head">
+          <h2><span class="accent">Direction C</span> Porcelain Signal</h2>
+          <p>Softest light mode of the three. Most distinctive, but only worth choosing if you want the app to feel more editorial and less institutional.</p>
+        </div>
+        <div class="boards">
+          <div class="board dark"><div class="top"><div class="brand">Nexus</div><div class="chip">Workspace health</div></div><div class="body"><aside class="side"><div class="worth"><small>Monthly Net</small><strong>+£6.8k</strong></div><div class="nav active">Dashboard</div><div class="nav">Debt</div><div class="nav">Expenses</div><div class="nav">Investments</div></aside><div class="content"><div class="title"><div><div class="eyebrow" style="color:#a77f62">Dashboard</div><h3>Capital &amp; Commitments</h3></div><div class="chip">4 issues</div></div><div class="hero"><div class="hero-grid"><div><small>Net Worth</small><strong style="font-size:3rem">£182.4k</strong></div><div><div class="card"><small>Debt</small><strong>£8.9k</strong></div></div></div></div><div class="stats"><div class="card"><small>Tax Reserve</small><strong>£12.4k</strong></div><div class="card"><small>Paydown</small><strong class="warn">25%</strong></div><div class="card"><small>Portfolio</small><strong>£92.6k</strong></div><div class="card"><small>Burn</small><strong class="loss">£1.1k</strong></div></div><div class="grid"><div class="rail"><small>Targets vs Savings</small><div class="bars"><div class="month"><div class="pair"><div class="bar" style="height:35%;background:#a77f62"></div><div class="bar" style="height:18%;background:#7f99ac"></div></div><div class="label">Q1</div></div><div class="month"><div class="pair"><div class="bar" style="height:58%;background:#a77f62"></div><div class="bar" style="height:28%;background:#7f99ac"></div></div><div class="label">Q2</div></div><div class="month"><div class="pair"><div class="bar" style="height:78%;background:#a77f62"></div><div class="bar" style="height:38%;background:#7f99ac"></div></div><div class="label">Q3</div></div></div></div><div class="rail"><small>Renewals</small><strong>2 upcoming</strong></div></div></div></div></div>
+          <div class="board light"><div class="top"><div class="brand">Nexus</div><div class="chip">Workspace health</div></div><div class="body"><aside class="side"><div class="worth"><small>Monthly Net</small><strong>+£6.8k</strong></div><div class="nav active">Dashboard</div><div class="nav">Debt</div><div class="nav">Expenses</div><div class="nav">Investments</div></aside><div class="content"><div class="title"><div><div class="eyebrow" style="color:#a77f62">Dashboard</div><h3>Capital &amp; Commitments</h3></div><div class="chip">4 issues</div></div><div class="hero"><div class="hero-grid"><div><small>Net Worth</small><strong style="font-size:3rem">£182.4k</strong></div><div><div class="card"><small>Debt</small><strong>£8.9k</strong></div></div></div></div><div class="stats"><div class="card"><small>Tax Reserve</small><strong>£12.4k</strong></div><div class="card"><small>Paydown</small><strong class="warn">25%</strong></div><div class="card"><small>Portfolio</small><strong>£92.6k</strong></div><div class="card"><small>Burn</small><strong class="loss">£1.1k</strong></div></div><div class="grid"><div class="rail"><small>Targets vs Savings</small><div class="bars"><div class="month"><div class="pair"><div class="bar" style="height:35%;background:#a77f62"></div><div class="bar" style="height:18%;background:#7f99ac"></div></div><div class="label">Q1</div></div><div class="month"><div class="pair"><div class="bar" style="height:58%;background:#a77f62"></div><div class="bar" style="height:28%;background:#7f99ac"></div></div><div class="label">Q2</div></div><div class="month"><div class="pair"><div class="bar" style="height:78%;background:#a77f62"></div><div class="bar" style="height:38%;background:#7f99ac"></div></div><div class="label">Q3</div></div></div></div><div class="rail"><small>Renewals</small><strong>2 upcoming</strong></div></div></div></div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

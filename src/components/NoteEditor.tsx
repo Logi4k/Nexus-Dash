@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Columns2, GripVertical, Hash, Plus, Sparkles, Trash2, X, ChevronUp, ChevronDown, ListTodo, Heading1, Heading2, Type, List, Quote, Code2 } from "lucide-react";
+import { ArrowLeft, Camera, Columns2, GripVertical, Hash, Mic, Plus, Trash2, X, ChevronUp, ChevronDown, ListTodo, Heading1, Heading2, Type, List, Quote, Code2 } from "lucide-react";
 import BlockRenderer from "@/components/BlockRenderer";
 import type { IdeaNote, NoteBlock, NoteBlockType } from "@/types";
 import type { PageTheme } from "@/lib/theme";
@@ -42,9 +42,11 @@ export default function NoteEditor({
   const [addingTag, setAddingTag] = useState(false);
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(note.blocks[0]?.id ?? null);
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(note.blocks[0]?.id ?? null);
+  const [isDictating, setIsDictating] = useState(false);
   // Use refs for drag state — refs are synchronous and available immediately in drag event closures
   const draggedIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const wordCount = useMemo(() => {
     const text = note.blocks.map((b) => b.content).join(" ");
@@ -101,6 +103,18 @@ export default function NoteEditor({
     setFocusedBlockId(newBlock.id);
     setPendingFocusId(newBlock.id);
     setSlashMenu(null);
+  }
+
+  function insertImageBlock(dataUrl: string) {
+    const targetId = focusedBlockId ?? note.blocks[note.blocks.length - 1]?.id ?? null;
+    if (!targetId) return;
+    const newBlock: NoteBlock = { id: newId(), type: "image", content: dataUrl };
+    const idx = note.blocks.findIndex((block) => block.id === targetId);
+    const updated = [...note.blocks];
+    updated.splice(Math.max(0, idx) + 1, 0, newBlock);
+    updateBlocks(updated);
+    setFocusedBlockId(newBlock.id);
+    setPendingFocusId(newBlock.id);
   }
 
   function replaceBlockType(id: string, type: NoteBlockType) {
@@ -239,6 +253,84 @@ export default function NoteEditor({
     { label: "Code", icon: Code2, type: "code" },
   ];
 
+  function handleCameraFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        insertImageBlock(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  }
+
+  function handleDictation() {
+    const SpeechRecognitionCtor =
+      (window as Window & {
+        webkitSpeechRecognition?: new () => {
+          lang: string;
+          interimResults: boolean;
+          maxAlternatives: number;
+          onresult: ((event: { results?: ArrayLike<ArrayLike<{ transcript?: string }>> }) => void) | null;
+          onerror: (() => void) | null;
+          onend: (() => void) | null;
+          start: () => void;
+        };
+        SpeechRecognition?: new () => {
+          lang: string;
+          interimResults: boolean;
+          maxAlternatives: number;
+          onresult: ((event: { results?: ArrayLike<ArrayLike<{ transcript?: string }>> }) => void) | null;
+          onerror: (() => void) | null;
+          onend: (() => void) | null;
+          start: () => void;
+        };
+      }).SpeechRecognition ??
+      (window as Window & {
+        webkitSpeechRecognition?: new () => {
+          lang: string;
+          interimResults: boolean;
+          maxAlternatives: number;
+          onresult: ((event: { results?: ArrayLike<ArrayLike<{ transcript?: string }>> }) => void) | null;
+          onerror: (() => void) | null;
+          onend: (() => void) | null;
+          start: () => void;
+        };
+      }).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      onUpdate({
+        title: note.title.trim()
+          ? note.title
+          : "Voice notes require a supported browser",
+      });
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "en-GB";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    setIsDictating(true);
+    recognition.onresult = (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+      if (!transcript) return;
+      const targetId = focusedBlockId ?? note.blocks[0]?.id;
+      if (!targetId) return;
+      const targetBlock = note.blocks.find((block) => block.id === targetId);
+      if (!targetBlock) return;
+      const nextContent = targetBlock.content.trim()
+        ? `${targetBlock.content}\n${transcript}`
+        : transcript;
+      updateBlock(targetId, nextContent);
+    };
+    recognition.onerror = () => setIsDictating(false);
+    recognition.onend = () => setIsDictating(false);
+    recognition.start();
+  }
+
   return (
     <div className="flex flex-col h-full" style={{ background: "var(--bg-base)" }}>
       <div className="flex items-center gap-2 px-5 py-2.5 flex-shrink-0" style={{ borderBottom: "1px solid rgba(var(--border-rgb),0.06)" }}>
@@ -250,6 +342,28 @@ export default function NoteEditor({
           <span className="text-[10px] text-tx-4 hidden md:inline" style={{ color: saveState === "dirty" ? theme.accent : "var(--tx-4)" }}>
             {lastSavedLabel ? `${lastSavedLabel} · ` : ""}{saveState === "saving" ? "Saving" : saveState === "dirty" ? "Unsaved" : "Saved"}
           </span>
+          <button
+            type="button"
+            onClick={handleDictation}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all"
+            style={{
+              background: isDictating ? "color-mix(in srgb, var(--color-profit) 12%, transparent)" : "rgba(var(--surface-rgb),0.05)",
+              border: `1px solid ${isDictating ? "rgba(var(--color-profit-rgb),0.26)" : "rgba(var(--border-rgb),0.08)"}`,
+              color: isDictating ? "var(--color-profit)" : "var(--tx-3)",
+            }}
+          >
+            <Mic size={12} />
+            {isDictating ? "Listening" : "Dictate"}
+          </button>
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all"
+            style={{ background: "rgba(var(--surface-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--tx-3)" }}
+          >
+            <Camera size={12} />
+            Add image
+          </button>
           {canShowZenToggle && (
             <button
               type="button"
@@ -267,6 +381,14 @@ export default function NoteEditor({
           )}
         </div>
       </div>
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleCameraFileChange}
+      />
 
       <div className="flex-1 overflow-y-auto">
         <div

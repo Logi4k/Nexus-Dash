@@ -2,6 +2,9 @@
 const DEBUG = false;
 const log = (...args: unknown[]) => { if (DEBUG) console.log("[store]", ...args); };
 
+// Gate all Supabase cloud operations. When false, all data stays local (LocalStorage/Tauri file only).
+const SYNC_ENABLED = import.meta.env.VITE_SYNC_ENABLED !== 'false';
+
 import { useSyncExternalStore, useCallback } from "react";
 import type { AppData } from "@/types";
 import seedData from "@/data/data.json";
@@ -81,6 +84,41 @@ function localSavedAt(): number {
 
 let _lastLocalSaveAt: number | null = localSavedAt() || null;
 
+// ── Helper: Check if data is seed data (should never be pushed to cloud) ──────
+function isSeedData(data: AppData | null): boolean {
+  if (!data) return true;
+  
+  // Check if data has the protected flag (user's real data)
+  if ((data as any)._protected) return false;
+  
+  // Check if data is identical to seed data by comparing key fields
+  const seedAccounts = (seedData as any).accounts ?? [];
+  const dataAccounts = data.accounts ?? [];
+  
+  // If accounts match seed data exactly, it's likely seed data
+  if (seedAccounts.length === dataAccounts.length && seedAccounts.length > 0) {
+    const seedIds = seedAccounts.map((a: any) => a.id).sort();
+    const dataIds = dataAccounts.map((a: any) => a.id).sort();
+    if (JSON.stringify(seedIds) === JSON.stringify(dataIds)) {
+      return true;
+    }
+  }
+  
+  // Check if expenses match seed data
+  const seedExpenses = (seedData as any).expenses ?? [];
+  const dataExpenses = data.expenses ?? [];
+  
+  if (seedExpenses.length === dataExpenses.length && seedExpenses.length > 0) {
+    const seedIds = seedExpenses.map((e: any) => e.id).sort();
+    const dataIds = dataExpenses.map((e: any) => e.id).sort();
+    if (JSON.stringify(seedIds) === JSON.stringify(dataIds)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 // ── Merge helper: user data wins, seed fills missing keys ────────────────────
 function mergeWithSeed(parsed: Partial<AppData>): AppData {
   let migrated = migrateLegacyT212ApiKey(parsed as AppData);
@@ -127,14 +165,16 @@ function mergeWithSeed(parsed: Partial<AppData>): AppData {
 // Initialise synchronously from localStorage so the UI renders immediately.
 // Capture whether localStorage had data so we know if Tauri file is needed.
 // For Tauri with no localStorage, leave currentData as null until tauriLoad resolves.
+// _hasLocalData tracks whether localStorage had a real cached copy — used to guard
+// the initial cloud push so we never flood the cloud with seed/demo data.
 const _localDataOnInit = localLoad();
+const _hasLocalData = _localDataOnInit !== null;
+
+// FIX: Never initialize with seed data — always start with null or real data
+// This prevents seed data from being pushed to cloud on first sign-in
 let currentData: AppData | null = _localDataOnInit
   ? mergeWithSeed(_localDataOnInit)
-  : (isTauri ? null : (seedData as unknown as AppData));
-
-// Hydration guard: prevents flash of seed/demo data on fresh Tauri installs.
-// False until Tauri file store has been loaded when no localStorage existed.
-let _hydrated = !!_localDataOnInit || !isTauri;
+  : (isTauri ? null : null);  // Changed from seedData to null
 
 const listeners = new Set<() => void>();
 const syncListeners = new Set<() => void>();
@@ -248,7 +288,8 @@ export function saveData(data: AppData): void {
   }
   notify();
   // ── Supabase sync (fire and forget) ────────────────────────────────────────
-  if (_currentUserId) {
+  // FIX: Never push seed data to cloud
+  if (_currentUserId && !isSeedData(normalized)) {
     beginSyncOp();
     setSyncError(null);
     void Promise.resolve(
@@ -270,6 +311,8 @@ export function saveData(data: AppData): void {
     }).finally(() => {
       endSyncOp();
     });
+  } else if (_currentUserId && isSeedData(normalized)) {
+    console.log("[store] Skipping cloud sync for seed data");
   }
 }
 
@@ -284,7 +327,9 @@ function subscribeSync(callback: () => void): () => void {
 }
 
 function getSnapshot(): AppData | null {
-  return currentData;
+  // FIX: Return seed data for UI rendering when currentData is null
+  // This allows the UI to render while waiting for cloud data
+  return currentData ?? (seedData as unknown as AppData);
 }
 
 export interface SyncStatusSnapshot {
@@ -310,14 +355,10 @@ if (isTauri) {
     if (fileData && !_localDataOnInit) {
       currentData = mergeWithSeed(fileData);
       localSave(currentData);
-      _hydrated = true;
-      notify();
-    } else if (!fileData && !_localDataOnInit) {
-      // No Tauri file either — fall back to seed data
-      currentData = seedData as unknown as AppData;
-      _hydrated = true;
       notify();
     }
+    // FIX: Don't load seed data if no Tauri file — keep currentData as null
+    // The UI will render with seed data via getSnapshot(), but we won't push it to cloud
   });
 }
 
@@ -374,6 +415,10 @@ function setupReconnectionHandlers(): void {
 
 // ── Supabase sync initialisation ─────────────────────────────────────────────
 export async function initSupabaseSync(): Promise<void> {
+  if (!SYNC_ENABLED) {
+    console.log("[store] SYNC_ENABLED=false, skipping all cloud operations");
+    return;
+  }
   setupAuthListener();
   setupReconnectionHandlers();
 
@@ -386,26 +431,51 @@ export async function initSupabaseSync(): Promise<void> {
     endSyncOp();
     return;
   }
-  log("initSupabaseSync: user", session.user.id);
-
+  console.log("[store] initSupabaseSync: session found, user:", session.user.id);
   setCurrentUserId(session.user.id);
 
   // ── Fetch latest row from Supabase ─────────────────────────────────────────
   try {
-    const { data: row } = await supabase
+    console.log("[store] Fetching user_data for user:", _currentUserId);
+    const { data: row, error: fetchError } = await supabase
       .from("user_data")
       .select("payload, updated_at")
       .eq("user_id", _currentUserId)
-      .single();
+      .maybeSingle();
 
-    if (!currentData) return;
-    if (row) {
+    console.log("[store] Fetch result:", { row: !!row, fetchError });
+    if (fetchError) {
+      console.error("[store] Fetch error:", fetchError.code, fetchError.message);
+    }
+
+    if (row?.payload) {
       const cloudTs = new Date(row.updated_at as string).getTime();
-      const localTs = localSavedAt();
-      const localAvatarUrl = currentData.userProfile?.avatarUrl;
+      const localTs = currentData ? localSavedAt() : 0;
+      const localAvatarUrl = currentData?.userProfile?.avatarUrl;
+      console.log("[store] Cloud data found. cloudTs:", cloudTs, "localTs:", localTs, "cloud wins:", !currentData || localTs <= cloudTs);
 
-      if (localTs > cloudTs) {
-        // Local is newer — push local to cloud, keep local data
+      // FIX: Never push seed data to cloud, always prefer cloud data
+      const localIsSeed = isSeedData(currentData);
+      const cloudIsProtected = (row.payload as any)?._protected;
+      
+      if (localIsSeed) {
+        // Local is seed data — always apply cloud data, never push seed to cloud
+        console.log("[store] Local is seed data, applying cloud data (never push seed to cloud)");
+        currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
+        localSave(currentData, cloudTs);
+        notify();
+        setSyncedAt(cloudTs);
+      } else if (cloudIsProtected && _syncedAt === null) {
+        // Cloud data is protected and this is first sync — always apply cloud data
+        console.log("[store] Cloud data is protected, applying cloud data");
+        currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
+        localSave(currentData, cloudTs);
+        notify();
+        setSyncedAt(cloudTs);
+      } else if (currentData && localTs > cloudTs && _syncedAt !== null) {
+        // Local is newer AND we have synced before — push local to cloud, keep local data
+        // On first sign-in (_syncedAt === null), always prefer cloud to avoid stale seed data overwriting real cloud data
+        console.log("[store] Local is newer and previously synced, pushing to cloud");
         const { data: pushRow } = await supabase
           .from("user_data")
           .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
@@ -413,14 +483,25 @@ export async function initSupabaseSync(): Promise<void> {
           .single();
         setSyncedAt(pushRow?.updated_at ? new Date(pushRow.updated_at as string).getTime() : cloudTs);
       } else {
-        // Cloud is newer or same — apply cloud data
+        // Cloud is newer, same, or local has not hydrated yet — apply cloud data
+        console.log("[store] Applying cloud data. Account count:", (row.payload as AppData)?.accounts?.length);
         currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
         localSave(currentData, cloudTs);
         notify();
         setSyncedAt(cloudTs);
       }
     } else {
+      if (!currentData || !_hasLocalData) {
+        // Cold desktop boot with no local cache yet. Wait for Tauri/local hydration
+        // rather than creating a seed/demo cloud row.
+        // Also guard: never push seed/demo data to the cloud even if currentData
+        // is populated (non-Tauri browser path gets seedData as currentData).
+        console.log("[store] No cloud row and no local data (or using seed data), skipping initial push");
+        return;
+      }
+
       // No row yet — push local data to create the initial cloud record
+      console.log("[store] No cloud row found, pushing local data as initial record");
       const { data: newRow, error } = await supabase
         .from("user_data")
         .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
@@ -429,6 +510,7 @@ export async function initSupabaseSync(): Promise<void> {
       if (!error && newRow?.updated_at) {
         setSyncedAt(new Date(newRow.updated_at as string).getTime());
       } else if (error) {
+        console.error("[store] Upsert error:", error.code, error.message);
         setSyncError(error.message);
       }
     }
@@ -460,6 +542,13 @@ export async function initSupabaseSync(): Promise<void> {
           // Guard: Supabase Realtime sends null payload when the row exceeds
           // the WebSocket message size limit. Skip rather than wipe local data.
           if (!newRow?.updated_at || !newRow.payload) return;
+          
+          // FIX: Never apply seed data from cloud
+          if (isSeedData(newRow.payload as AppData)) {
+            console.log("[store] Skipping Realtime update: incoming data is seed data");
+            return;
+          }
+          
           const incomingTs = new Date(newRow.updated_at).getTime();
           if (incomingTs > (_syncedAt ?? 0)) {
             if (!currentData) return;
@@ -498,6 +587,7 @@ export async function initSupabaseSync(): Promise<void> {
 
 // ── Force sync helpers ────────────────────────────────────────────────────────
 export async function forcePullFromCloud(): Promise<boolean> {
+  if (!SYNC_ENABLED) return false;
   if (!_currentUserId) return false;
   beginSyncOp();
   setSyncError(null);
@@ -509,6 +599,12 @@ export async function forcePullFromCloud(): Promise<boolean> {
       .single();
     if (!currentData) return false;
     if (row?.payload) {
+      // FIX: Never apply seed data from cloud
+      if (isSeedData(row.payload as AppData)) {
+        console.log("[store] forcePullFromCloud: skipping seed data from cloud");
+        return false;
+      }
+      
       const localAvatarUrl = currentData.userProfile?.avatarUrl;
       const cloudTs = new Date(row.updated_at as string).getTime();
       currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
@@ -529,6 +625,13 @@ export async function forcePullFromCloud(): Promise<boolean> {
 export async function forcePushToCloud(): Promise<boolean> {
   if (!_currentUserId) return false;
   if (!currentData) return false;
+  
+  // FIX: Never push seed data to cloud
+  if (isSeedData(currentData)) {
+    console.log("[store] forcePushToCloud: skipping seed data");
+    return false;
+  }
+  
   beginSyncOp();
   setSyncError(null);
   try {
@@ -555,6 +658,7 @@ export async function forcePushToCloud(): Promise<boolean> {
 }
 
 export async function syncNow(): Promise<boolean> {
+  if (!SYNC_ENABLED) return false;
   if (!_currentUserId) return false;
 
   beginSyncOp();

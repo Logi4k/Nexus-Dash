@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   LayoutGrid, LineChart, NotebookPen, Briefcase,
   Wallet, Landmark, Scale, PieChart, Lightbulb,
-  ChevronLeft, ChevronRight, Search, Zap, Settings,
+  ChevronLeft, ChevronRight, Search, Zap, Settings, PanelRightOpen,
   Sun, Moon,
 } from "lucide-react";
 import { cn, fmtGBP, toNum } from "@/lib/utils";
@@ -27,7 +27,13 @@ const NAV: { path: string; label: string; Icon: React.ElementType; themeKey: Pag
   { path: "/ideas",       label: "Ideas",         Icon: Lightbulb,     themeKey: "ideas"       },
 ];
 
-export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette?: () => void }) {
+export default function Sidebar({
+  onOpenCommandPalette,
+  onOpenWorkspaceDrawer,
+}: {
+  onOpenCommandPalette?: () => void;
+  onOpenWorkspaceDrawer?: () => void;
+}) {
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
   const loc = useLocation();
@@ -187,6 +193,32 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
             )}
           </button>
 
+          {onOpenWorkspaceDrawer && (
+            <button
+              type="button"
+              onClick={onOpenWorkspaceDrawer}
+              aria-label="Open workspace drawer"
+              title={isCollapsed ? "Workspace Drawer (Shift W)" : "Workspace Drawer (Shift W)"}
+              className={cn(
+                "mb-2 w-full rounded-xl transition-all",
+                isCollapsed ? "px-0 py-2.5 flex justify-center" : "px-3 py-2.5 flex items-center gap-2.5"
+              )}
+              style={{ background: "rgba(var(--surface-rgb),0.028)", border: "1px solid rgba(var(--border-rgb),0.05)", color: "var(--tx-2)" }}
+            >
+              <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg" style={{ background: "rgba(var(--surface-rgb),0.04)" }}>
+                <PanelRightOpen size={14} />
+              </div>
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1 text-left text-[13px] font-medium">Workspace</span>
+                  <span className="text-[10px] font-semibold px-2 py-1 rounded-lg" style={{ background: "rgba(var(--surface-rgb),0.05)", color: "var(--tx-4)" }}>
+                    Shift W
+                  </span>
+                </>
+              )}
+            </button>
+          )}
+
           {NAV.map(({ path, label, Icon, themeKey }) => {
             const theme    = PAGE_THEMES[themeKey];
             const isActive = path === "/" ? loc.pathname === "/" : loc.pathname.startsWith(path);
@@ -196,7 +228,7 @@ export default function Sidebar({ onOpenCommandPalette }: { onOpenCommandPalette
                 to={path}
                 title={isCollapsed ? label : undefined}
                 className={cn(
-                  "relative flex items-center gap-2.5 rounded-xl text-sm font-medium transition-all duration-150 overflow-hidden",
+                  "relative flex items-center gap-2.5 rounded-xl text-sm font-medium transition-all duration-150 overflow-hidden hover:translate-x-0.5",
                   isCollapsed ? "px-0 py-2.5 justify-center" : "px-3 py-2.5"
                 )}
                 style={isActive

@@ -10,10 +10,6 @@ import {
   Edit2,
   Trash2,
   Banknote,
-  PoundSterling,
-  BookOpen,
-  ChevronDown,
-  ChevronUp,
   CheckCircle2,
   DollarSign,
   Activity,
@@ -25,12 +21,12 @@ import {
 import type { AppData } from "@/types";
 import { useAppData } from "@/lib/store";
 import { getQuickActionState } from "@/lib/quickActions";
+import { getViewIntentState } from "@/lib/viewIntents";
 import { formatAccountOptionLabel, isActiveAccount } from "@/lib/accountStatus";
 import { reconcileLinkedPayoutAccounts } from "@/lib/payouts";
 import {
   buildProgramTypeLabel,
   applyPropAccountLifecycle,
-  getAccountPhase,
   getDefaultProgramKey,
   getDefaultProgramSize,
   getProgramOptions,
@@ -40,27 +36,27 @@ import {
   inferProgramKey,
   parseAccountSize,
   type PropPhase,
-  type PropAccountSnapshot,
   type PropProgramKey,
 } from "@/lib/propRules";
-import { fmtGBP, fmtUSD, fmtDate, toNum, pct, cn, getStatusBg, generateId, todayLocalIsoDate } from "@/lib/utils";
+import { fmtGBP, fmtUSD, fmtDate, toNum, cn, generateId, todayLocalIsoDate } from "@/lib/utils";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
 import StatCard from "@/components/StatCard";
 import DatePicker from "@/components/DatePicker";
+import { useRegisterPageView } from "@/components/PageViewContext";
 import CustomSelect from "@/components/CustomSelect";
-import type { Account, AccountStatus, Withdrawal, PassedChallenge, Expense } from "@/types";
+import type { Account, AccountStatus, Withdrawal } from "@/types";
 import { FirmAnalyticsChart } from "@/components/prop/FirmAnalyticsChart";
 import { TradingInsightsSidebar } from "@/components/prop/TradingInsightsSidebar";
-import { RulesReferencePanel } from "@/components/prop/RulesReferencePanel";
 import { AccountCard } from "@/components/prop/AccountCard";
 import { EditChallengeModal } from "@/components/prop/EditChallengeModal";
+import { loadCustomFirms, saveCustomFirm, deleteCustomFirm } from "@/lib/journal";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                           */
 /* ------------------------------------------------------------------ */
 
-const FIRMS = [
+const FIRMS_BASE = [
   "Lucid Trading",
   "Tradeify",
   "Topstep",
@@ -83,7 +79,7 @@ function getPhaseForStatus(status: AccountStatus, fallback: PropPhase = "challen
 }
 
 const emptyAccountForm = (phase: PropPhase = "challenge") => {
-  const firm = FIRMS[0] as string;
+  const firm = FIRMS_BASE[0] as string;
   const planKey = getDefaultProgramKey(firm, phase);
   const planSize = planKey ? getDefaultProgramSize(planKey) : null;
   const rules = planKey && planSize ? getProgramRuleByKeySize(planKey, planSize) : null;
@@ -112,27 +108,25 @@ const emptyAccountForm = (phase: PropPhase = "challenge") => {
   };
 };
 
-const emptyPayoutForm = (firm?: string, accountId?: string) => ({
-  firm:      firm ?? (FIRMS[0] as string),
-  date:      todayLocalIsoDate(),
-  gross:     "",
-  accountId: accountId ?? "",
-  notes: "",
-});
+const OTHER_FIRM_VALUE = "__other__";
+
+const emptyPayoutForm = (firm?: string, accountId?: string) => {
+  const resolvedFirm = firm ?? (FIRMS_BASE[0] as string);
+  const isKnownFirm = FIRMS_BASE.includes(resolvedFirm as (typeof FIRMS_BASE)[number]);
+
+  return {
+    firm: isKnownFirm ? resolvedFirm : OTHER_FIRM_VALUE,
+    customFirm: isKnownFirm ? "" : resolvedFirm,
+    date: todayLocalIsoDate(),
+    gross: "",
+    accountId: accountId ?? "",
+    notes: "",
+  };
+};
 
 /* ------------------------------------------------------------------ */
 /*  Firm Analytics Chart                                               */
 /* ------------------------------------------------------------------ */
-
-const FIRM_SHORT: Record<string, string> = {
-  "Lucid Trading":    "Lucid",
-  "Tradeify":         "Tradeify",
-  "Topstep":          "Topstep",
-  "FundingTicks":     "FTicks",
-  "MyFundedFX":       "MFFX",
-  "Take Profit Trader": "TPT",
-  "Maven Trading":    "Maven",
-};
 
 const FIRM_COLOR: Record<string, string> = {
   "Lucid Trading":      "#5b8bbf",
@@ -150,6 +144,7 @@ export default function PropAccounts() {
   const data = _data ?? ({} as AppData);
   const location = useLocation();
   const handledLocationAction = useRef<string | null>(null);
+  const handledViewIntent = useRef<string | null>(null);
 
   const [tab, setTab] = useState<FilterTab>("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -183,20 +178,32 @@ export default function PropAccounts() {
 
   const [form, setForm] = useState(emptyAccountForm());
   const [payoutForm, setPayoutForm] = useState(emptyPayoutForm());
-  const [payoutCustomFirm, setPayoutCustomFirm] = useState("");
+  const [customFirms, setCustomFirms] = useState<string[]>(loadCustomFirms);
   const [mllManuallyEdited, setMllManuallyEdited] = useState(false);
-  const [showAdvancedDates, setShowAdvancedDates] = useState(false);
   const [winningDaysManuallyEdited, setWinningDaysManuallyEdited] = useState(false);
   const [sortBy, setSortBy] = useState<"status" | "balance-desc" | "balance-asc" | "firm">("status");
   const [editPayoutId, setEditPayoutId] = useState<string | null>(null);
   const [deletingPayoutId, setDeletingPayoutId] = useState<string | null>(null);
   const [editChallengeId, setEditChallengeId] = useState<string | null>(null);
   const [deleteChallengeConfirm, setDeleteChallengeConfirm] = useState<string | null>(null);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   /* ---- Page theme + filter state ---- */
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.prop, isBW);
   const [filters, setFilters] = useState({ status: "all", sort: "balance" });
+  const currentView = useMemo(
+    () => ({
+      route: "/prop",
+      title: "Prop accounts view",
+      description: "Account status and sorting filters",
+      state: {
+        filters,
+      },
+    }),
+    [filters]
+  );
+  useRegisterPageView(currentView);
   const propContext = useMemo(
     () => ({
       withdrawals: data.withdrawals,
@@ -224,6 +231,33 @@ export default function PropAccounts() {
       passedChallenges: lifecycle.passedChallenges,
     }));
   }, [data.accounts, data.passedChallenges, propContext, update]);
+
+  useEffect(() => {
+    const viewIntent = getViewIntentState(location.state);
+    const requestKey = viewIntent?.id ?? null;
+
+    if (!viewIntent || viewIntent.route !== "/prop") {
+      handledViewIntent.current = null;
+      return;
+    }
+    if (handledViewIntent.current === requestKey) return;
+
+    const nextFilters =
+      viewIntent.state.filters &&
+      typeof viewIntent.state.filters === "object" &&
+      !Array.isArray(viewIntent.state.filters)
+        ? (viewIntent.state.filters as Partial<typeof filters>)
+        : null;
+
+    if (nextFilters) {
+      setFilters((prev) => ({
+        status: typeof nextFilters.status === "string" ? nextFilters.status : prev.status,
+        sort: typeof nextFilters.sort === "string" ? nextFilters.sort : prev.sort,
+      }));
+    }
+
+    handledViewIntent.current = requestKey;
+  }, [location.state]);
 
   function applyProgramSelection(nextPlanKey: PropProgramKey, nextSize?: number, nextStatus?: AccountStatus) {
     const phase = getPhaseForStatus(nextStatus ?? form.status, formPhase);
@@ -491,6 +525,8 @@ export default function PropAccounts() {
 
     if (!editAccount) {
       toast.success(qty > 1 ? `${qty} accounts added` : "Account added");
+      // Persist custom firm
+      if (form.firm === "__other__" && form.customFirm.trim()) { saveCustomFirm(form.customFirm.trim()); setCustomFirms(loadCustomFirms()); }
     } else {
       toast.success("Account updated");
     }
@@ -618,9 +654,11 @@ export default function PropAccounts() {
   const handleSavePayout = () => {
     if (!payoutForm.gross) return;
     const grossAmt = parseFloat(payoutForm.gross);
+    const firmName = payoutForm.firm === OTHER_FIRM_VALUE ? payoutForm.customFirm.trim() : payoutForm.firm;
+    if (!firmName) return;
     const nextWithdrawalPatch = {
       date: payoutForm.date,
-      firm: payoutForm.firm,
+      firm: firmName,
       gross: grossAmt,
       accountId: payoutForm.accountId || undefined,
       notes: payoutForm.notes.trim() || undefined,
@@ -668,7 +706,7 @@ export default function PropAccounts() {
       const draftWithdrawal: Withdrawal = {
         id: generateId(),
         date: payoutForm.date,
-        firm: payoutForm.firm,
+        firm: firmName,
         gross: grossAmt,
         accountId: payoutForm.accountId || undefined,
         notes: payoutForm.notes.trim() || undefined,
@@ -698,6 +736,8 @@ export default function PropAccounts() {
         };
       });
       toast.success('Payout logged');
+      // Persist custom firm
+      if (payoutForm.firm === OTHER_FIRM_VALUE && payoutForm.customFirm.trim()) { saveCustomFirm(payoutForm.customFirm.trim()); setCustomFirms(loadCustomFirms()); }
     }
     setPayoutOpen(false);
     setEditPayoutId(null);
@@ -749,11 +789,10 @@ export default function PropAccounts() {
   const openEditPayout = (w: Withdrawal) => {
     setEditPayoutId(w.id);
     setPayoutForm({
-      firm: w.firm,
+      ...emptyPayoutForm(w.firm, w.accountId),
       date: w.date,
       gross: String(w.gross),
       notes: w.notes ?? "",
-      accountId: w.accountId ?? "",
     });
     setPayoutOpen(true);
   };
@@ -812,20 +851,66 @@ export default function PropAccounts() {
     propContext,
   ]);
 
+  const compareAccounts = useMemo(
+    () => compareIds.map((id) => data.accounts.find((account) => account.id === id)).filter(Boolean) as typeof data.accounts,
+    [compareIds, data.accounts]
+  );
+
+  const compareSnapshots = useMemo(
+    () => compareAccounts.map((account) => ({ account, snapshot: getPropAccountSnapshot(account, propContext) })),
+    [compareAccounts, propContext]
+  );
+
+  const comparisonRows = useMemo(() => {
+    if (compareSnapshots.length < 2) return [];
+    return [
+      {
+        label: "Balance",
+        values: compareSnapshots.map(({ account }) => fmtUSD(toNum(account.balance))),
+      },
+      {
+        label: "Drawdown buffer",
+        values: compareSnapshots.map(({ snapshot }) => fmtUSD(snapshot?.distanceToMll ?? 0)),
+      },
+      {
+        label: "Progress / buffer",
+        values: compareSnapshots.map(({ snapshot }) =>
+          snapshot?.phase === "challenge"
+            ? `${snapshot.progressPct?.toFixed(0) ?? "0"}% to pass`
+            : `${snapshot?.drawdownRemainingPct?.toFixed(0) ?? "0"}% buffer`
+        ),
+      },
+      {
+        label: "Next payout",
+        values: compareSnapshots.map(({ snapshot }) =>
+          snapshot?.latestPayoutDate ? fmtDate(snapshot.latestPayoutDate) : "No payout yet"
+        ),
+      },
+    ];
+  }, [compareSnapshots]);
+
+  function toggleCompareAccount(accountId: string) {
+    setCompareIds((prev) => {
+      if (prev.includes(accountId)) return prev.filter((id) => id !== accountId);
+      if (prev.length >= 2) return [...prev.slice(1), accountId];
+      return [...prev, accountId];
+    });
+  }
+
   return (
     <div className="space-y-5 w-full">
       {/* Header */}
       <div className="mb-6">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Prop</div>
-        <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex flex-col gap-3 mb-4 lg:flex-row lg:items-start lg:justify-between">
           <h1 className="page-title">Prop Accounts</h1>
-          <div className="flex items-center gap-2">
-            <button className="btn-success btn" onClick={() => openPayout()}>
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-auto">
+            <button className="btn-success btn w-full lg:w-auto" onClick={() => openPayout()}>
               <Banknote size={14} />
               Record Payout
             </button>
             <button
-              className="btn-primary btn"
+              className="btn-primary btn w-full lg:w-auto"
               onClick={() => {
                 setEditAccount(null);
                 setForm(emptyAccountForm());
@@ -865,6 +950,63 @@ export default function PropAccounts() {
           {/* Firm Analytics */}
           <FirmAnalyticsChart expenses={data.expenses} withdrawals={data.withdrawals} />
 
+          {compareAccounts.length > 0 && (
+            <div className="card p-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.16em] text-tx-4">Comparison mode</div>
+                  <div className="mt-1 text-sm font-semibold text-tx-1">
+                    {compareAccounts.length < 2
+                      ? "Select one more account to compare side by side."
+                      : "Compare account health, payout timing, and risk buffers."}
+                  </div>
+                </div>
+                <button className="btn-ghost btn-sm" onClick={() => setCompareIds([])}>
+                  Clear compare
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {compareSnapshots.map(({ account, snapshot }) => (
+                  <div key={account.id} className="rounded-2xl border border-border-subtle bg-bg-hover px-4 py-4">
+                    <div className="text-sm font-semibold text-tx-1">{account.name || account.type}</div>
+                    <div className="mt-1 text-xs text-tx-4">{account.firm}</div>
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-tx-4">Phase</div>
+                        <div className="mt-1 font-semibold text-tx-1">{snapshot?.phase === "funded" ? "Funded" : "Challenge"}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-tx-4">Balance</div>
+                        <div className="mt-1 font-semibold text-tx-1">{fmtUSD(toNum(account.balance))}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {comparisonRows.length > 0 && (
+                <div className="mt-4 overflow-hidden rounded-2xl border border-border-subtle">
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] bg-bg-hover px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-tx-4">
+                    <span>Metric</span>
+                    <span className="truncate">{compareAccounts[0]?.name || compareAccounts[0]?.type}</span>
+                    <span className="truncate">{compareAccounts[1]?.name || compareAccounts[1]?.type}</span>
+                  </div>
+                  {comparisonRows.map((row) => (
+                    <div
+                      key={row.label}
+                      className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] border-t border-border-subtle px-4 py-3 text-sm"
+                    >
+                      <span className="text-tx-3">{row.label}</span>
+                      <span className="font-medium text-tx-1">{row.values[0]}</span>
+                      <span className="font-medium text-tx-1">{row.values[1] ?? "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Filter tabs + sort controls */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1">
@@ -891,8 +1033,14 @@ export default function PropAccounts() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-            <div className="grid gap-3 px-4 py-3 border-b border-white/[0.06] lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto] hidden lg:grid">
+          <div
+            className="overflow-hidden rounded-2xl border"
+            style={{ background: theme.dim, borderColor: theme.border }}
+          >
+            <div
+              className="hidden gap-3 border-b px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto]"
+              style={{ borderColor: theme.border }}
+            >
               {["Account", "Balance", "Target / MLL", "Progress / Risk", "Actions"].map((label) => (
                 <span key={label} className="text-[10px] uppercase tracking-[0.16em] text-tx-4">
                   {label}
@@ -908,6 +1056,9 @@ export default function PropAccounts() {
                   onEdit={() => handleOpenEdit(account)}
                   onDelete={() => handleDelete(account.id)}
                   onPayout={() => openPayout(account.firm, account.id)}
+                  onToggleCompare={() => toggleCompareAccount(account.id)}
+                  compareSelected={compareIds.includes(account.id)}
+                  compareDisabled={compareIds.length >= 2 && !compareIds.includes(account.id)}
                   onUnbreach={(phase) => {
                     update((prev) => ({
                       ...prev,
@@ -940,7 +1091,8 @@ export default function PropAccounts() {
                     ].map((item) => (
                       <span
                         key={item}
-                        className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-tx-3"
+                        className="rounded-full border px-2.5 py-1 text-[11px] text-tx-3"
+                        style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: theme.border }}
                       >
                         {item}
                       </span>
@@ -1017,8 +1169,11 @@ export default function PropAccounts() {
                     return (
                       <div
                         key={w.id}
-                        className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4"
-                        style={{ background: isTop ? "rgba(34,197,94,0.04)" : undefined }}
+                        className="rounded-2xl border p-4"
+                        style={{
+                          background: isTop ? "rgba(34,197,94,0.04)" : theme.dim,
+                          borderColor: isTop ? "rgba(34,197,94,0.12)" : theme.border,
+                        }}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -1042,13 +1197,14 @@ export default function PropAccounts() {
                               <>
                                 <button
                                   onClick={() => handleDeletePayout(w.id)}
-                                  className="px-2 py-1 rounded text-[10px] font-semibold bg-loss/15 text-loss hover:bg-loss/25 transition-all"
+                                  className="rounded bg-loss/15 px-2 py-1 text-[10px] font-semibold text-loss transition-colors hover:bg-loss/25"
                                 >
                                   Confirm
                                 </button>
                                 <button
                                   onClick={() => setDeletingPayoutId(null)}
-                                  className="px-2 py-1 rounded text-[10px] font-semibold bg-white/[0.05] text-tx-3 hover:text-tx-1 transition-all"
+                                  className="rounded px-2 py-1 text-[10px] font-semibold text-tx-3 transition-colors hover:text-tx-1"
+                                  style={{ background: "rgba(var(--surface-rgb),0.06)" }}
                                 >
                                   No
                                 </button>
@@ -1057,14 +1213,15 @@ export default function PropAccounts() {
                               <>
                                 <button
                                   onClick={() => openEditPayout(w)}
-                                  className="p-1.5 rounded text-tx-3 hover:text-tx-1 hover:bg-white/[0.07] transition-all"
+                                  className="rounded p-1.5 text-tx-3 transition-colors hover:text-tx-1"
+                                  style={{ background: "transparent" }}
                                   title="Edit payout"
                                 >
                                   <Edit2 size={12} />
                                 </button>
                                 <button
                                   onClick={() => setDeletingPayoutId(w.id)}
-                                  className="p-1.5 rounded text-tx-3 hover:text-loss hover:bg-loss/10 transition-all"
+                                  className="rounded p-1.5 text-tx-3 transition-colors hover:bg-loss/10 hover:text-loss"
                                   title="Delete payout"
                                 >
                                   <Trash2 size={12} />
@@ -1074,16 +1231,16 @@ export default function PropAccounts() {
                           </div>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                          <div className="rounded-xl border border-white/[0.05] bg-white/[0.03] p-2.5">
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          <div className="rounded-xl border p-2.5" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: "rgba(var(--border-rgb),0.08)" }}>
                             <p className="text-[10px] uppercase tracking-wide text-tx-4">Amount</p>
                             <p className="mt-1 font-bold font-mono tabular-nums text-profit">+{fmtGBP(amount)}</p>
                           </div>
-                          <div className="rounded-xl border border-white/[0.05] bg-white/[0.03] p-2.5">
+                          <div className="rounded-xl border p-2.5" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: "rgba(var(--border-rgb),0.08)" }}>
                             <p className="text-[10px] uppercase tracking-wide text-tx-4">Running</p>
                             <p className="mt-1 font-mono tabular-nums text-tx-3">{fmtGBP(runningTotal)}</p>
                           </div>
-                          <div className="col-span-2 rounded-xl border border-white/[0.05] bg-white/[0.03] p-2.5">
+                          <div className="col-span-2 rounded-xl border p-2.5" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: "rgba(var(--border-rgb),0.08)" }}>
                             <p className="text-[10px] uppercase tracking-wide text-tx-4">Notes</p>
                             <p className="mt-1 text-tx-3 break-words">{w.notes ?? "-"}</p>
                           </div>
@@ -1097,7 +1254,7 @@ export default function PropAccounts() {
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/[0.06]">
+                    <tr className="border-b" style={{ borderColor: theme.border }}>
                       <th className="text-left text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 pr-4">Date</th>
                       <th className="text-left text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 pr-4">Firm</th>
                       <th className="text-right text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 pr-4">Amount</th>
@@ -1106,7 +1263,7 @@ export default function PropAccounts() {
                       <th className="text-right text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 w-20">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.04]">
+                  <tbody className="divide-y" style={{ borderColor: "rgba(var(--border-rgb),0.06)" }}>
                     {(() => {
                       const sorted = [...data.withdrawals].sort((a, b) => b.date.localeCompare(a.date));
                       const maxPayout = Math.max(...sorted.map((w) => toNum(w.gross)));
@@ -1159,23 +1316,24 @@ export default function PropAccounts() {
                                 <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => handleDeletePayout(w.id)}
-                                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-loss/15 text-loss hover:bg-loss/25 transition-all"
+                                    className="rounded bg-loss/15 px-2 py-0.5 text-[10px] font-semibold text-loss transition-colors hover:bg-loss/25"
                                   >Confirm</button>
                                   <button
                                     onClick={() => setDeletingPayoutId(null)}
-                                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/[0.05] text-tx-3 hover:text-tx-1 transition-all"
+                                    className="rounded px-2 py-0.5 text-[10px] font-semibold text-tx-3 transition-colors hover:text-tx-1"
+                                    style={{ background: "rgba(var(--surface-rgb),0.06)" }}
                                   >No</button>
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-end gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                <div className="flex items-center justify-end gap-0.5 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                                   <button
                                     onClick={() => openEditPayout(w)}
-                                    className="p-1.5 rounded text-tx-3 hover:text-tx-1 hover:bg-white/[0.07] transition-all"
+                                    className="rounded p-1.5 text-tx-3 transition-colors hover:text-tx-1"
                                     title="Edit payout"
                                   ><Edit2 size={11} /></button>
                                   <button
                                     onClick={() => setDeletingPayoutId(w.id)}
-                                    className="p-1.5 rounded text-tx-3 hover:text-loss hover:bg-loss/10 transition-all"
+                                    className="rounded p-1.5 text-tx-3 transition-colors hover:bg-loss/10 hover:text-loss"
                                     title="Delete payout"
                                   ><Trash2 size={11} /></button>
                                 </div>
@@ -1187,7 +1345,7 @@ export default function PropAccounts() {
                     })()}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-white/[0.08]">
+                    <tr className="border-t" style={{ borderColor: theme.border }}>
                       <td colSpan={2} className="pt-3 text-tx-3 text-xs font-medium">Total</td>
                       <td className="pt-3 text-right text-profit font-bold font-mono tabular-nums">+{fmtGBP(totalWithdrawals)}</td>
                       <td colSpan={3} />
@@ -1216,7 +1374,7 @@ export default function PropAccounts() {
                   const profit  = c.finalBalance - c.initialBalance;
                   const isDeleting = deleteChallengeConfirm === c.id;
                   return (
-                    <div key={c.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl group transition-all"
+                    <div key={c.id} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
                       style={{ background: `${firmCol}08`, border: `1px solid ${isDeleting ? "#ef444430" : `${firmCol}18`}` }}>
                       <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
                         style={{ background: `${firmCol}20` }}>
@@ -1244,12 +1402,12 @@ export default function PropAccounts() {
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => handleDeleteChallenge(c.id)}
-                            className="text-[10px] px-2 py-1 rounded font-semibold transition-all"
+                            className="rounded px-2 py-1 text-[10px] font-semibold transition-colors"
                             style={{ background: "rgba(239,68,68,0.15)", color: "var(--color-loss)" }}
                           >Delete</button>
                           <button
                             onClick={() => setDeleteChallengeConfirm(null)}
-                            className="text-[10px] px-2 py-1 rounded font-semibold transition-all text-tx-3 hover:text-tx-1"
+                            className="rounded px-2 py-1 text-[10px] font-semibold text-tx-3 transition-colors hover:text-tx-1"
                             style={{ background: "rgba(var(--surface-rgb),0.07)" }}
                           >Cancel</button>
                         </div>
@@ -1257,12 +1415,12 @@ export default function PropAccounts() {
                         <div className="flex items-center gap-1 shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => setEditChallengeId(c.id)}
-                            className="p-1.5 rounded hover:bg-white/[0.07] text-tx-3 hover:text-tx-1 transition-all"
+                            className="rounded p-1.5 text-tx-3 transition-colors hover:text-tx-1"
                             title="Edit"
                           ><Edit2 size={11} /></button>
                           <button
                             onClick={() => setDeleteChallengeConfirm(c.id)}
-                            className="p-1.5 rounded hover:bg-loss/10 text-tx-4 hover:text-loss transition-all"
+                            className="rounded p-1.5 text-tx-4 transition-colors hover:bg-loss/10 hover:text-loss"
                             title="Delete"
                           ><Trash2 size={11} /></button>
                         </div>
@@ -1303,22 +1461,19 @@ export default function PropAccounts() {
                 <div>
                   <label className="text-tx-3 text-xs block mb-1">Firm</label>
                   <CustomSelect
-                    value={form.firm === "__other__" ? "" : form.firm}
-                    onChange={(v) => handleFirmChange(v || "__other__")}
-                    options={FIRMS.map((f) => ({ value: f, label: f }))}
+                    value={form.firm}
+                    onChange={handleFirmChange}
+                    options={[...FIRMS_BASE.map((f) => ({ value: f, label: f })), ...customFirms.map((f) => ({ value: f, label: f })), { value: "__other__", label: "Other..." }]}
                     placeholder="Select firm…"
                     allowCustom
+                    customOptionValue="__other__"
+                    customValue={form.customFirm}
+                    onCustomValueChange={(v) => setForm((p) => ({ ...p, customFirm: v }))}
                     customLabel="Enter firm name…"
+                    onSaveCustom={(name) => { saveCustomFirm(name); setCustomFirms(loadCustomFirms()); setForm((p) => ({ ...p, firm: name, customFirm: "" })); }}
+                    onDeleteOption={(name) => { deleteCustomFirm(name); setCustomFirms(loadCustomFirms()); }}
+                    canDelete={(name) => !FIRMS_BASE.includes(name as typeof FIRMS_BASE[number]) && name !== "__other__"}
                   />
-                  {form.firm === "__other__" && (
-                    <input
-                      className="nx-input mt-1.5"
-                      placeholder="Enter firm name…"
-                      value={form.customFirm}
-                      onChange={(e) => setForm((p) => ({ ...p, customFirm: e.target.value }))}
-                      autoFocus
-                    />
-                  )}
                 </div>
                 <div>
                   <label className="text-tx-3 text-xs block mb-1">Status</label>
@@ -1436,11 +1591,11 @@ export default function PropAccounts() {
 
               {modalSnapshot && !isNaN(modalSnapshot.distanceToMll) && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl px-3 py-2 text-[11px] text-tx-3 border border-white/[0.08] bg-white/[0.03]">
+                  <div className="rounded-xl border px-3 py-2 text-[11px] text-tx-3" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: theme.border }}>
                     <div className="uppercase tracking-[0.14em] text-[10px] text-tx-4">Drawdown Left</div>
                     <div className="mt-1 text-sm font-semibold text-tx-1">{fmtUSD(modalSnapshot.distanceToMll)}</div>
                   </div>
-                  <div className="rounded-xl px-3 py-2 text-[11px] text-tx-3 border border-white/[0.08] bg-white/[0.03]">
+                  <div className="rounded-xl border px-3 py-2 text-[11px] text-tx-3" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: theme.border }}>
                     <div className="uppercase tracking-[0.14em] text-[10px] text-tx-4">Floor State</div>
                     <div className="mt-1 text-sm font-semibold text-tx-1">
                       {modalSnapshot.locked ? `Locked at ${fmtUSD(modalSnapshot.lockFloor)}` : `Trailing from peak ${fmtUSD(modalSnapshot.peakBalance)}`}
@@ -1450,7 +1605,7 @@ export default function PropAccounts() {
               )}
 
               {modalRules && (
-                <div className="rounded-xl px-3 py-2.5 text-[11px] text-tx-3 border border-white/[0.08] bg-white/[0.03]">
+                <div className="rounded-xl border px-3 py-2.5 text-[11px] text-tx-3" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: theme.border }}>
                   <div className="flex items-center justify-between gap-3">
                     <span>{modalRules.label} {(modalRules.size / 1000).toFixed(0)}K</span>
                     <span>{fmtUSD(modalRules.drawdown)} drawdown</span>
@@ -1483,7 +1638,7 @@ export default function PropAccounts() {
 
               <div className="modal-action-bar">
                 <button className="btn-primary btn flex-1" onClick={handleSaveAccount}>
-                  {editAccount ? "Update Account" : addQty > 1 ? `Add ${addQty} Accounts` : "Add Account"}
+                  {editAccount ? "Update Account" : typeof addQty === "number" && addQty > 1 ? `Add ${addQty} Accounts` : "Add Account"}
                 </button>
                 <button className="btn-ghost btn" onClick={() => { setAddOpen(false); setEditAccount(null); setAddQty(1); }}>
                   Cancel
@@ -1506,11 +1661,17 @@ export default function PropAccounts() {
             <label className="text-tx-3 text-xs block mb-1">Firm</label>
             <CustomSelect
               value={payoutForm.firm}
-              onChange={(v) => setPayoutForm((p) => ({ ...p, firm: v }))}
-              options={FIRMS.map((f) => ({ value: f, label: f }))}
+              onChange={(v) => setPayoutForm((p) => ({ ...p, firm: v, customFirm: v === OTHER_FIRM_VALUE ? p.customFirm : "" }))}
+              options={[...FIRMS_BASE.map((f) => ({ value: f, label: f })), ...customFirms.map((f) => ({ value: f, label: f })), { value: OTHER_FIRM_VALUE, label: "Other..." }]}
               placeholder="Select firm…"
               allowCustom
+              customOptionValue={OTHER_FIRM_VALUE}
+              customValue={payoutForm.customFirm}
+              onCustomValueChange={(v) => setPayoutForm((p) => ({ ...p, customFirm: v }))}
               customLabel="Enter firm name…"
+              onSaveCustom={(name) => { saveCustomFirm(name); setCustomFirms(loadCustomFirms()); setPayoutForm((p) => ({ ...p, firm: name, customFirm: "" })); }}
+              onDeleteOption={(name) => { deleteCustomFirm(name); setCustomFirms(loadCustomFirms()); }}
+              canDelete={(name) => !FIRMS_BASE.includes(name as typeof FIRMS_BASE[number]) && name !== OTHER_FIRM_VALUE}
             />
           </div>
           <div>
@@ -1524,6 +1685,7 @@ export default function PropAccounts() {
                   ...prev,
                   accountId: e.target.value,
                   firm: nextAccount?.firm ?? prev.firm,
+                  customFirm: nextAccount?.firm ? "" : prev.customFirm,
                 }));
               }}
             >
@@ -1557,7 +1719,7 @@ export default function PropAccounts() {
             />
           </div>
           <div className="modal-action-bar">
-            <button className="btn-success btn flex-1" onClick={handleSavePayout}>
+            <button className="btn-success btn flex-1" onClick={handleSavePayout} disabled={!payoutForm.gross || (payoutForm.firm === OTHER_FIRM_VALUE && !payoutForm.customFirm.trim())}>
               <Banknote size={14} />
               {editPayoutId ? "Update Payout" : "Save Payout"}
             </button>
@@ -1581,4 +1743,3 @@ export default function PropAccounts() {
     </div>
   );
 }
-

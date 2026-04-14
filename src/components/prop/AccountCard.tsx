@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import {
+  Columns2,
   Edit2,
   Trash2,
   PoundSterling,
@@ -9,7 +10,8 @@ import {
 import { fmtUSD, fmtDate, toNum, pct, cn, getStatusBg } from "@/lib/utils";
 import { useBWMode, bwColor } from "@/lib/useBWMode";
 import Modal from "@/components/Modal";
-import type { Account, AccountStatus, Withdrawal, TradeEntry } from "@/types";
+import { IconButton } from "@/components/ui/icon-button";
+import type { Account, Withdrawal, TradeEntry } from "@/types";
 import {
   getAccountPhase,
   getPropAccountSnapshot,
@@ -124,6 +126,9 @@ export function AccountCard({
   onDelete,
   onPayout,
   onUnbreach,
+  onToggleCompare,
+  compareSelected = false,
+  compareDisabled = false,
 }: {
   account: Account;
   snapshotContext: {
@@ -134,6 +139,9 @@ export function AccountCard({
   onDelete: () => void;
   onPayout: () => void;
   onUnbreach: (phase: "challenge" | "funded") => void;
+  onToggleCompare?: () => void;
+  compareSelected?: boolean;
+  compareDisabled?: boolean;
 }) {
   const bw = useBWMode();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -151,7 +159,6 @@ export function AccountCard({
   const breached  = snapshot?.breached ?? isBreachedStatus(account.status);
   const displayName = account.name || account.type || "—";
   const statusColor = breached ? "var(--color-loss)" : funded ? "var(--color-teal)" : "var(--color-warn)";
-  const statusBg    = breached ? "rgba(239,68,68,0.05)" : funded ? "rgba(34,197,94,0.05)" : "rgba(245,158,11,0.05)";
   const firmColor   = bwColor(getFirmColor(account.firm), bw);
   const initialBalance = snapshot?.initialBalance ?? toNum(account.initialBalance ?? account.balance);
   const balance = toNum(account.balance);
@@ -202,30 +209,40 @@ export function AccountCard({
   };
   const actionControls = (
     <>
-      {funded && !breached && (
-        <button onClick={handlePayout} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-profit" title="Record payout">
-          <PoundSterling size={12} />
-        </button>
+      {onToggleCompare && (
+        <IconButton
+          onClick={onToggleCompare}
+          label={compareSelected ? "Remove from compare" : "Add to compare"}
+          tone={compareSelected ? "accent" : "default"}
+          disabled={compareDisabled && !compareSelected}
+        >
+          <Columns2 size={12} />
+        </IconButton>
       )}
-      <button onClick={handleEdit} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-tx-1" title="Edit">
+      {funded && !breached && (
+        <IconButton onClick={handlePayout} label="Record payout" tone="profit">
+          <PoundSterling size={12} />
+        </IconButton>
+      )}
+      <IconButton onClick={handleEdit} label="Edit account">
         <Edit2 size={12} />
-      </button>
+      </IconButton>
       {!confirmDelete ? (
-        <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg transition-all text-tx-3 hover:text-loss" title="Delete">
+        <IconButton onClick={() => setConfirmDelete(true)} label="Delete account" tone="loss">
           <Trash2 size={12} />
-        </button>
+        </IconButton>
       ) : (
         <div className="flex items-center gap-1">
           <button
             onClick={handleConfirmDelete}
-            className="px-2 py-1 rounded text-[10px] font-semibold transition-all"
+            className="rounded px-2 py-1 text-[10px] font-semibold transition-colors"
             style={{ background: "rgba(239,68,68,0.15)", color: "var(--color-loss)", border: "1px solid rgba(239,68,68,0.2)" }}
           >
             Confirm
           </button>
           <button
             onClick={() => setConfirmDelete(false)}
-            className="px-2 py-1 rounded text-[10px] font-semibold transition-all"
+            className="rounded px-2 py-1 text-[10px] font-semibold transition-colors"
             style={{ background: "rgba(var(--surface-rgb),0.07)", color: "var(--tx-3)" }}
           >
             No
@@ -307,7 +324,7 @@ export function AccountCard({
           </div>
           <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
             <div
-              className="h-full transition-all duration-500"
+              className="h-full transition-[width,background] duration-500"
               style={{
                 width: `${progressWidth}%`,
                 background: challenge
@@ -422,7 +439,7 @@ export function AccountCard({
               </div>
               <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                 <div
-                  className="h-full transition-all duration-500"
+                  className="h-full transition-[width,background] duration-500"
                   style={{
                     width: `${challenge ? snapshot.progressPct ?? 0 : bufferRatio}%`,
                     background: challenge
@@ -506,7 +523,7 @@ export function AccountCard({
             </div>
             <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
               <div
-                className="h-full transition-all duration-500"
+                className="h-full transition-[width,background] duration-500"
                 style={{
                   width: `${progressWidth}%`,
                   background: challenge

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calculator,
@@ -31,6 +31,7 @@ import type { AppData } from "@/types";
 import { fmtGBP, toNum, cn, daysUntil } from "@/lib/utils";
 import { UK_TAX } from "@/lib/utils";
 import { PAGE_THEMES } from "@/lib/theme";
+import PageHeader from "@/components/PageHeader";
 
 // ─── UK Tax year helpers ───────────────────────────────────────────────────────
 
@@ -215,11 +216,11 @@ function BandBar({ salary, tradingProfit }: { salary: number; tradingProfit: num
         ))}
 
         {/* Salary fill */}
-        <div className="absolute top-1.5 bottom-1.5 left-1.5 rounded-lg transition-all duration-700"
+        <div className="absolute top-1.5 bottom-1.5 left-1.5 rounded-lg transition-[width,background-color] duration-700"
           style={{ width: `calc(${salaryPct}% - 6px)`, background: bwColor("rgba(59,130,246,0.7)", bw) }} />
         {/* Trading fill */}
         {tradingPct > 0 && (
-          <div className="absolute top-1.5 bottom-1.5 rounded-lg transition-all duration-700"
+          <div className="absolute top-1.5 bottom-1.5 rounded-lg transition-[left,width,background-color] duration-700"
             style={{ left: `${salaryPct}%`, width: `${tradingPct}%`, background: "rgba(34,197,94,0.7)" }} />
         )}
 
@@ -254,10 +255,17 @@ function BandBar({ salary, tradingProfit }: { salary: number; tradingProfit: num
 // ─── Inline editable value ─────────────────────────────────────────────────────
 
 function EditableAmount({
-  label, value, onSave, prefix = "£",
+  label: _label, value, onSave, prefix = "£",
 }: { label: string; value: number; onSave: (v: number) => void; prefix?: string }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editing || typeof window === "undefined" || window.innerWidth < 768) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [editing]);
 
   function start() { setDraft(String(value)); setEditing(true); }
   function save() {
@@ -270,7 +278,7 @@ function EditableAmount({
     <div className="flex items-center gap-1">
       <span className="text-tx-3 text-sm">{prefix}</span>
       <input
-        autoFocus
+        ref={inputRef}
         className="nx-input w-28 text-sm py-0.5"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -325,7 +333,6 @@ export default function TaxPage() {
   );
 
   // ── Income sources ──
-  const [salaryManual, setSalaryManual] = useState<number | null>(null);
   const [tradingManual, setTradingManual] = useState<number | null>(null);
   const [expenseManual, setExpenseManual] = useState<number | null>(null);
   const [incomeMode, setIncomeMode] = useState<"auto" | "manual">("auto");
@@ -442,17 +449,14 @@ export default function TaxPage() {
   return (
     <div className="flex flex-col gap-5">
       {/* ── Header ── */}
-      <div className="mb-6">
-        <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Tax</div>
-        <h1 className="page-title mb-6">Tax Profile</h1>
-      </div>
+      <PageHeader eyebrow="Tax" title="Tax Profile" className="mb-3" />
 
       {/* ── Info Banner ── */}
-      <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-500/[0.06] border border-blue-500/15">
-        <Info size={14} className="text-blue-400 mt-0.5 shrink-0" />
-        <p className="text-xs text-blue-300/80 leading-relaxed">
+      <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
+        <Info size={14} className="mt-0.5 shrink-0" style={{ color: theme.accent }} />
+        <p className="text-xs leading-relaxed text-tx-2">
           As an employee, your salary is taxed through PAYE. You need to file Self Assessment to declare your additional prop trading income.
-          Only the <strong className="text-blue-300">extra tax</strong> on your trading profit (above what PAYE covers) is due via Self Assessment.
+          Only the <strong style={{ color: theme.accent }}>extra tax</strong> on your trading profit (above what PAYE covers) is due via Self Assessment.
         </p>
       </div>
 
@@ -465,12 +469,12 @@ export default function TaxPage() {
           {/* ── Income inputs row ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Salary */}
-            <div className="card p-4 flex flex-col gap-3" style={{ background: bwColor("linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 100%)", isBW), borderColor: bwColor("rgba(59,130,246,0.15)", isBW) }}>
+            <div className="card p-4 flex flex-col gap-3" style={{ background: bwColor("linear-gradient(135deg, rgba(134,147,159,0.08) 0%, transparent 100%)", isBW), borderColor: bwColor("rgba(134,147,159,0.18)", isBW) }}>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-tx-3 flex items-center gap-1.5">
-                  <Building2 size={10} className="text-blue-400" />Employment Salary
+                  <Building2 size={10} style={{ color: theme.accent }} />Employment Salary
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: bwColor("rgba(59,130,246,0.12)", isBW), color: bwColor("#60a5fa", isBW), border: `1px solid ${bwColor("rgba(59,130,246,0.2)", isBW)}` }}>PAYE</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: theme.dim, color: theme.accent, border: `1px solid ${theme.border}` }}>PAYE</span>
               </div>
               <EditableAmount label="Annual Salary" value={salary} onSave={setSalary} />
               <p className="text-[11px] text-tx-4">Click to edit your gross annual salary</p>
@@ -488,9 +492,10 @@ export default function TaxPage() {
                       key={m}
                       onClick={() => setIncomeMode(m)}
                       className={cn(
-                        "text-[10px] px-2 py-0.5 rounded transition-all capitalize",
-                        incomeMode === m ? "bg-white/90 text-bg-base font-bold" : "text-tx-3"
+                        "rounded px-2 py-0.5 text-[10px] capitalize transition-colors",
+                        incomeMode === m ? "font-bold" : "text-tx-3"
                       )}
+                      style={incomeMode === m ? { background: theme.accent, color: "var(--bg-base)" } : undefined}
                     >{m}</button>
                   ))}
                 </div>
@@ -537,9 +542,10 @@ export default function TaxPage() {
                       key={m}
                       onClick={() => setExpenseMode(m)}
                       className={cn(
-                        "text-[10px] px-2 py-0.5 rounded transition-all capitalize",
-                        expenseMode === m ? "bg-white/90 text-bg-base font-bold" : "text-tx-3"
+                        "rounded px-2 py-0.5 text-[10px] capitalize transition-colors",
+                        expenseMode === m ? "font-bold" : "text-tx-3"
                       )}
+                      style={expenseMode === m ? { background: theme.accent, color: "var(--bg-base)" } : undefined}
                     >{m}</button>
                   ))}
                 </div>
@@ -787,9 +793,9 @@ export default function TaxPage() {
                     </div>
                     {totalDueJan31 > 0 && (
                       <div className="flex items-center gap-1.5 pt-0.5">
-                        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="flex-1 h-1 overflow-hidden rounded-full" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                           <div
-                            className="h-full rounded-full transition-all duration-700"
+                            className="h-full rounded-full transition-[width,background] duration-700"
                             style={{ width: `${Math.min(100, savingsProgress)}%`, background: `linear-gradient(90deg, ${innerColor}99, ${innerColor})` }}
                           />
                         </div>
@@ -895,7 +901,7 @@ export default function TaxPage() {
                 </div>
                 <div className="progress-track h-2.5 rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-700"
+                    className="h-full rounded-full transition-[width,background] duration-700"
                     style={{
                       width: `${savingsProgress}%`,
                       background:
@@ -1018,15 +1024,18 @@ export default function TaxPage() {
                 const accentColor = isPast ? "#4b5563" : isSoon ? "var(--color-warn)" : bwColor("#5b8bbf", isBW);
                 const accentBg = colorWithAlpha(accentColor, 0.09);
                 const accentBorder = colorWithAlpha(accentColor, 0.19);
-                const [yyyy, mm, dd] = entry.date.split("-");
+                const dateParts = entry.date ? entry.date.split("-") : [];
+                const mm = dateParts[1] ?? "";
+                const dd = dateParts[2] ?? "";
                 const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-                const monthLabel = monthNames[parseInt(mm) - 1];
+                const monthLabel = mm ? monthNames[parseInt(mm) - 1] ?? "" : "";
+                const daysLabel = days === Infinity ? "No date" : days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? "Today" : `${days}d`;
 
                 return (
                   <div
                     key={i}
                     className={cn(
-                      "flex items-center gap-3 p-2.5 rounded-xl border transition-all",
+                      "flex items-center gap-3 rounded-xl border p-2.5 transition-colors",
                       isPast ? "opacity-45 border-[rgba(var(--border-rgb),0.05)]" :
                       isSoon ? "bg-warn/[0.05] border-warn/15" :
                       "bg-[rgba(var(--border-rgb),0.02)] border-[rgba(var(--border-rgb),0.06)]"
@@ -1052,7 +1061,7 @@ export default function TaxPage() {
                           {entry.label}
                         </p>
                       </div>
-                      <p className="text-[10px] text-tx-4 mt-0.5 leading-snug truncate">{entry.desc}</p>
+                      <p className="mt-0.5 text-[10px] leading-snug text-tx-4 break-words">{entry.desc}</p>
                     </div>
 
                     <div className="shrink-0 flex flex-col items-end gap-1">
@@ -1068,7 +1077,7 @@ export default function TaxPage() {
                           color: accentColor,
                         }}
                       >
-                        {isPast ? "done" : days === 0 ? "today" : `${days}d`}
+                        {days === Infinity ? "—" : isPast ? "done" : days === 0 ? "today" : `${days}d`}
                       </span>
                     </div>
                   </div>

@@ -18,12 +18,15 @@ export function AccountTile({
   const label = name || firm;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      className="rounded-xl p-3.5 cursor-pointer group transition-all duration-200"
+      aria-label={`Open ${label} account`}
+      className="group rounded-xl p-3.5 text-left transition-[background-color,border-color,transform] duration-200"
       style={{
         background: `${color}0a`,
         border: `1px solid ${color}1e`,
+        width: "100%",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = `${color}15`;
@@ -58,6 +61,6 @@ export function AccountTile({
         {fmtUSD(balance)}
       </p>
       <p className="text-[10px] uppercase tracking-widest mt-1 text-tx-3">{type}</p>
-    </div>
+    </button>
   );
 }

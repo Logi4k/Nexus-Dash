@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head><title>Nexus Test Data Loader</title></head>
+<body>
+<h2>Loading test data into Nexus Dashboard...</h2>
+<pre id="log"></pre>
+<script>
+const log = (msg) => document.getElementById('log').textContent += msg + '\n';
+
+const testData = {
+  "expenses": [
+    {"id":"exp-1","date":"2026-04-01","description":"FTMO Challenge Fee","cat":"Prop Firms","amount":530,"notes":"100k challenge"},
+    {"id":"exp-2","date":"2026-04-03","description":"TradingView Premium","cat":"Subscriptions","amount":59.95,"notes":"Monthly"},
+    {"id":"exp-3","date":"2026-04-05","description":"VPS Hosting","cat":"Infrastructure","amount":25,"notes":"ForexVPS monthly"},
+    {"id":"exp-4","date":"2026-04-08","description":"Books - Trading in the Zone","cat":"Education","amount":18.99},
+    {"id":"exp-5","date":"2026-04-10","description":"MyFundedFX Challenge","cat":"Prop Firms","amount":399,"notes":"50k instant funding"}
+  ],
+  "genExpenses": [
+    {"id":"gexp-1","date":"2026-04-02","description":"Rent","cat":"Housing","amount":1200},
+    {"id":"gexp-2","date":"2026-04-02","description":"Council Tax","cat":"Housing","amount":145},
+    {"id":"gexp-3","date":"2026-04-05","description":"Groceries - Tesco","cat":"Food","amount":87.50},
+    {"id":"gexp-4","date":"2026-04-07","description":"Oyster Top-up","cat":"Transport","amount":50},
+    {"id":"gexp-5","date":"2026-04-09","description":"Gym Membership","cat":"Health","amount":35}
+  ],
+  "withdrawals": [
+    {"id":"wd-1","date":"2026-03-28","firm":"FTMO","gross":2450,"accountId":"acc-1","postBalance":102350,"notes":"First payout"},
+    {"id":"wd-2","date":"2026-04-10","firm":"The Funded Trader","gross":1800,"accountId":"acc-3","postBalance":51200,"notes":"Bi-weekly split"}
+  ],
+  "investments": [
+    {"id":"inv-1","ticker":"VWRL","name":"Vanguard FTSE All-World","type":"etf","units":45,"buy":98.50,"cur":104.20},
+    {"id":"inv-2","ticker":"CSPX","name":"iShares Core S&P 500","type":"etf","units":12,"buy":520.00,"cur":548.30},
+    {"id":"inv-3","ticker":"AAPL","name":"Apple Inc","type":"stock","units":10,"buy":178.50,"cur":189.20}
+  ],
+  "wealthTargets": [
+    {"id":"wt-1","emoji":"🏠","name":"House Deposit","desc":"Save for a 20% deposit on a 2-bed flat in Zone 4","target":60000,"saved":12500,"monthly":1500,"color":"#4ade80"},
+    {"id":"wt-2","emoji":"🛡️","name":"Emergency Fund","desc":"6 months of expenses","target":10000,"saved":6200,"monthly":500,"color":"#60a5fa"},
+    {"id":"wt-3","emoji":"📈","name":"Trading Capital","desc":"Build a 50k personal trading account","target":50000,"saved":8300,"monthly":2000,"color":"#f59e0b"}
+  ],
+  "accounts": [
+    {"id":"acc-1","firm":"FTMO","type":"100k","name":"FTMO 100k #1","status":"funded","fundedAt":"2026-02-15","balance":102350,"initialBalance":100000,"peakBalance":104800,"mll":5000,"winningDays":18,"pnlEntries":[
+      {"id":"pnl-1","date":"2026-04-01","amount":450},{"id":"pnl-2","date":"2026-04-02","amount":-180},{"id":"pnl-3","date":"2026-04-03","amount":820},
+      {"id":"pnl-4","date":"2026-04-07","amount":310},{"id":"pnl-5","date":"2026-04-08","amount":-95},{"id":"pnl-6","date":"2026-04-09","amount":670}
+    ]},
+    {"id":"acc-2","firm":"FTMO","type":"100k","name":"FTMO 100k #2","status":"challenge","challengeStartDate":"2026-04-08","balance":101200,"initialBalance":100000,"peakBalance":101200,"mll":5000,"winningDays":3,"pnlEntries":[
+      {"id":"pnl-7","date":"2026-04-08","amount":520},{"id":"pnl-8","date":"2026-04-09","amount":340},{"id":"pnl-9","date":"2026-04-10","amount":340}
+    ]},
+    {"id":"acc-3","firm":"The Funded Trader","type":"50k","name":"TFT 50k","status":"funded","fundedAt":"2026-03-01","balance":51200,"initialBalance":50000,"peakBalance":52800,"mll":2500,"winningDays":12,"pnlEntries":[
+      {"id":"pnl-10","date":"2026-04-07","amount":280},{"id":"pnl-11","date":"2026-04-08","amount":450},{"id":"pnl-12","date":"2026-04-09","amount":-120}
+    ]},
+    {"id":"acc-4","firm":"MyFundedFX","type":"50k","name":"MFFX 50k","status":"breached","breachedDate":"2026-03-20","balance":48900,"initialBalance":50000,"peakBalance":51500}
+  ],
+  "passedChallenges": [
+    {"id":"pc-1","accountId":"acc-1","firm":"FTMO","type":"100k","passedDate":"2026-02-14","finalBalance":103200,"initialBalance":100000,"profitTarget":10000},
+    {"id":"pc-2","accountId":"acc-3","firm":"The Funded Trader","type":"50k","passedDate":"2026-02-28","finalBalance":52100,"initialBalance":50000,"profitTarget":5000}
+  ],
+  "debts": [
+    {"id":"db-1","name":"Amex Gold","creditLimit":8000,"currentBalance":2340,"rate":22.9,"monthly":120,"nextPayment":"2026-05-01","network":"Amex","lastFour":"4821"},
+    {"id":"db-2","name":"Monzo Flex","creditLimit":3000,"currentBalance":890,"rate":0,"monthly":297,"nextPayment":"2026-04-28","network":"Mastercard","lastFour":"7733"}
+  ],
+  "creditCards": [
+    {"id":"cc-1","name":"Amex Gold","balance":2340,"limit":8000,"apr":22.9,"minPayment":120,"network":"Amex"},
+    {"id":"cc-2","name":"Barclays Visa","balance":0,"limit":5000,"apr":19.9,"minPayment":0,"network":"Visa"}
+  ],
+  "subscriptions": [
+    {"id":"sub-1","name":"TradingView Premium","amount":59.95,"frequency":"monthly","startDate":"2025-06-01","nextRenewal":"2026-05-01"},
+    {"id":"sub-2","name":"FTMO Dashboard","amount":0,"frequency":"monthly","startDate":"2026-01-01","nextRenewal":"2026-05-01"},
+    {"id":"sub-3","name":"Spotify","amount":10.99,"frequency":"monthly","startDate":"2024-01-01","nextRenewal":"2026-05-01"},
+    {"id":"sub-4","name":"iCloud+","amount":2.99,"frequency":"monthly","startDate":"2024-06-01","nextRenewal":"2026-05-01"},
+    {"id":"sub-5","name":"ChatGPT Plus","amount":20,"frequency":"monthly","startDate":"2025-09-01","nextRenewal":"2026-05-01"}
+  ],
+  "t212": {"last_sync":Date.now(),"free_cash":1250,"total_value":12340,"invested":10500,"pnl":1840,"result":17.5},
+  "t212History": [
+    {"ts":1743000000000,"v":10500},{"ts":1743200000000,"v":10850},{"ts":1743400000000,"v":11200},
+    {"ts":1743600000000,"v":11000},{"ts":1743800000000,"v":11500},{"ts":1744000000000,"v":11900},{"ts":1744200000000,"v":12340}
+  ],
+  "taxProfile": {"country":"UK","employmentStatus":"Employed","annualIncome":38000,"ukSpecific":{"studentLoan":"Plan 2","pensionPercentage":5,"taxCode":"1257L","isScottish":false},"otherSpecific":{"effectiveTaxRate":20}},
+  "marketTickers": [{"name":"S&P 500 ETF","ticker":"SPY"},{"name":"Nasdaq ETF","ticker":"QQQ"},{"name":"Gold","ticker":"GC=F"},{"name":"EUR/USD","ticker":"EURUSD=X"}],
+  "otherDebts": [],
+  "savingsAccounts": [],
+  "tradeJournal": [
+    {"id":"tj-1","date":"2026-04-07","time":"09:45","instrument":"NQ","direction":"long","entryPrice":18450,"exitPrice":18520,"contracts":2,"pnl":1400,"fees":4.50,"setup":"ICT 2022 Model","session":"London","notes":"Clean sweep of Asia high, entered on displacement","accountId":"acc-1"},
+    {"id":"tj-2","date":"2026-04-07","time":"14:30","instrument":"ES","direction":"short","entryPrice":5280,"exitPrice":5262,"contracts":3,"pnl":2700,"fees":6.75,"setup":"OTE Rejection","session":"New York","notes":"Rejection at previous day high, entered on retest","accountId":"acc-1"},
+    {"id":"tj-3","date":"2026-04-08","time":"08:15","instrument":"NQ","direction":"short","entryPrice":18600,"exitPrice":18545,"contracts":2,"pnl":2200,"fees":4.50,"setup":"FVG Fill","session":"London","notes":"Filled the 1H FVG, aggressive entry","accountId":"acc-2"},
+    {"id":"tj-4","date":"2026-04-08","time":"15:00","instrument":"ES","direction":"long","entryPrice":5225,"stopLoss":5210,"exitPrice":5245,"contracts":2,"pnl":2000,"fees":5,"setup":"Power of 3","session":"New York","notes":"NY AM session reversal","accountId":"acc-3"},
+    {"id":"tj-5","date":"2026-04-09","time":"10:00","instrument":"NQ","direction":"long","entryPrice":18380,"stopLoss":18340,"exitPrice":18350,"contracts":2,"pnl":-600,"fees":4.50,"setup":"Breakout","session":"London","notes":"False breakout, got stopped out. Lesson: wait for 5m close above","accountId":"acc-1"},
+    {"id":"tj-6","date":"2026-04-10","time":"13:15","instrument":"ES","direction":"short","entryPrice":5290,"exitPrice":5270,"contracts":1,"pnl":500,"fees":2.25,"setup":"ICT Judas Swing","session":"New York","notes":"Classic NY Judas, took partials at 1R","accountId":"acc-2"}
+  ],
+  "economicEvents": [
+    {"id":"ev-1","date":"2026-04-14","time":"13:30","name":"US CPI m/m","impact":"high","previous":"0.2%","forecast":"0.3%"},
+    {"id":"ev-2","date":"2026-04-15","time":"13:30","name":"US Retail Sales m/m","impact":"high","previous":"0.6%","forecast":"0.4%"},
+    {"id":"ev-3","date":"2026-04-16","time":"09:00","name":"UK CPI y/y","impact":"high","previous":"2.8%","forecast":"2.6%"},
+    {"id":"ev-4","date":"2026-04-17","time":"13:30","name":"US Unemployment Claims","impact":"medium","previous":"219K","forecast":"222K"}
+  ],
+  "journalEntries": [
+    {"id":"je-1","date":"2026-04-07","notes":"Strong session. Asia high swept as expected. London had clean structure. Focused on NQ, let winners run. Two trades, both green.","bias":"bullish","mood":"great","checklist":["Mark HTF bias","Wait for setup","Risk 1% max"]},
+    {"id":"je-2","date":"2026-04-08","notes":"Good day. NQ short was textbook FVG fill. ES Power of 3 worked perfectly in NY. Need to be more patient with entries.","bias":"bearish","mood":"good","checklist":["Mark HTF bias","Wait for setup"]},
+    {"id":"je-3","date":"2026-04-09","notes":"One loss today. NQ false breakout - jumped the gun. Lesson learned: wait for the 5m candle close above resistance before entering. Discipline over conviction.","bias":"bullish","mood":"bad","checklist":["Mark HTF bias"]}
+  ],
+  "sessionChecklist": ["Mark HTF bias","Wait for setup","Risk 1% max","Log every trade","Review at close"],
+  "userProfile": {"username":"Philips","avatarColor":"#1dd4b4"},
+  "userSettings": {"subscriptionRenewalDays":7,"theme":"dark","dismissedNotificationIds":[]},
+  "ideaPageMeta": {"tagline":"Capture, review, and refine market ideas."},
+  "ideaTopics": [
+    {"id":"it-1","name":"ICT Concepts","emoji":"🧠"},
+    {"id":"it-2","name":"Risk Management","emoji":"🛡️"},
+    {"id":"it-3","name":"Macro Plays","emoji":"🌍"}
+  ],
+  "ideaNotes": [
+    {"id":"in-1","topicId":"it-1","title":"Power of 3 Setup","blocks":[{"id":"b-1","type":"h2","content":"Power of 3 Setup"},{"id":"b-2","type":"text","content":"Accumulation -> Manipulation -> Distribution. Best during NY AM session. Look for sweep of Asia range then enter on displacement."}],"tags":["ict","setup"],"createdAt":"2026-04-05T10:00:00Z","updatedAt":"2026-04-05T10:00:00Z"},
+    {"id":"in-2","topicId":"it-2","title":"Position Sizing Rules","blocks":[{"id":"b-3","type":"text","content":"Never risk more than 1% of account balance per trade. Scale in only after 1R is secured. Max 3 concurrent positions."}],"tags":["risk","rules"],"createdAt":"2026-04-06T14:00:00Z","updatedAt":"2026-04-06T14:00:00Z"}
+  ],
+  "taxSettings": {"salary":38000,"savedSoFar":2800,"savingsGoalOverride":null},
+  "categoryBudgets": {"Prop Firms":1000,"Education":200,"Infrastructure":50,"Subscriptions":100}
+};
+
+try {
+  localStorage.setItem("nexus_data", JSON.stringify(testData));
+  localStorage.setItem("nexus_savedAt", Date.now().toString());
+  log("SUCCESS: " + Object.keys(testData).length + " categories loaded");
+  log("Redirecting to Nexus Dashboard in 2 seconds...");
+  setTimeout(() => { window.location.href = "http://localhost:1420"; }, 2000);
+} catch(e) {
+  log("ERROR: " + e.message);
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 [package]
 name = "nexus"
-version = "1.2.0"
+version = "1.2.2"
 description = "Nexus — Trader Dashboard"
 authors = ["you"]
 edition = "2021"
@@ -14,7 +14,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-tauri-plugin-fs = "2"
+tauri-plugin-fs = "2.5"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-http = { version = "2", features = ["rustls-tls"] }

@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { toast } from 'sonner';
 import { PAGE_THEMES } from "@/lib/theme";
 import {
@@ -15,7 +16,6 @@ import {
   WifiOff,
   Target,
   Repeat,
-  Check,
   X,
   AlertCircle,
   Trophy,
@@ -33,11 +33,12 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import type { AppData } from "@/types";
+import { useRegisterPageView } from "@/components/PageViewContext";
+import { getViewIntentState } from "@/lib/viewIntents";
 import { getT212ApiKey, removeT212ApiKey, setT212ApiKey } from "@/lib/deviceSettings";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import {
   fmtGBP,
-  fmtDate,
   fmtShortDate,
   toNum,
   pct,
@@ -48,6 +49,7 @@ import {
 import Modal from "@/components/Modal";
 import CustomSelect from "@/components/CustomSelect";
 import DatePicker from "@/components/DatePicker";
+import PageHeader from "@/components/PageHeader";
 import type { Investment, WealthTarget, Subscription } from "@/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -55,15 +57,19 @@ import type { Investment, WealthTarget, Subscription } from "@/types";
 // Dev: Vite proxies /t212 → https://live.trading212.com/api/v0 (bypasses CORS)
 const T212_BASE = import.meta.env.DEV ? "/t212" : "https://live.trading212.com/api/v0";
 const OFFLINE_MODE_KEY = "nexus.offlineMode";
+const INVESTMENT_TEAL = "#76998d";
+const INVESTMENT_BLUE = "#7f99ac";
+const INVESTMENT_GOLD = "#c4a06b";
+const INVESTMENT_MUTED = "#7c8798";
 const ALLOC_COLORS = [
   "var(--color-blue)",
   "var(--color-warn)",
-  "var(--color-purple)",
+  INVESTMENT_MUTED,
   "var(--color-teal)",
   "var(--color-loss)",
   "var(--color-blue)",
   "var(--color-orange)",
-  "var(--color-purple)",
+  INVESTMENT_GOLD,
 ];
 
 // ─── T212 API types ───────────────────────────────────────────────────────────
@@ -182,7 +188,7 @@ function InvestmentFormModal({
               { value: "etf", label: "ETF" },
               { value: "stock", label: "Stock" },
             ]}
-            placeholder="Select type..."
+            placeholder="Select type…"
           />
         </div>
         <div className="col-span-2 flex flex-col gap-1.5">
@@ -351,7 +357,6 @@ function InvestmentSidebar({
   subscriptions: Subscription[];
   stats: { totalValue: number; totalInvested: number; totalPnl: number; totalPnlPct: number };
 }) {
-  const bw = useBWMode();
   const topPerformers = [...investments]
     .filter((inv) => investmentValue(inv) > 0)
     .sort((a, b) => investmentPnlPct(b) - investmentPnlPct(a))
@@ -398,7 +403,7 @@ function InvestmentSidebar({
               {/* SVG ring with centre label */}
               <div className="relative shrink-0">
                 <svg width="110" height="110" viewBox="0 0 110 110" style={{ transform: "rotate(-90deg)" }}>
-                  <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="11" />
+                  <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(var(--border-rgb),0.12)" strokeWidth="11" />
                   {segments.map((seg) => (
                     <circle
                       key={seg.name}
@@ -443,8 +448,8 @@ function InvestmentSidebar({
           </div>
           <div className="flex flex-col gap-2">
             {[
-              { label: "ETF", value: etfValue, pct: etfPct, color: "#5aadaa" },
-              { label: "Stock", value: stockValue, pct: stockPct, color: "#d4a84a" },
+              { label: "ETF", value: etfValue, pct: etfPct, color: INVESTMENT_TEAL },
+              { label: "Stock", value: stockValue, pct: stockPct, color: INVESTMENT_GOLD },
             ].map(({ label, value, pct: p, color }) => (
               <div key={label} className="flex flex-col gap-1">
                 <div className="flex justify-between text-[10px]">
@@ -453,7 +458,7 @@ function InvestmentSidebar({
                 </div>
                 <div className="h-1.5 rounded-full bg-[rgba(var(--border-rgb),0.06)] overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-500"
+                    className="h-full rounded-full transition-[width,background] duration-500"
                     style={{ width: `${p}%`, background: color }}
                   />
                 </div>
@@ -473,7 +478,6 @@ function InvestmentSidebar({
           <div className="flex flex-col gap-1.5">
             {topPerformers.map((inv, i) => {
               const pnlP = investmentPnlPct(inv);
-              const pnl = investmentPnl(inv);
               const isPos = pnlP >= 0;
               return (
                 <div
@@ -484,8 +488,8 @@ function InvestmentSidebar({
                   <span
                     className="text-[10px] font-bold w-4 h-4 rounded flex items-center justify-center shrink-0"
                     style={{
-                      background: i === 0 ? "rgba(212,168,74,0.15)" : "rgba(var(--surface-rgb),0.07)",
-                      color: i === 0 ? "#d4a84a" : "var(--tx-3)",
+                      background: i === 0 ? "rgba(196,160,107,0.16)" : "rgba(var(--surface-rgb),0.07)",
+                      color: i === 0 ? INVESTMENT_GOLD : "var(--tx-3)",
                     }}
                   >
                     {i + 1}
@@ -509,7 +513,7 @@ function InvestmentSidebar({
                 <div className="border-t border-[rgba(var(--border-rgb),0.05)] my-0.5" />
                 <div
                   className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
-                  style={{ background: "rgba(239,68,68,0.04)" }}
+                  style={{ background: "rgba(var(--color-loss-rgb),0.05)" }}
                 >
                   <Flame size={10} className="text-loss shrink-0" />
                   <span className="font-mono text-[11px] font-semibold text-tx-2 flex-1">{worstPerformer.ticker}</span>
@@ -539,8 +543,8 @@ function InvestmentSidebar({
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold"
                     style={{
-                      background: isSoon ? "rgba(212,168,74,0.1)" : "rgba(90,173,170,0.08)",
-                      color: isSoon ? "#d4a84a" : "#5aadaa",
+                      background: isSoon ? "rgba(196,160,107,0.12)" : "rgba(118,153,141,0.10)",
+                      color: isSoon ? INVESTMENT_GOLD : INVESTMENT_TEAL,
                     }}
                   >
                     {days === 0 ? "!" : Number.isFinite(days) ? `${days}d` : "—"}
@@ -595,6 +599,8 @@ function InvestmentSidebar({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function InvestmentsPage() {
+  const location = useLocation();
+  const handledViewIntent = useRef<string | null>(null);
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
   const investments: Investment[] = data.investments ?? [];
@@ -699,6 +705,53 @@ export default function InvestmentsPage() {
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.investments, isBW);
   const [filters, setFilters] = useState({ performance: "all", sort: "value" });
+  const currentView = useMemo(
+    () => ({
+      route: "/investments",
+      title: "Investment holdings view",
+      description: "Holdings search and portfolio filters",
+      state: {
+        search,
+        filters,
+      },
+    }),
+    [filters, search]
+  );
+  useRegisterPageView(currentView);
+
+  useEffect(() => {
+    const viewIntent = getViewIntentState(location.state);
+    const requestKey = viewIntent?.id ?? null;
+
+    if (!viewIntent || viewIntent.route !== "/investments") {
+      handledViewIntent.current = null;
+      return;
+    }
+    if (handledViewIntent.current === requestKey) return;
+
+    if (typeof viewIntent.state.search === "string") {
+      setSearch(viewIntent.state.search);
+    }
+
+    const nextFilters =
+      viewIntent.state.filters &&
+      typeof viewIntent.state.filters === "object" &&
+      !Array.isArray(viewIntent.state.filters)
+        ? (viewIntent.state.filters as Partial<typeof filters>)
+        : null;
+
+    if (nextFilters) {
+      setFilters((prev) => ({
+        performance:
+          typeof nextFilters.performance === "string"
+            ? nextFilters.performance
+            : prev.performance,
+        sort: typeof nextFilters.sort === "string" ? nextFilters.sort : prev.sort,
+      }));
+    }
+
+    handledViewIntent.current = requestKey;
+  }, [location.state]);
 
   // ── T212 sync ─────────────────────────────────────────────────────────────
   const syncT212 = useCallback(async () => {
@@ -948,7 +1001,7 @@ export default function InvestmentsPage() {
     }));
   }
 
-  const activeSubs = subscriptions.filter((s) => !s.cancelled);
+  const activeSubs = subscriptions.filter((s) => !s.cancelled && toNum(s.amount) > 0);
   const cancelledSubs = subscriptions.filter((s) => s.cancelled);
   const totalMonthlySubs = activeSubs.reduce((s, sub) => s + monthlySubCost(sub), 0);
   const annualSubCost = activeSubs.reduce((sum, s) => sum + monthlySubCost(s) * 12, 0);
@@ -964,46 +1017,47 @@ export default function InvestmentsPage() {
       : "Never synced";
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6 xl:gap-7">
       {/* ── Header ── */}
-      <div className="mb-6">
-        <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>Investments</div>
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <h1 className="page-title">Investment Portfolio</h1>
-            {/* T212 status pill */}
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
-              style={{
-                background: connected ? "rgba(34,197,94,0.08)" : "rgba(100,116,139,0.08)",
-                border: `1px solid ${connected ? "rgba(34,197,94,0.2)" : "rgba(100,116,139,0.15)"}`,
-                color: connected ? "var(--color-profit)" : "#64748b",
-              }}
-            >
-              {connected ? <Wifi size={9} /> : <WifiOff size={9} />}
-              T212 {connected ? "live" : "offline"}
-            </div>
+      <PageHeader
+        eyebrow="Investments"
+        title="Investment Portfolio"
+        meta={
+          <div
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold"
+            style={{
+              background: connected ? "rgba(34,197,94,0.08)" : "rgba(100,116,139,0.08)",
+              border: `1px solid ${connected ? "rgba(34,197,94,0.2)" : "rgba(100,116,139,0.15)"}`,
+              color: connected ? "var(--color-profit)" : INVESTMENT_MUTED,
+            }}
+          >
+            {connected ? <Wifi size={9} /> : <WifiOff size={9} />}
+            T212 {connected ? "live" : "offline"}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-tx-4 hidden sm:block">{lastSyncText}</span>
-            <button className="btn-ghost btn-sm" onClick={syncT212} disabled={syncing}>
+        }
+        actions={
+          <>
+            <span className="text-[10px] text-tx-4">{lastSyncText}</span>
+            <div className="flex w-full gap-2 sm:w-auto">
+            <button className="btn-ghost btn-sm flex-1 sm:flex-none" onClick={syncT212} disabled={syncing}>
               <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />
-              {syncing ? "Syncing..." : "Sync"}
+              {syncing ? "Syncing…" : "Sync"}
             </button>
-            <button className="btn-primary btn-sm" onClick={() => setShowAddInv(true)}>
+            <button className="btn-primary btn-sm flex-1 sm:flex-none" onClick={() => setShowAddInv(true)}>
               <Plus size={14} />
               Add Holding
             </button>
-          </div>
-        </div>
-      </div>
+            </div>
+          </>
+        }
+      />
 
       {/* Sync error — compact banner */}
       {/* ── T212 API Key Banner ── */}
       {!apiKey && !showApiKeyInput && (
         <div
-          className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-xs -mt-2"
-          style={{ background: bwColor("rgba(99,102,241,0.06)", isBW), border: `1px solid ${bwColor("rgba(99,102,241,0.18)", isBW)}` }}
+          className="flex flex-col items-start justify-between gap-3 px-4 py-3 rounded-xl text-xs -mt-2 sm:flex-row sm:items-center"
+          style={{ background: theme.dim, border: `1px solid ${theme.border}` }}
         >
           <div className="flex items-center gap-2.5">
             <WifiOff size={13} className="text-tx-3 shrink-0" />
@@ -1011,7 +1065,7 @@ export default function InvestmentsPage() {
           </div>
           <button
             className="btn-ghost btn-sm shrink-0"
-            style={{ color: bwColor("#818cf8", isBW) }}
+            style={{ color: theme.accent }}
             onClick={() => setShowApiKeyInput(true)}
           >
             Connect T212
@@ -1023,15 +1077,15 @@ export default function InvestmentsPage() {
       {showApiKeyInput && (
         <div
           className="flex flex-col gap-3 px-4 py-3.5 rounded-xl -mt-2"
-          style={{ background: bwColor("rgba(99,102,241,0.06)", isBW), border: `1px solid ${bwColor("rgba(99,102,241,0.18)", isBW)}` }}
+          style={{ background: theme.dim, border: `1px solid ${theme.border}` }}
         >
           <p className="text-[11px] font-semibold text-tx-2">
             Enter your T212 API key — generate one at <span className="text-tx-1">app.trading212.com → Settings → API</span>
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               className="nx-input flex-1 text-xs font-mono"
-              placeholder="Paste API key here..."
+              placeholder="Paste API key here…"
               value={apiKeyDraft}
               onChange={(e) => setApiKeyDraft(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && saveApiKey()}
@@ -1087,14 +1141,14 @@ export default function InvestmentsPage() {
         {([
           {
             label: "Total Value", value: fmtGBP(stats.totalValue), sub: "T212 + manual",
-            color: bwColor("#5aadaa", isBW), bg: bwColor("rgba(90,173,170,0.06)", isBW), border: bwColor("rgba(90,173,170,0.18)", isBW),
-            icon: <BarChart3 size={13} style={{ color: bwColor("#5aadaa", isBW), opacity: 0.7 }} />,
+            color: bwColor(INVESTMENT_TEAL, isBW), bg: bwColor("rgba(118,153,141,0.08)", isBW), border: bwColor("rgba(118,153,141,0.20)", isBW),
+            icon: <BarChart3 size={13} style={{ color: bwColor(INVESTMENT_TEAL, isBW), opacity: 0.7 }} />,
             delay: 0,
           },
           {
             label: "Cost Basis", value: fmtGBP(stats.totalInvested), sub: "Amount invested",
-            color: bwColor("#5b8bbf", isBW), bg: bwColor("rgba(91,139,191,0.06)", isBW), border: bwColor("rgba(91,139,191,0.18)", isBW),
-            icon: <Layers size={13} style={{ color: bwColor("#5b8bbf", isBW), opacity: 0.7 }} />,
+            color: bwColor(INVESTMENT_BLUE, isBW), bg: bwColor("rgba(127,153,172,0.08)", isBW), border: bwColor("rgba(127,153,172,0.20)", isBW),
+            icon: <Layers size={13} style={{ color: bwColor(INVESTMENT_BLUE, isBW), opacity: 0.7 }} />,
             delay: 60,
           },
           {
@@ -1111,8 +1165,8 @@ export default function InvestmentsPage() {
           },
           {
             label: "Free Cash", value: fmtGBP(t212.free_cash ?? 0), sub: "Available in T212",
-            color: "var(--color-orange)", bg: "rgba(212,168,74,0.06)", border: "rgba(212,168,74,0.18)",
-            icon: <Flame size={13} style={{ color: "var(--color-orange)", opacity: 0.7 }} />,
+            color: INVESTMENT_GOLD, bg: "rgba(196,160,107,0.08)", border: "rgba(196,160,107,0.20)",
+            icon: <Flame size={13} style={{ color: INVESTMENT_GOLD, opacity: 0.7 }} />,
             delay: 180,
           },
         ] as const).map(({ label, value, sub, color, bg, border, icon, delay }) => (
@@ -1132,10 +1186,10 @@ export default function InvestmentsPage() {
       </div>
 
       {/* ── 2-Column Layout ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_272px] gap-5 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_272px] gap-6 xl:gap-7 items-start">
 
         {/* ── MAIN COLUMN ── */}
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6 xl:gap-7">
 
           {/* Holdings Table */}
           <div className="card p-5 flex flex-col gap-3">
@@ -1145,7 +1199,7 @@ export default function InvestmentsPage() {
                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-3" />
                 <input
                   className="nx-input pl-8 py-1.5 text-xs w-48"
-                  placeholder="Search ticker or name..."
+                  placeholder="Search ticker or name…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -1178,7 +1232,7 @@ export default function InvestmentsPage() {
                 const maxAbsPct = Math.max(...filteredInvestments.map((i) => Math.abs(investmentPnlPct(i))), 1);
                 const barW = Math.min(100, (Math.abs(pnlP) / maxAbsPct) * 100);
                 const rank = idx + 1;
-                const rankColors = [bwColor("#f59e0b", isBW), bwColor("#94a3b8", isBW), bwColor("#c2763a", isBW)];
+                const rankColors = [bwColor(INVESTMENT_GOLD, isBW), bwColor(INVESTMENT_BLUE, isBW), bwColor("#a97955", isBW)];
 
                 return (
                   <div
@@ -1256,7 +1310,7 @@ export default function InvestmentsPage() {
                       </div>
                       <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                         <div
-                          className="h-full rounded-full transition-all duration-500"
+                          className="h-full rounded-full transition-[width,background] duration-500"
                           style={{ width: `${barW}%`, background: `linear-gradient(90deg, ${accentColor}99, ${accentColor})` }}
                         />
                       </div>
@@ -1269,7 +1323,7 @@ export default function InvestmentsPage() {
             <div className="hidden overflow-x-auto -mx-4 md:mx-0 md:block">
               <table className="min-w-[600px] w-full text-xs px-4 md:px-0">
                 <thead>
-                  <tr className="border-b" style={{ borderColor: "rgba(90,173,170,0.06)" }}>
+                  <tr className="border-b" style={{ borderColor: "rgba(118,153,141,0.08)" }}>
                     {["Ticker", "Name", "Type", "Units", "Avg Cost", "Current", "Value", "P&L", "P&L%", ""].map((h) => (
                       <th key={h} className="text-left py-2 px-2 text-tx-4 uppercase tracking-wide font-medium">
                         {h}
@@ -1307,11 +1361,11 @@ export default function InvestmentsPage() {
                     const maxAbsPct = Math.max(...filteredInvestments.map((i) => Math.abs(investmentPnlPct(i))), 1);
                     const barW = Math.min(100, (Math.abs(pnlP) / maxAbsPct) * 100);
                     const rank = idx + 1; // sorted by pnlPct desc
-                    const rankColors = [bwColor("#f59e0b", isBW), bwColor("#94a3b8", isBW), bwColor("#c2763a", isBW)];
+                    const rankColors = [bwColor(INVESTMENT_GOLD, isBW), bwColor(INVESTMENT_BLUE, isBW), bwColor("#a97955", isBW)];
                     return (
                       <tr
                         key={inv.id}
-                        className="border-b transition-all duration-150 group"
+                        className="group border-b transition-colors duration-150"
                         style={{
                           borderColor: "rgba(var(--border-rgb),0.06)",
                           background: isProfit ? "rgba(34,197,94,0.025)" : "rgba(239,68,68,0.025)",
@@ -1354,7 +1408,7 @@ export default function InvestmentsPage() {
                               {isProfit ? "+" : ""}{pnlP.toFixed(2)}%
                             </span>
                             <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
-                              <div className="h-full rounded-full transition-all duration-500"
+                              <div className="h-full rounded-full transition-[width,background] duration-500"
                                 style={{ width: `${barW}%`, background: `linear-gradient(90deg, ${accentColor}99, ${accentColor})` }} />
                             </div>
                           </div>
@@ -1408,7 +1462,7 @@ export default function InvestmentsPage() {
                     <div
                       key={wt.id}
                       className="rounded-xl p-4 flex flex-col gap-3 group"
-                      style={{ background: "rgba(90,173,170,0.03)", border: "1px solid rgba(90,173,170,0.08)" }}
+                      style={{ background: "rgba(118,153,141,0.04)", border: "1px solid rgba(118,153,141,0.10)" }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
@@ -1466,7 +1520,7 @@ export default function InvestmentsPage() {
                             <span className="text-[10px] text-tx-4">/ {fmtGBP(wt.target)}</span>
                           </div>
                           <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
-                            <div className="h-full rounded-full transition-all duration-700"
+                            <div className="h-full rounded-full transition-[width,background] duration-700"
                               style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${ringColor}99, ${ringColor})` }} />
                           </div>
                           <div className="flex justify-between mt-1 text-[10px]">
@@ -1495,7 +1549,7 @@ export default function InvestmentsPage() {
                 <h2 className="font-semibold text-tx-1">Subscriptions</h2>
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
-                  style={{ background: bwColor("rgba(90,173,170,0.08)", isBW), color: bwColor("#5aadaa", isBW), border: `1px solid ${bwColor("rgba(90,173,170,0.15)", isBW)}` }}
+                  style={{ background: bwColor("rgba(118,153,141,0.10)", isBW), color: bwColor(INVESTMENT_TEAL, isBW), border: `1px solid ${bwColor("rgba(118,153,141,0.18)", isBW)}` }}
                 >
                   {fmtGBP(totalMonthlySubs)}/mo
                 </span>
@@ -1523,7 +1577,7 @@ export default function InvestmentsPage() {
                 {/* Annual cost bar */}
                 <div
                   className="flex items-center justify-between px-3 py-2 rounded-lg mb-3"
-                  style={{ background: "rgba(90,173,170,0.05)", border: "1px solid rgba(90,173,170,0.1)" }}
+                  style={{ background: "rgba(118,153,141,0.06)", border: "1px solid rgba(118,153,141,0.12)" }}
                 >
                   <span className="text-xs text-tx-3">Annual cost</span>
                   <span className="text-sm font-semibold tabular-nums text-tx-1">{fmtGBP(annualSubCost)} / yr</span>
@@ -1544,8 +1598,8 @@ export default function InvestmentsPage() {
                         key={sub.id}
                         className="group flex flex-col gap-2 px-4 py-3 rounded-xl transition-colors"
                         style={{
-                          background: isUrgent ? "rgba(239,68,68,0.04)" : "rgba(90,173,170,0.03)",
-                          border: `1px solid ${isUrgent ? "rgba(239,68,68,0.15)" : isUpcoming ? "rgba(245,158,11,0.15)" : "rgba(90,173,170,0.07)"}`,
+                          background: isUrgent ? "rgba(239,68,68,0.04)" : "rgba(118,153,141,0.035)",
+                          border: `1px solid ${isUrgent ? "rgba(239,68,68,0.15)" : isUpcoming ? "rgba(196,160,107,0.18)" : "rgba(118,153,141,0.10)"}`,
                         }}
                       >
                         <div className="flex items-center justify-between">
@@ -1560,14 +1614,14 @@ export default function InvestmentsPage() {
                               )}
                               {isUpcoming && (
                                 <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wider"
-                                  style={{ background: "rgba(212,168,74,0.12)", color: "#d4a84a", border: "1px solid rgba(212,168,74,0.2)" }}>
+                                  style={{ background: "rgba(196,160,107,0.12)", color: INVESTMENT_GOLD, border: "1px solid rgba(196,160,107,0.2)" }}>
                                   {days}d
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-2 text-xs text-tx-3">
                               <span style={{ color: urgentColor }}>Renews {fmtShortDate(sub.nextRenewal)}</span>
-                              {sub.notes && <><span>·</span><span className="truncate max-w-[120px]">{sub.notes}</span></>}
+                              {sub.notes && <><span>·</span><span className="max-w-[220px] break-words text-tx-4 sm:line-clamp-1">{sub.notes}</span></>}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">
@@ -1586,10 +1640,10 @@ export default function InvestmentsPage() {
                         </div>
                         {/* Cost share bar */}
                         <div className="h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
-                          <div className="h-full rounded-full transition-all duration-500"
+                          <div className="h-full rounded-full transition-[width,background] duration-500"
                             style={{
                               width: `${shareOfTotal}%`,
-                              background: isUrgent ? "#dc404066" : isUpcoming ? "#d4a84a66" : "rgba(90,173,170,0.5)",
+                              background: isUrgent ? "#dc404066" : isUpcoming ? "#c4a06b66" : "rgba(118,153,141,0.55)",
                             }} />
                         </div>
                       </div>
@@ -1624,7 +1678,7 @@ export default function InvestmentsPage() {
                         >
                           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                             <span className="text-sm font-medium text-tx-3 line-through">{sub.name}</span>
-                            <span className="text-xs text-tx-4">
+                            <span className="text-xs text-tx-4 break-words">
                               Stopped {sub.cancelledAt ? fmtShortDate(sub.cancelledAt) : ""}
                               {sub.notes && <> · {sub.notes}</>}
                             </span>
@@ -1643,7 +1697,7 @@ export default function InvestmentsPage() {
                 )}
 
                 {/* Total monthly cost footer */}
-                <div className="pt-3 border-t flex justify-between text-sm" style={{ borderColor: "rgba(90,173,170,0.06)" }}>
+                <div className="pt-3 border-t flex justify-between text-sm" style={{ borderColor: "rgba(118,153,141,0.08)" }}>
                   <span className="text-tx-3">Total monthly cost</span>
                   <span className="font-semibold text-tx-1">{fmtGBP(totalMonthlySubs)}</span>
                 </div>
@@ -1818,7 +1872,7 @@ export default function InvestmentsPage() {
                   type="button"
                   onClick={() => setTargetForm((f) => ({ ...f, emoji: e }))}
                   className={cn(
-                    "w-8 h-8 rounded-lg text-lg flex items-center justify-center transition-all",
+                    "flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors",
                     targetForm.emoji === e
                       ? "bg-[rgba(var(--border-rgb),0.12)] ring-1 ring-[rgba(var(--border-rgb),0.2)]"
                       : "bg-[rgba(var(--border-rgb),0.04)] hover:bg-[rgba(var(--surface-rgb),0.08)]"

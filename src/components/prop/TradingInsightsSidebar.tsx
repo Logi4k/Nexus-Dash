@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { PoundSterling, Trophy } from "lucide-react";
 import { fmtGBP, cn, toNum } from "@/lib/utils";
-import { useBWMode } from "@/lib/useBWMode";
 import type { Account, Withdrawal, PassedChallenge, Expense } from "@/types";
 
 const FIRMS = [
@@ -15,7 +14,6 @@ const FIRMS = [
 ] as const;
 
 const isFundedStatus = (s: string) => s.toLowerCase().trim() === "funded";
-const isChallengeStatus = (s: string) => s.toLowerCase().trim() === "challenge";
 const isBreachedStatus = (s: string) => s.toLowerCase().trim() === "breached";
 
 export function TradingInsightsSidebar({
@@ -29,7 +27,6 @@ export function TradingInsightsSidebar({
   accounts: Account[];
   passedChallenges: PassedChallenge[];
 }) {
-  const bw = useBWMode();
   const [taxRate, setTaxRate] = useState(20);
   const firmData = useMemo(() => FIRMS.map((firm) => {
     const spent  = expenses.filter((e) => e.description === firm).reduce((s, e) => s + toNum(e.amount), 0);
@@ -41,11 +38,7 @@ export function TradingInsightsSidebar({
   const totalEarned = firmData.reduce((s, f) => s + f.earned, 0);
 
   const funded    = accounts.filter((a) => isFundedStatus(a.status)).length;
-  const challenge = accounts.filter((a) => isChallengeStatus(a.status)).length;
   const breached  = accounts.filter((a) => isBreachedStatus(a.status)).length;
-  const total     = accounts.length;
-
-  const recentPayouts = [...withdrawals].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   const avgPayout     = withdrawals.length > 0
     ? withdrawals.reduce((s, w) => s + toNum(w.gross), 0) / withdrawals.length
     : 0;

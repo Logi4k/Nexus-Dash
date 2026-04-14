@@ -22,10 +22,11 @@ interface Props {
 // Maps accentColor prop values to their CSS variable counterparts.
 // Each key maps to the bg/border CSS variable names defined in index.css.
 const ACCENT_VAR_MAP: Record<string, { bg: string; border: string }> = {
+  "var(--accent)":        { bg: "color-mix(in srgb, var(--accent) 10%, transparent)", border: "color-mix(in srgb, var(--accent) 24%, transparent)" },
   "var(--color-teal)":    { bg: "var(--color-teal-bg)",    border: "var(--color-teal-border)"    },
   "var(--color-warn)":    { bg: "var(--color-warn-bg)",    border: "var(--color-warn-border)"    },
   "var(--color-loss)":    { bg: "var(--color-loss-bg)",    border: "var(--color-loss-border)"    },
-  "var(--color-profit)":  { bg: "var(--color-teal-bg)",    border: "var(--color-teal-border)"    },
+  "var(--color-profit)":  { bg: "var(--color-profit-bg)",  border: "var(--color-profit-border)"  },
 };
 
 // Fallback colors for plain hex strings
@@ -54,7 +55,7 @@ function getAccentStyles(accentColor: string) {
 export default function StatCard({
   label, value, prefix = "£", suffix = "", decimals = 2, icon,
   change, changeSuffix = "%", large = false, subLabel,
-  className, delay, accentColor = "#f1f5f9",
+  className, delay, accentColor = "var(--accent)",
 }: Props) {
   const { bg, border } = getAccentStyles(accentColor);
 

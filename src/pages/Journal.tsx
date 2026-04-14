@@ -2,11 +2,12 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
 import CustomSelect from "@/components/CustomSelect";
-import { createPortal } from "react-dom";
 import { TradeImageGallery } from "@/components/journal/TradeImageGallery";
 import { PendingImageList } from "@/components/journal/PendingImageList";
 import { Lightbox } from "@/components/journal/Lightbox";
 import { TradeRow, openTradeImages } from "@/components/journal/TradeRow";
+import { DayStatsStrip } from "@/components/journal/DayStatsStrip";
+import { TradeLogFilters, type TradeLogFiltersState } from "@/components/journal/TradeLogFilters";
 import { toast } from 'sonner';
 import { useLocation } from "react-router-dom";
 import { PAGE_THEMES } from "@/lib/theme";
@@ -16,9 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
-  Trash2,
   Edit2,
-  TrendingUp,
   Calendar,
   Zap,
   Target,
@@ -30,9 +29,7 @@ import {
   ZoomIn,
   Trophy,
   Sigma,
-  Activity,
   NotebookPen,
-  SlidersHorizontal,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, Cell,
@@ -55,9 +52,37 @@ import {
   inferTradeAccountPhase,
   getCurrentAccountTradePhase,
 } from "@/lib/tradePhases";
-import { cn, fmtUSD, generateId, FUTURES_CONTRACTS } from "@/lib/utils";
+import { cn, fmtUSD, generateId } from "@/lib/utils";
+import {
+  DRAFT_KEY,
+  INSTRUMENTS,
+  LOSS,
+  POINT_VALUE,
+  PROFIT,
+  type LightboxState,
+  emptyTradeForm,
+  fmtDisplayDate,
+  getAccountPhaseColor,
+  getFeePerSide,
+  getInstrumentColor,
+  getTradePhaseColors,
+  getTradePhaseLabel,
+  lastNDays,
+  loadCustomInstruments,
+  saveCustomInstrument,
+  deleteCustomInstrument,
+  loadCustomSessions,
+  saveCustomSession,
+  deleteCustomSession,
+  nextDay,
+  prevDay,
+  todayISO,
+} from "@/lib/journal";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
+import { ChartTooltipCard } from "@/components/ui/chart-tooltip-card";
 import Modal from "@/components/Modal";
+import { useRegisterPageView } from "@/components/PageViewContext";
+import { getViewIntentState } from "@/lib/viewIntents";
 import {
   saveImage,
   getImagesWithCloudFallback,
@@ -70,162 +95,12 @@ import {
 } from "@/lib/imageStore";
 import type { JournalEntry, TradeEntry } from "@/types";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const INSTRUMENTS = ["ES", "NQ", "YM", "RTY", "CL", "GC", "MES", "MNQ", "MYM", "MCL", "MGC"];
-const PROFIT = "#22c55e";
-const LOSS   = "#f87171";
-
-// ─── Prop firm fee tables (per side, per contract) ────────────────────────────
-// Source: Lucid Trading support.lucidtrading.com · Tradeify help.tradeify.co
-const FIRM_FEES: Record<string, Record<string, number>> = {
-  lucid: {
-    ES: 1.75, MES: 0.50,
-    NQ: 1.75, MNQ: 0.50,
-    YM: 1.75, MYM: 0.50,
-    RTY: 1.75, M2K: 0.50,
-    CL: 2.00, MCL: 0.50,
-    GC: 2.30, MGC: 0.80,
-    SI: 2.30, PL: 2.30, HG: 2.30,
-    DEFAULT: 1.75,
-  },
-  tradeify: {
-    // Per-side fees verified from user trade data (exchange + NFA + platform)
-    ES: 2.84,  MES: 0.87,
-    NQ: 2.84,  MNQ: 0.87,
-    YM: 2.84,  MYM: 0.87,
-    RTY: 2.84, M2K: 0.87,
-    CL: 2.84,  MCL: 1.02,
-    GC: 1.02,  MGC: 1.02,
-    DEFAULT: 1.74,
-  },
-};
-
-function getFeePerSide(firm: string, instrument: string): number {
-  const table = FIRM_FEES[firm];
-  if (!table) return 0;
-  return table[instrument] ?? table.DEFAULT ?? 0;
-}
-
-// Build a quick symbol → pointValue lookup from the shared FUTURES_CONTRACTS list
-const POINT_VALUE: Record<string, number> = Object.fromEntries(
-  FUTURES_CONTRACTS.map((c) => [c.symbol, c.pointValue])
-);
-
-// Instrument color families — keep in sync with --color-instr-* tokens in index.css
-const INSTRUMENT_COLOR: Record<string, string> = {
-  ES: "#5b7fa3", NQ: "#8b7da3", YM: "#c49060", RTY: "#5aadaa",
-  MES: "#5b7fa3", MNQ: "#8b7da3", MYM: "#c49060",
-  CL: "#d4a84a", MCL: "#d4a84a",
-  GC: "#b8a040", MGC: "#b8a040",
-};
-const getInstrumentColor = (s: string) => INSTRUMENT_COLOR[s] ?? "#60a5fa";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtDisplayDate(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-}
-
-function fmtShortDate(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-}
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function prevDay(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
-
-function nextDay(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
-}
-
-// Returns the last N calendar days ending at `anchor` (inclusive)
-function lastNDays(anchor: string, n: number): string[] {
-  const days: string[] = [];
-  const d = new Date(anchor + "T00:00:00");
-  for (let i = n - 1; i >= 0; i--) {
-    const dd = new Date(d);
-    dd.setDate(d.getDate() - i);
-    days.push(dd.toISOString().slice(0, 10));
-  }
-  return days;
-}
-
-// ─── Mood & Bias config ───────────────────────────────────────────────────────
-
-
-const DRAFT_KEY = "nexus_trade_draft";
-
-type LightboxState = {
-  images: string[];
-  index: number;
-};
-
-// ─── Trade Form defaults ──────────────────────────────────────────────────────
-
-function emptyTradeForm() {
-  return {
-    date: todayISO(),
-    time: new Date().toTimeString().slice(0, 5),
-    instrument: "ES",
-    direction: "long" as "long" | "short",
-    entryPrice: "",
-    stopLoss: "",
-    exitPrice: "",
-    contracts: "1",
-    pnl: "",
-    fees: "",
-    setup: "",
-    session: "New York",
-    notes: "",
-    tags: [] as string[],
-    firm: "" as "" | "lucid" | "tradeify", // UI-only: used for auto-calc, not persisted
-    accountId: undefined as string | undefined,
-  };
-}
-
-
-// ─── Main Journal Page ────────────────────────────────────────────────────────
-
-function getAccountPhaseColor(status: string | undefined, isBW: boolean): string {
-  const phase = normalizeAccountStatus(status);
-  if (phase === "funded") return bwColor("#22c55e", isBW);
-  if (phase === "challenge") return bwColor("#d4a84a", isBW);
-  if (phase === "breached") return bwColor(LOSS, isBW);
-  return "var(--tx-3)";
-}
-
-function getTradePhaseLabel(phase: "challenge" | "funded" | undefined | null): string | null {
-  if (!phase) return null;
-  return phase === "funded" ? "Funded" : "Challenge";
-}
-
-function getTradePhaseColors(phase: "challenge" | "funded" | undefined | null, bw: boolean) {
-  const text = phase === "funded" ? bwColor("#22c55e", bw) : bwColor("#d4a84a", bw);
-  const background = phase === "funded"
-    ? bwColor("rgba(34,197,94,0.10)", bw)
-    : bwColor("rgba(212,168,74,0.14)", bw);
-  const border = phase === "funded"
-    ? bwColor("rgba(34,197,94,0.22)", bw)
-    : bwColor("rgba(212,168,74,0.28)", bw);
-  return { text, background, border };
-}
-
 export default function Journal() {
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
   const location = useLocation();
   const handledLocationAction = useRef<string | null>(null);
+  const handledViewIntent = useRef<string | null>(null);
 
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [addTradeOpen, setAddTradeOpen] = useState(false);
@@ -233,16 +108,17 @@ export default function Journal() {
   const [viewTradeId, setViewTradeId] = useState<string | null>(null);
   const [tradeForm, setTradeForm] = useState(emptyTradeForm);
   const [tagInput, setTagInput] = useState("");
-  const [autoSaveLabel, setAutoSaveLabel] = useState("");
   const [lightboxState, setLightboxState] = useState<LightboxState | null>(null);
 
   // Pending images for the current modal session (before trade is saved)
   const [pendingImages, setPendingImages] = useState<{ id: string; url: string }[]>([]);
   // Image IDs that were on the trade before editing started (so we can diff for deletes)
   const [originalImageIds, setOriginalImageIds] = useState<string[]>([]);
+  const [customInstruments, setCustomInstruments] = useState<string[]>(loadCustomInstruments);
+  const [customSessions, setCustomSessions] = useState<string[]>(loadCustomSessions);
 
-  const allInstruments = [...INSTRUMENTS, "Other"];
-  const allSessions = ["Asia", "London", "New York", "London Close", "Other"];
+  const allInstruments = [...INSTRUMENTS, ...customInstruments, "Other"];
+  const allSessions = ["Asia", "London", "New York", "London Close", ...customSessions, "Other"];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [collapsedTradeAccounts, setCollapsedTradeAccounts] = useState<Record<string, boolean>>({});
@@ -259,17 +135,30 @@ export default function Journal() {
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.journal, isBW);
   const getInstrColor = (s: string) => bwColor(getInstrumentColor(s), isBW);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<TradeLogFiltersState>({
     direction: "all",
     outcome: "all",
-    phase: "all" as "all" | "challenge" | "funded",
+    phase: "all",
     sort: "date",
-    accountId: undefined as string | undefined,
+    accountId: undefined,
   });
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
   });
+  const currentView = useMemo(
+    () => ({
+      route: "/journal",
+      title: "Journal view",
+      description: "Selected date and trade log filters",
+      state: {
+        date: selectedDate,
+        filters,
+      },
+    }),
+    [filters, selectedDate]
+  );
+  useRegisterPageView(currentView);
 
   useEffect(() => {
     const quickAction = getQuickActionState(location.state);
@@ -290,7 +179,7 @@ export default function Journal() {
       if (draft) {
         try {
           const parsed = JSON.parse(draft);
-          setTradeForm({ ...parsed, date: selectedDate });
+          setTradeForm({ ...emptyTradeForm(), ...parsed, date: selectedDate });
           toast("Draft restored", { duration: 2000 });
         } catch {
           setTradeForm({ ...emptyTradeForm(), date: selectedDate });
@@ -301,6 +190,44 @@ export default function Journal() {
       setAddTradeOpen(true);
     }
   }, [location.state, selectedDate]);
+
+  useEffect(() => {
+    const viewIntent = getViewIntentState(location.state);
+    const requestKey = viewIntent?.id ?? null;
+
+    if (!viewIntent || viewIntent.route !== "/journal") {
+      handledViewIntent.current = null;
+      return;
+    }
+    if (handledViewIntent.current === requestKey) return;
+
+    const nextDate =
+      typeof viewIntent.state.date === "string" ? viewIntent.state.date : null;
+    const nextFilters =
+      viewIntent.state.filters &&
+      typeof viewIntent.state.filters === "object" &&
+      !Array.isArray(viewIntent.state.filters)
+        ? (viewIntent.state.filters as Partial<TradeLogFiltersState>)
+        : null;
+
+    if (nextDate) {
+      setSelectedDate(nextDate);
+    }
+    if (nextFilters) {
+      setFilters((prev) => ({
+        direction: nextFilters.direction ?? prev.direction,
+        outcome: nextFilters.outcome ?? prev.outcome,
+        phase: nextFilters.phase ?? prev.phase,
+        sort: nextFilters.sort ?? prev.sort,
+        accountId:
+          "accountId" in nextFilters
+            ? (nextFilters.accountId as string | undefined)
+            : prev.accountId,
+      }));
+    }
+
+    handledViewIntent.current = requestKey;
+  }, [location.state]);
 
   // ── Auto-save trade form draft to localStorage (new trades only) ──
   useEffect(() => {
@@ -339,11 +266,8 @@ export default function Journal() {
 
   // ── Journal entry for selected date ──
   const entries: JournalEntry[] = data.journalEntries ?? [];
-  const entry = entries.find((e) => e.date === selectedDate);
 
   // ── Derived values for current entry ──
-  const notes     = entry?.notes ?? "";
-
   // ── Trades for selected date ──
   const allTrades: TradeEntry[] = data.tradeJournal ?? [];
   const activeAccounts = useMemo(
@@ -656,37 +580,6 @@ export default function Journal() {
     [breachedAccountsWithTrades, filters.accountId, filters.phase, selectedDayPhaseByAccount, tradesWithResolvedPhase]
   );
 
-  // ── Updater helper ──
-  function patchEntry(patch: Partial<Omit<JournalEntry, "id" | "date">>) {
-    update((prev) => {
-      const prevEntries: JournalEntry[] = prev.journalEntries ?? [];
-      const idx = prevEntries.findIndex((e) => e.date === selectedDate);
-      const existing = prevEntries[idx] ?? {
-        id: generateId(), date: selectedDate, notes: "", bias: "", mood: "", checklist: [],
-      };
-      const updated = { ...existing, ...patch };
-      const newEntries = idx >= 0
-        ? prevEntries.map((e, i) => (i === idx ? updated : e))
-        : [...prevEntries, updated];
-      return { ...prev, journalEntries: newEntries };
-    });
-  }
-
-  // ── Notes auto-save with debounce ──
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (notes !== (entry?.notes ?? "")) return;
-      setAutoSaveLabel("Saved ✓");
-      setTimeout(() => setAutoSaveLabel(""), 1800);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [notes, entry]);
-
-  function handleNotesChange(val: string) {
-    patchEntry({ notes: val });
-    setAutoSaveLabel("Saving…");
-  }
-
   // ── Image handlers ──
 
   async function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -726,6 +619,7 @@ export default function Journal() {
       date,
       time,
       instrument,
+      customInstrument,
       direction,
       entryPrice,
       stopLoss,
@@ -735,11 +629,15 @@ export default function Journal() {
       fees,
       setup,
       session,
+      customSession,
       notes: tradeNotes,
       tags,
       accountId,
     } = tradeForm;
-    if (!entryPrice || !exitPrice || !instrument.trim() || !contracts || Number(contracts) <= 0) return;
+    const resolvedInstrument = instrument === "Other" ? customInstrument.trim() : instrument.trim();
+    const resolvedSession = session === "Other" ? customSession.trim() : session.trim();
+    if (!entryPrice || !exitPrice || !resolvedInstrument || !contracts || Number(contracts) <= 0) return;
+    if (session === "Other" && !resolvedSession) return;
 
     const newPendingImages = pendingImages.filter((img) => !originalImageIds.includes(img.id));
 
@@ -764,7 +662,7 @@ export default function Journal() {
     const tradeData = {
       date,
       time,
-      instrument,
+      instrument: resolvedInstrument,
       direction,
       entryPrice: parseFloat(entryPrice) || 0,
       stopLoss: (stopLossVal !== undefined && stopLossVal > 0) ? stopLossVal : undefined,
@@ -773,7 +671,7 @@ export default function Journal() {
       pnl:        parseFloat(pnl)        || 0,
       fees:       parseFloat(fees)       || 0,
       setup,
-      session,
+      session: resolvedSession || undefined,
       notes: tradeNotes,
       tags: tags.length > 0 ? tags : undefined,
       imageIds: newImageIds,
@@ -806,6 +704,18 @@ export default function Journal() {
       toast.success('Trade logged');
     }
 
+    // Persist custom instrument if using "Other"
+    if (instrument === "Other" && resolvedInstrument) {
+      saveCustomInstrument(resolvedInstrument);
+      setCustomInstruments(loadCustomInstruments());
+    }
+
+    // Persist custom session if using "Other"
+    if (session === "Other" && resolvedSession) {
+      saveCustomSession(resolvedSession);
+      setCustomSessions(loadCustomSessions());
+    }
+
     localStorage.removeItem(DRAFT_KEY);
     setAddTradeOpen(false);
     setPendingImages([]);
@@ -815,10 +725,12 @@ export default function Journal() {
   }
 
   async function handleEditTrade(trade: TradeEntry) {
+    const presetSessions = ["Asia", "London", "New York", "London Close"];
     setTradeForm({
       date:       trade.date,
       time:       trade.time,
-      instrument: trade.instrument,
+      instrument: (INSTRUMENTS.includes(trade.instrument) || customInstruments.includes(trade.instrument)) ? trade.instrument : "Other",
+      customInstrument: (INSTRUMENTS.includes(trade.instrument) || customInstruments.includes(trade.instrument)) ? "" : trade.instrument,
       direction:  trade.direction,
       entryPrice: String(trade.entryPrice),
       stopLoss:   trade.stopLoss ? String(trade.stopLoss) : "",
@@ -827,7 +739,8 @@ export default function Journal() {
       pnl:        String(trade.pnl),
       fees:       String(trade.fees ?? ""),
       setup:      trade.setup   ?? "",
-      session:    trade.session ?? "New York",
+      session:    !trade.session || presetSessions.includes(trade.session) || customSessions.includes(trade.session) ? (trade.session ?? "New York") : "Other",
+      customSession: !trade.session || presetSessions.includes(trade.session) || customSessions.includes(trade.session) ? "" : trade.session,
       notes:      trade.notes   ?? "",
       tags:       trade.tags    ?? [],
       firm:       "" as "" | "lucid" | "tradeify",
@@ -931,7 +844,7 @@ export default function Journal() {
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
-        setTradeForm({ ...parsed, date: selectedDate });
+        setTradeForm({ ...emptyTradeForm(), ...parsed, date: selectedDate });
         toast("Draft restored", { duration: 2000 });
       } catch {
         setTradeForm({ ...emptyTradeForm(), date: selectedDate });
@@ -1062,7 +975,7 @@ export default function Journal() {
                       </div>
                       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.1)" }}>
                         <div
-                          className="h-full transition-all duration-300"
+                          className="h-full transition-[width,background] duration-300"
                           style={{
                             width: `${ruleSnapshot.progressPct ?? 0}%`,
                               background: "linear-gradient(90deg,#d4a84a,#d4a84a)",
@@ -1159,7 +1072,7 @@ export default function Journal() {
                         </div>
                         <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.1)" }}>
                           <div
-                            className="h-full transition-all duration-300"
+                            className="h-full transition-[width,background] duration-300"
                             style={{
                               width: `${ruleSnapshot.progressPct ?? 0}%`,
                               background: "linear-gradient(90deg,#d4a84a,#d4a84a)",
@@ -1338,7 +1251,7 @@ export default function Journal() {
                         key={iso}
                         onClick={() => setSelectedDate(iso)}
                         disabled={isFuture}
-                        className="flex flex-col items-center justify-center rounded-lg py-1 px-0.5 transition-all disabled:cursor-not-allowed"
+                        className="flex flex-col items-center justify-center rounded-lg py-1 px-0.5 transition-[background-color,border-color,opacity] disabled:cursor-not-allowed"
                         style={{
                           background: isSelected3 ? (net !== null && net >= 0 ? bwColor("rgba(34,197,94,0.2)", isBW) : net !== null ? bwColor("rgba(239,68,68,0.2)", isBW) : "rgba(var(--surface-rgb),0.1)") : bg,
                           border: isToday3 ? "1px solid rgba(var(--border-rgb),0.35)" : isSelected3 ? "1px solid rgba(var(--surface-rgb),0.4)" : "1px solid transparent",
@@ -1411,7 +1324,7 @@ export default function Journal() {
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setSelectedDate(prevDay(selectedDate))}
-                className="p-2 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-accent-subtle transition-all"
+                className="p-2 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-accent-subtle transition-colors"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -1435,7 +1348,7 @@ export default function Journal() {
               <button
                 onClick={() => setSelectedDate(nextDay(selectedDate))}
                 disabled={selectedDate >= today}
-                className="p-2 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-accent-subtle transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-accent-subtle transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronRight size={16} />
               </button>
@@ -1465,7 +1378,7 @@ export default function Journal() {
                       <button
                         key={d}
                         onClick={() => setSelectedDate(d)}
-                        className="flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-lg transition-all"
+                        className="flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-lg transition-[background-color,border-color,opacity]"
                         style={{
                           background: isSelected2 ? `${borderCol}15` : "transparent",
                           border: `1px solid ${isSelected2 ? borderCol + "50" : "transparent"}`,
@@ -1489,51 +1402,7 @@ export default function Journal() {
             })()}
 
             {/* Day stats strip — compact inline on mobile, cards on sm+ */}
-            {dayStats.total > 0 && (() => {
-              const statsItems = [
-                { label: "Trades",   value: String(dayStats.total),                                                       color: "var(--tx-3)", icon: <BarChart3 size={10} />, delay: 0 },
-                { label: "Win Rate", value: dayStats.winRate !== null ? `${dayStats.winRate.toFixed(0)}%` : "—",           color: bwColor("#5b8bbf", isBW), icon: <Target size={10} />, delay: 60 },
-                { label: "Gross",    value: fmtUSD(dayStats.gross), color: dayStats.gross >= 0 ? PROFIT : LOSS,        icon: <TrendingUp size={10} />, delay: 120 },
-                { label: "Net P&L",  value: fmtUSD(dayStats.net),   color: dayStats.net   >= 0 ? PROFIT : LOSS,        icon: <Activity size={10} />, delay: 180 },
-              ];
-              return (
-                <>
-                  {/* Mobile: compact single-line summary */}
-                  <div className="sm:hidden mt-3 pt-3 border-t border-border animate-fade-up">
-                    <div className="flex items-center justify-center gap-1.5 flex-wrap text-[11px] font-semibold tabular-nums">
-                      <span style={{ color: "var(--tx-2)" }}>{dayStats.total} trade{dayStats.total !== 1 ? "s" : ""}</span>
-                      <span className="text-tx-4">·</span>
-                      <span style={{ color: bwColor("#5b8bbf", isBW) }}>
-                        {dayStats.winRate !== null ? `${dayStats.winRate.toFixed(0)}% WR` : "—"}
-                      </span>
-                      <span className="text-tx-4">·</span>
-                      <span style={{ color: dayStats.net >= 0 ? PROFIT : LOSS }}>
-                        {dayStats.net >= 0 ? "+" : ""}{fmtUSD(dayStats.net)} net
-                      </span>
-                    </div>
-                  </div>
-                  {/* Desktop: full card grid */}
-                  <div className="hidden sm:grid w-full grid-cols-2 gap-2.5 mt-3 pt-3 border-t border-border md:grid-cols-4">
-                    {statsItems.map((s) => (
-                      <div
-                        key={s.label}
-                        className="w-full text-center py-3 px-3 rounded-xl min-w-0 animate-fade-up"
-                        style={{
-                          background: `${s.color}0d`,
-                          border: `1px solid ${s.color}25`,
-                          animationDelay: `${s.delay}ms`,
-                          animationFillMode: "both",
-                        }}
-                      >
-                        <div className="flex justify-center mb-1" style={{ color: s.color }}>{s.icon}</div>
-                        <p className="text-[10px] text-tx-3 uppercase tracking-wider mb-1">{s.label}</p>
-                        <p className="text-sm font-black tabular-nums truncate" style={{ color: s.color }}>{s.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
+            <DayStatsStrip dayStats={dayStats} isBW={isBW} />
           </div>
 
           {/* Trade Log */}
@@ -1557,124 +1426,17 @@ export default function Journal() {
             </div>
 
             {/* Filters row — collapsible on mobile, always visible on sm+ */}
-            {dayTrades.length > 0 && (() => {
-              const hasActiveFilters = filters.direction !== "all" || filters.outcome !== "all" || filters.phase !== "all" || filters.accountId !== undefined;
-              const filterContent = (
-                <div className={cn(
-                  "px-5 py-2.5 border-b border-border flex items-center gap-2 flex-wrap",
-                  "sm:flex",
-                  showMobileFilters ? "flex" : "hidden sm:flex"
-                )}>
-                  <span className="text-[10px] uppercase tracking-wider text-tx-4 font-semibold mr-1 hidden sm:inline">Filter</span>
-                  {/* Direction filter */}
-                  {(["all", "long", "short"] as const).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setFilters((f) => ({ ...f, direction: d }))}
-                      className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors border",
-                        filters.direction === d
-                          ? "bg-accent-muted border-accent text-accent"
-                          : "border-border text-tx-4 hover:text-tx-2"
-                      )}
-                    >
-                      {d === "all" ? "All" : d === "long" ? "Long" : "Short"}
-                    </button>
-                  ))}
-                  <span className="w-px h-3 bg-border mx-1" />
-                  {/* Outcome filter */}
-                  {(["all", "win", "loss"] as const).map((o) => (
-                    <button
-                      key={o}
-                      onClick={() => setFilters((f) => ({ ...f, outcome: o }))}
-                      className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors border",
-                        filters.outcome === o
-                          ? "bg-accent-muted border-accent text-accent"
-                          : "border-border text-tx-4 hover:text-tx-2"
-                      )}
-                    >
-                      {o === "all" ? "All" : o === "win" ? "Wins" : "Losses"}
-                    </button>
-                  ))}
-                  <span className="w-px h-3 bg-border mx-1" />
-                  {(["all", "challenge", "funded"] as const).map((phase) => (
-                    <button
-                      key={phase}
-                      onClick={() => setFilters((f) => ({ ...f, phase }))}
-                      className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors border",
-                        filters.phase === phase
-                          ? "bg-accent-muted border-accent text-accent"
-                          : "border-border text-tx-4 hover:text-tx-2"
-                      )}
-                    >
-                      {phase === "all" ? "All Phases" : phase === "challenge" ? "Challenge" : "Funded"}
-                    </button>
-                  ))}
-                  {/* Account filter */}
-                  {journalAccountOptions.length > 0 && (
-                    <>
-                      <span className="w-px h-3 bg-border mx-1" />
-                      <CustomSelect
-                        small
-                        value={filters.accountId ?? ""}
-                        onChange={v => setFilters(f => ({ ...f, accountId: v || undefined }))}
-                        placeholder="All Accounts"
-                        options={[
-                          { value: "", label: "All Accounts" },
-                          ...journalAccountOptions
-                        ]}
-                        inlineMobile
-                      />
-                    </>
-                  )}
-                  {/* Clear filters button */}
-                  {hasActiveFilters && (
-                    <>
-                      <span className="w-px h-3 bg-border mx-1" />
-                      <button
-                        onClick={() => setFilters({ direction: "all", outcome: "all", phase: "all", sort: "date", accountId: undefined })}
-                        className="text-[10px] px-2 py-0.5 rounded-full font-semibold border border-border text-tx-4 hover:text-tx-2 transition-colors"
-                      >
-                        Clear
-                      </button>
-                    </>
-                  )}
-                </div>
-              );
-              return (
-                <>
-                  {/* Mobile toggle button for filters */}
-                  <div className="sm:hidden px-5 py-2 border-b border-border flex items-center justify-between">
-                    <button
-                      onClick={() => setShowMobileFilters((v) => !v)}
-                      className={cn(
-                        "text-[10px] px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1.5 transition-colors",
-                        hasActiveFilters || showMobileFilters
-                          ? "bg-accent-muted border-accent text-accent"
-                          : "border-border text-tx-4 hover:text-tx-2"
-                      )}
-                    >
-                      <SlidersHorizontal size={10} />
-                      Filters
-                      {hasActiveFilters && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                      )}
-                    </button>
-                    {hasActiveFilters && (
-                      <button
-                        onClick={() => setFilters({ direction: "all", outcome: "all", phase: "all", sort: "date", accountId: undefined })}
-                        className="text-[10px] px-2 py-0.5 rounded-full font-semibold border border-border text-tx-4 hover:text-tx-2 transition-colors"
-                      >
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-                  {filterContent}
-                </>
-              );
-            })()}
+            {dayTrades.length > 0 && (
+              <TradeLogFilters
+                filters={filters}
+                journalAccountOptions={journalAccountOptions}
+                showMobileFilters={showMobileFilters}
+                onToggleMobileFilters={() => setShowMobileFilters((v) => !v)}
+                onFiltersChange={(next) => setFilters(next)}
+                onAccountChange={(accountId) => setFilters((f) => ({ ...f, accountId }))}
+                onClear={() => setFilters({ direction: "all", outcome: "all", phase: "all", sort: "date", accountId: undefined })}
+              />
+            )}
 
             {filteredDayTrades.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2">
@@ -1813,11 +1575,18 @@ export default function Journal() {
                           if (!active || !payload?.length) return null;
                           const v = payload[0].value as number;
                           return (
-                            <div style={{ background: "var(--bg-elevated)", border: "1px solid rgba(var(--border-rgb),0.12)", borderRadius: 6, padding: "4px 8px" }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: v >= 0 ? bwColor(PROFIT, isBW) : bwColor(LOSS, isBW) }}>
-                                {v >= 0 ? "+" : ""}{fmtUSD(v)}
-                              </span>
-                            </div>
+                            <ChartTooltipCard
+                              title="Equity"
+                              minWidth={108}
+                              rows={[
+                                {
+                                  label: "Net",
+                                  value: `${v >= 0 ? "+" : ""}${fmtUSD(v)}`,
+                                  toneClassName: v >= 0 ? "text-profit" : "text-loss",
+                                  emphasis: true,
+                                },
+                              ]}
+                            />
                           );
                         }}
                       />
@@ -1860,7 +1629,7 @@ export default function Journal() {
                   </div>
                   <div className="h-1.5 rounded-full overflow-hidden flex" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                     <div
-                      className="h-full rounded-l-full transition-all duration-500"
+                      className="h-full rounded-l-full transition-[width,background] duration-500"
                         style={{ width: `${(allStats.wins / allStats.total) * 100}%`, background: bwColor("linear-gradient(90deg,#3d8a5a,#4a9a7a)", isBW) }}
                     />
                     <div
@@ -1892,7 +1661,7 @@ export default function Journal() {
                         <div className="flex-1 h-3.5 rounded-sm overflow-hidden relative" style={{ background: "rgba(var(--surface-rgb),0.06)" }}>
                           {hasData && (
                             <div
-                              className="absolute left-0 top-0 h-full rounded-sm transition-all duration-500"
+                              className="absolute left-0 top-0 h-full rounded-sm transition-[width,background] duration-500"
                               style={{
                                 width: `${barW}%`,
                                 background: isPos
@@ -1949,12 +1718,18 @@ export default function Journal() {
                       if (!active || !payload?.length) return null;
                       const v = payload[0].value as number;
                       return (
-                        <div style={{ background: "var(--bg-elevated)", border: "1px solid rgba(var(--border-rgb),0.12)", borderRadius: 6, padding: "4px 8px" }}>
-                          <p style={{ fontSize: 9, color: "var(--tx-4)", marginBottom: 2 }}>{label}</p>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: v >= 0 ? bwColor(PROFIT, isBW) : bwColor(LOSS, isBW) }}>
-                            {v >= 0 ? "+" : ""}{fmtUSD(v)}
-                          </span>
-                        </div>
+                        <ChartTooltipCard
+                          title={String(label)}
+                          minWidth={120}
+                          rows={[
+                            {
+                              label: "Net",
+                              value: `${v >= 0 ? "+" : ""}${fmtUSD(v)}`,
+                              toneClassName: v >= 0 ? "text-profit" : "text-loss",
+                              emphasis: true,
+                            },
+                          ]}
+                        />
                       );
                     }}
                   />
@@ -1989,7 +1764,7 @@ export default function Journal() {
                       </span>
                       <div className="flex-1 h-3.5 rounded-sm overflow-hidden relative" style={{ background: "rgba(var(--surface-rgb),0.06)" }}>
                         <div
-                          className="absolute left-0 top-0 h-full rounded-sm transition-all duration-500"
+                          className="absolute left-0 top-0 h-full rounded-sm transition-[width,background] duration-500"
                           style={{
                             width: `${barW}%`,
                             background: isPos
@@ -2010,6 +1785,19 @@ export default function Journal() {
                           {s.count}t · {s.wr.toFixed(0)}%WR
                         </span>
                       </div>
+                      {!INSTRUMENTS.includes(s.label) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteCustomInstrument(s.label);
+                            setCustomInstruments(loadCustomInstruments());
+                          }}
+                          className="text-tx-4 hover:text-loss transition-colors p-0.5"
+                          title={`Remove ${s.label}`}
+                        >
+                          <X size={10} />
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -2065,11 +1853,31 @@ export default function Journal() {
               <label className="text-tx-3 text-xs block mb-1">Instrument</label>
               <CustomSelect
                 value={tradeForm.instrument}
-                onChange={(v) => setTradeForm((p) => ({ ...p, instrument: v }))}
+                onChange={(v) => setTradeForm((p) => ({
+                  ...p,
+                  instrument: v,
+                  customInstrument: v === "Other" ? p.customInstrument : "",
+                }))}
                 options={allInstruments.map((i) => ({ value: i, label: i }))}
                 placeholder="Select instrument"
                 allowCustom
+                customOptionValue="Other"
+                customValue={tradeForm.customInstrument}
+                onCustomValueChange={(v) => setTradeForm((p) => ({ ...p, customInstrument: v }))}
                 customLabel="Type instrument (e.g. NQ, MES)…"
+                onSaveCustom={(name) => {
+                  saveCustomInstrument(name);
+                  setCustomInstruments(loadCustomInstruments());
+                  setTradeForm((p) => ({ ...p, instrument: name, customInstrument: "" }));
+                }}
+                onDeleteOption={(name) => {
+                  deleteCustomInstrument(name);
+                  setCustomInstruments(loadCustomInstruments());
+                  if (tradeForm.instrument === name) {
+                    setTradeForm((p) => ({ ...p, instrument: "ES" }));
+                  }
+                }}
+                canDelete={(name) => !INSTRUMENTS.includes(name) && name !== "Other"}
               />
             </div>
           </div>
@@ -2082,7 +1890,7 @@ export default function Journal() {
                   <button
                     key={d}
                     onClick={() => setTradeForm((p) => ({ ...p, direction: d }))}
-                    className="flex-1 py-2 rounded-lg text-xs font-bold transition-all capitalize"
+                    className="flex-1 py-2 rounded-lg text-xs font-bold transition-[background-color,border-color,color] capitalize"
                     style={{
                       background: tradeForm.direction === d
                         ? (d === "long" ? bwColor("rgba(34,197,94,0.15)", isBW) : bwColor("rgba(239,68,68,0.15)", isBW))
@@ -2138,7 +1946,7 @@ export default function Journal() {
                 <button
                   key={f}
                   onClick={() => setTradeForm((p) => ({ ...p, firm: f }))}
-                  className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                  className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-[background-color,border-color,color]"
                   style={{
                     background: tradeForm.firm === f
                       ? f === "lucid"    ? "rgba(168,85,247,0.18)"
@@ -2298,11 +2106,31 @@ export default function Journal() {
               <label className="text-tx-3 text-xs block mb-1">Session</label>
               <CustomSelect
                 value={tradeForm.session}
-                onChange={(session) => setTradeForm((p) => ({ ...p, session }))}
+                onChange={(session) => setTradeForm((p) => ({
+                  ...p,
+                  session,
+                  customSession: session === "Other" ? p.customSession : "",
+                }))}
                 options={allSessions.map((s) => ({ value: s, label: s }))}
                 placeholder="Select session"
                 allowCustom
+                customOptionValue="Other"
+                customValue={tradeForm.customSession}
+                onCustomValueChange={(v) => setTradeForm((p) => ({ ...p, customSession: v }))}
                 customLabel="Type session…"
+                onSaveCustom={(name) => {
+                  saveCustomSession(name);
+                  setCustomSessions(loadCustomSessions());
+                  setTradeForm((p) => ({ ...p, session: name, customSession: "" }));
+                }}
+                onDeleteOption={(name) => {
+                  deleteCustomSession(name);
+                  setCustomSessions(loadCustomSessions());
+                  if (tradeForm.session === name) {
+                    setTradeForm((p) => ({ ...p, session: "New York" }));
+                  }
+                }}
+                canDelete={(name) => !["Asia", "London", "New York", "London Close"].includes(name) && name !== "Other"}
               />
             </div>
           </div>
@@ -2352,7 +2180,7 @@ export default function Journal() {
             <label className="text-tx-3 text-xs block mb-1">Notes</label>
             <textarea
               className="nx-input min-h-[108px] resize-y"
-              placeholder="Execution notes, mistakes, context, emotions..."
+              placeholder="Execution notes, mistakes, context, emotions…"
               value={tradeForm.notes}
               onChange={(e) => setTradeForm((p) => ({ ...p, notes: e.target.value }))}
             />
@@ -2368,7 +2196,7 @@ export default function Journal() {
             <div className="flex flex-wrap gap-2 items-center">
               <PendingImageList images={pendingImages} onRemove={removePendingImage} />
               {/* Upload button */}
-              <label className="h-14 w-20 flex flex-col items-center justify-center gap-1 rounded-lg cursor-pointer transition-all text-tx-4 hover:text-accent"
+              <label className="h-14 w-20 flex flex-col items-center justify-center gap-1 rounded-lg cursor-pointer transition-colors text-tx-4 hover:text-accent"
                 style={{ border: "1px dashed rgba(var(--border-rgb),0.2)", background: "rgba(var(--surface-rgb),0.03)" }}
               >
                 <ImageIcon size={14} />
@@ -2394,8 +2222,18 @@ export default function Journal() {
             <button
               className="btn-primary btn flex-1"
               onClick={handleSaveTrade}
-              disabled={!tradeForm.entryPrice || !tradeForm.exitPrice}
-              style={(!tradeForm.entryPrice || !tradeForm.exitPrice) ? { opacity: 0.5 } : undefined}
+              disabled={
+                !tradeForm.entryPrice ||
+                !tradeForm.exitPrice ||
+                (tradeForm.instrument === "Other" && !tradeForm.customInstrument.trim()) ||
+                (tradeForm.session === "Other" && !tradeForm.customSession.trim())
+              }
+              style={(
+                !tradeForm.entryPrice ||
+                !tradeForm.exitPrice ||
+                (tradeForm.instrument === "Other" && !tradeForm.customInstrument.trim()) ||
+                (tradeForm.session === "Other" && !tradeForm.customSession.trim())
+              ) ? { opacity: 0.5 } : undefined}
             >
               <BarChart3 size={13} />
               {editTradeId ? "Update Trade" : "Log Trade"}
@@ -2412,7 +2250,7 @@ export default function Journal() {
           index={lightboxState.index}
           onClose={() => setLightboxState(null)}
           onNavigate={(index) =>
-            setLightboxState((prev) => (prev ? { ...prev, index } : prev))
+            setLightboxState((prev: LightboxState | null) => (prev ? { ...prev, index } : prev))
           }
         />
       )}

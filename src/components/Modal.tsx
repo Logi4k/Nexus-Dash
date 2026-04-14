@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { IconButton } from "@/components/ui/icon-button";
 
 interface Props {
   open: boolean;
@@ -179,25 +180,24 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
               animate="visible"
               exit="exit"
               onClick={(e) => e.stopPropagation()}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
             >
               {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing">
+              <div
+                className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                style={{ touchAction: "pan-y" }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="w-10 h-1 rounded-full bg-border-strong" />
               </div>
 
               {title && (
                 <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle flex-shrink-0">
                   <h2 id="modal-title" className="font-semibold text-tx-1">{title}</h2>
-                  <button
-                    onClick={onClose}
-                    aria-label="Close"
-                    className="p-1.5 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-bg-hover transition-all"
-                  >
+                  <IconButton onClick={onClose} label="Close dialog">
                     <X size={16} />
-                  </button>
+                  </IconButton>
                 </div>
               )}
 
@@ -244,13 +244,9 @@ export default function Modal({ open, onClose, title, children, size = "md" }: P
             {title && (
               <div className="flex items-center justify-between p-5 border-b border-border-subtle flex-shrink-0">
                 <h2 id="modal-title" className="font-semibold text-tx-1">{title}</h2>
-                <button
-                  onClick={onClose}
-                  aria-label="Close"
-                  className="p-1.5 rounded-lg text-tx-3 hover:text-tx-1 hover:bg-bg-hover transition-all"
-                >
+                <IconButton onClick={onClose} label="Close dialog">
                   <X size={16} />
-                </button>
+                </IconButton>
               </div>
             )}
 

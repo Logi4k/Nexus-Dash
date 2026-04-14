@@ -10,14 +10,21 @@ import { reconcileLinkedPayoutAccounts } from "@/lib/payouts";
 import { normalizeAccountWithPropRules } from "@/lib/propRules";
 import { useAppData } from "@/lib/store";
 import { inferTradeAccountPhase } from "@/lib/tradePhases";
-import { FUTURES_CONTRACTS, generateId, getEasternTimeZoneAbbreviation, toNum } from "@/lib/utils";
+import { FUTURES_CONTRACTS, generateId, getEasternTimeZoneAbbreviation } from "@/lib/utils";
+import {
+  loadCustomInstruments, saveCustomInstrument, deleteCustomInstrument,
+  loadCustomSessions, saveCustomSession, deleteCustomSession,
+  loadCustomFirms, saveCustomFirm, deleteCustomFirm,
+  loadCustomCats, saveCustomCat, deleteCustomCat,
+} from "@/lib/journal";
 import type { Account, AccountStatus, AppData, Expense, TradeEntry, Withdrawal } from "@/types";
 import type { QuickAction } from "@/lib/quickActions";
 
-const INSTRUMENTS = ["ES", "NQ", "YM", "RTY", "CL", "GC", "MES", "MNQ", "MYM", "MCL", "MGC", "Other"];
-const SESSIONS = ["Asia", "London", "New York", "London Close", "Other"];
+const INSTRUMENTS_BASE = ["ES", "NQ", "YM", "RTY", "CL", "GC", "MES", "MNQ", "MYM", "MCL", "MGC"];
+const SESSIONS_BASE = ["Asia", "London", "New York", "London Close"];
 const EXPENSE_CATS = ["account", "subscription", "other"] as const;
-const FIRMS = [
+const OTHER_FIRM_VALUE = "__other__";
+const FIRMS_BASE = [
   "Lucid Trading",
   "Tradeify",
   "Topstep",
@@ -56,6 +63,7 @@ type TradeFormState = {
   date: string;
   time: string;
   instrument: string;
+  customInstrument: string;
   direction: "long" | "short";
   entryPrice: string;
   exitPrice: string;
@@ -64,6 +72,7 @@ type TradeFormState = {
   fees: string;
   setup: string;
   session: string;
+  customSession: string;
   notes: string;
   firm: "" | "lucid" | "tradeify";
   accountId?: string;
@@ -72,6 +81,7 @@ type TradeFormState = {
 type ExpenseFormState = {
   date: string;
   cat: "" | (typeof EXPENSE_CATS)[number];
+  customCat: string;
   firm: string;
   customFirm: string;
   amount: string;
@@ -79,6 +89,7 @@ type ExpenseFormState = {
 
 type AccountFormState = {
   firm: string;
+  customFirm: string;
   type: string;
   name: string;
   status: AccountStatus;
@@ -89,6 +100,7 @@ type AccountFormState = {
 
 type PayoutFormState = {
   firm: string;
+  customFirm: string;
   date: string;
   gross: string;
   accountId: string;
@@ -114,6 +126,7 @@ function createTradeDefaults(): TradeFormState {
     date: todayISO(),
     time: currentTimeHHMM(),
     instrument: "ES",
+    customInstrument: "",
     direction: "long",
     entryPrice: "",
     exitPrice: "",
@@ -122,6 +135,7 @@ function createTradeDefaults(): TradeFormState {
     fees: "",
     setup: "",
     session: "New York",
+    customSession: "",
     notes: "",
     firm: "",
     accountId: undefined,
@@ -132,7 +146,8 @@ function createExpenseDefaults(): ExpenseFormState {
   return {
     date: todayISO(),
     cat: "",
-    firm: FIRMS[0],
+    customCat: "",
+    firm: FIRMS_BASE[0],
     customFirm: "",
     amount: "",
   };
@@ -140,7 +155,8 @@ function createExpenseDefaults(): ExpenseFormState {
 
 function createAccountDefaults(): AccountFormState {
   return {
-    firm: FIRMS[0],
+    firm: FIRMS_BASE[0],
+    customFirm: "",
     type: "50K Challenge",
     name: "",
     status: "challenge",
@@ -153,7 +169,8 @@ function createAccountDefaults(): AccountFormState {
 function createPayoutDefaults(dataAccounts: Account[]): PayoutFormState {
   const linkedAccount = dataAccounts.find((account) => isActiveAccount(account));
   return {
-    firm: linkedAccount?.firm ?? FIRMS[0],
+    firm: linkedAccount?.firm ?? FIRMS_BASE[0],
+    customFirm: "",
     date: todayISO(),
     gross: "",
     accountId: linkedAccount?.id ?? "",
@@ -175,7 +192,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+      className="flex-1 py-2 rounded-lg text-xs font-bold transition-[background-color,border-color,color]"
       style={{
         background: active ? `color-mix(in srgb, ${colorVar} 12%, transparent)` : "rgba(var(--surface-rgb),0.05)",
         border: `1px solid ${active ? `color-mix(in srgb, ${colorVar} 40%, transparent)` : "rgba(var(--border-rgb),0.1)"}`,
@@ -197,6 +214,10 @@ function AddTradeQuickModal({
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
   const [form, setForm] = useState<TradeFormState>(createTradeDefaults);
+  const [customInstruments, setCustomInstruments] = useState<string[]>(loadCustomInstruments);
+  const [customSessions, setCustomSessions] = useState<string[]>(loadCustomSessions);
+  const [customFirms, setCustomFirms] = useState<string[]>(loadCustomFirms);
+  const [customCats, setCustomCats] = useState<string[]>(loadCustomCats);
 
   useEffect(() => {
     if (!open) return;
@@ -242,6 +263,10 @@ function AddTradeQuickModal({
 
   function handleSave() {
     if (!form.entryPrice || !form.exitPrice) return;
+    const instrumentName = form.instrument === "Other" ? form.customInstrument.trim() : form.instrument.trim();
+    const sessionName = form.session === "Other" ? form.customSession.trim() : form.session.trim();
+    if (!instrumentName) return;
+    if (form.session === "Other" && !sessionName) return;
 
     const selectedAccount = form.accountId ? accountsById.get(form.accountId) : undefined;
     const accountPhase = form.accountId
@@ -252,7 +277,7 @@ function AddTradeQuickModal({
       id: generateId(),
       date: form.date,
       time: form.time,
-      instrument: form.instrument,
+      instrument: instrumentName,
       direction: form.direction,
       entryPrice: parseFloat(form.entryPrice) || 0,
       exitPrice: parseFloat(form.exitPrice) || 0,
@@ -260,7 +285,7 @@ function AddTradeQuickModal({
       pnl: parseFloat(form.pnl) || 0,
       fees: parseFloat(form.fees) || 0,
       setup: form.setup || undefined,
-      session: form.session || undefined,
+      session: sessionName || undefined,
       notes: form.notes || undefined,
       accountId: form.accountId || undefined,
       accountPhase,
@@ -272,6 +297,9 @@ function AddTradeQuickModal({
     }));
 
     toast.success("Trade logged");
+    // Persist custom values
+    if (form.instrument === "Other" && instrumentName) { saveCustomInstrument(instrumentName); setCustomInstruments(loadCustomInstruments()); }
+    if (form.session === "Other" && sessionName) { saveCustomSession(sessionName); setCustomSessions(loadCustomSessions()); }
     onClose();
   }
 
@@ -299,11 +327,21 @@ function AddTradeQuickModal({
           <label className="text-tx-3 text-xs block mb-1">Instrument</label>
           <CustomSelect
             value={form.instrument}
-            onChange={(instrument) => setForm((prev) => ({ ...prev, instrument }))}
-            options={INSTRUMENTS.map((v) => ({ value: v, label: v }))}
+            onChange={(instrument) => setForm((prev) => ({
+              ...prev,
+              instrument,
+              customInstrument: instrument === "Other" ? prev.customInstrument : "",
+            }))}
+            options={[...INSTRUMENTS_BASE, ...customInstruments, "Other"].map((v) => ({ value: v, label: v }))}
             placeholder="Select instrument"
             allowCustom
+            customOptionValue="Other"
+            customValue={form.customInstrument}
+            onCustomValueChange={(value) => setForm((prev) => ({ ...prev, customInstrument: value }))}
             customLabel="Type instrument (e.g. NQ, MES)…"
+            onSaveCustom={(name) => { saveCustomInstrument(name); setCustomInstruments(loadCustomInstruments()); setForm((p) => ({ ...p, instrument: name, customInstrument: "" })); }}
+            onDeleteOption={(name) => { deleteCustomInstrument(name); setCustomInstruments(loadCustomInstruments()); if (form.instrument === name) setForm((p) => ({ ...p, instrument: "ES" })); }}
+            canDelete={(name) => !INSTRUMENTS_BASE.includes(name) && name !== "Other"}
           />
         </div>
 
@@ -379,7 +417,7 @@ function AddTradeQuickModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="text-tx-3 text-xs block mb-1">Entry</label>
             <input
@@ -437,11 +475,21 @@ function AddTradeQuickModal({
             <label className="text-tx-3 text-xs block mb-1">Session</label>
             <CustomSelect
               value={form.session}
-              onChange={(session) => setForm((prev) => ({ ...prev, session }))}
-              options={SESSIONS.map((v) => ({ value: v, label: v }))}
+              onChange={(session) => setForm((prev) => ({
+                ...prev,
+                session,
+                customSession: session === "Other" ? prev.customSession : "",
+              }))}
+              options={[...SESSIONS_BASE, ...customSessions, "Other"].map((v) => ({ value: v, label: v }))}
               placeholder="Select session"
               allowCustom
+              customOptionValue="Other"
+              customValue={form.customSession}
+              onCustomValueChange={(value) => setForm((prev) => ({ ...prev, customSession: value }))}
               customLabel="Type session…"
+              onSaveCustom={(name) => { saveCustomSession(name); setCustomSessions(loadCustomSessions()); setForm((p) => ({ ...p, session: name, customSession: "" })); }}
+              onDeleteOption={(name) => { deleteCustomSession(name); setCustomSessions(loadCustomSessions()); if (form.session === name) setForm((p) => ({ ...p, session: "New York" })); }}
+              canDelete={(name) => !SESSIONS_BASE.includes(name) && name !== "Other"}
             />
           </div>
         </div>
@@ -457,7 +505,16 @@ function AddTradeQuickModal({
         </div>
 
         <div className="modal-action-bar">
-          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={!form.entryPrice || !form.exitPrice}>
+          <button
+            className="btn-primary btn flex-1"
+            onClick={handleSave}
+            disabled={
+              !form.entryPrice ||
+              !form.exitPrice ||
+              (form.instrument === "Other" && !form.customInstrument.trim()) ||
+              (form.session === "Other" && !form.customSession.trim())
+            }
+          >
             <NotebookPen size={14} />
             Save Trade
           </button>
@@ -479,6 +536,8 @@ function AddExpenseQuickModal({
 }) {
   const { update } = useAppData();
   const [form, setForm] = useState<ExpenseFormState>(createExpenseDefaults);
+  const [customFirms, setCustomFirms] = useState<string[]>(loadCustomFirms);
+  const [customCats, setCustomCats] = useState<string[]>(loadCustomCats);
 
   useEffect(() => {
     if (!open) return;
@@ -488,14 +547,16 @@ function AddExpenseQuickModal({
   function handleSave() {
     if (!form.amount || !form.cat) return;
 
-    const firmName = form.firm === "__other__" ? form.customFirm.trim() : form.firm;
+    const firmName = form.firm === OTHER_FIRM_VALUE ? form.customFirm.trim() : form.firm;
+    const categoryName = form.cat === "other" ? form.customCat.trim() : form.cat;
+    if (!categoryName) return;
     if (!firmName) return;
 
     const expense: Expense = {
       id: generateId(),
       date: form.date,
       description: firmName,
-      cat: form.cat,
+      cat: categoryName,
       amount: parseFloat(form.amount) || 0,
     };
 
@@ -505,6 +566,9 @@ function AddExpenseQuickModal({
     }));
 
     toast.success("Expense added");
+    // Persist custom values
+    if (form.firm === OTHER_FIRM_VALUE && form.customFirm.trim()) { saveCustomFirm(form.customFirm.trim()); setCustomFirms(loadCustomFirms()); }
+    if (form.cat === "other" && form.customCat.trim()) { saveCustomCat(form.customCat.trim()); setCustomCats(loadCustomCats()); }
     onClose();
   }
 
@@ -523,9 +587,17 @@ function AddExpenseQuickModal({
             <label className="text-tx-3 text-xs block mb-1">Category</label>
             <CustomSelect
               value={form.cat}
-              onChange={(v) => setForm((prev) => ({ ...prev, cat: v as ExpenseFormState["cat"] }))}
-              options={EXPENSE_CATS.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))}
-              placeholder="Select..."
+              onChange={(v) => setForm((prev) => ({ ...prev, cat: v as ExpenseFormState["cat"], customCat: v === "other" ? prev.customCat : "" }))}
+              options={[...EXPENSE_CATS.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) })), ...customCats.map((c) => ({ value: c, label: c }))]}
+              placeholder="Select…"
+              allowCustom
+              customOptionValue="other"
+              customValue={form.customCat}
+              onCustomValueChange={(v) => setForm((prev) => ({ ...prev, customCat: v }))}
+              customLabel="Expense category"
+              onSaveCustom={(name) => { saveCustomCat(name); setCustomCats(loadCustomCats()); setForm((p) => ({ ...p, cat: name as ExpenseFormState["cat"], customCat: "" })); }}
+              onDeleteOption={(name) => { deleteCustomCat(name); setCustomCats(loadCustomCats()); }}
+              canDelete={(name) => ![...EXPENSE_CATS].includes(name as typeof EXPENSE_CATS[number]) && name !== "other"}
             />
           </div>
         </div>
@@ -534,18 +606,15 @@ function AddExpenseQuickModal({
           <label className="text-tx-3 text-xs block mb-1">Firm</label>
           <CustomSelect
             value={form.firm}
-            onChange={(v) => setForm((prev) => ({ ...prev, firm: v, customFirm: "" }))}
-            options={[...FIRMS.map((f) => ({ value: f, label: f })), { value: "__other__", label: "Other..." }]}
+            onChange={(v) => setForm((prev) => ({ ...prev, firm: v, customFirm: v === OTHER_FIRM_VALUE ? prev.customFirm : "" }))}
+            options={[...FIRMS_BASE.map((f) => ({ value: f, label: f })), ...customFirms.map((f) => ({ value: f, label: f })), { value: OTHER_FIRM_VALUE, label: "Other..." }]}
             placeholder="Select firm"
+            allowCustom
+            customOptionValue={OTHER_FIRM_VALUE}
+            customValue={form.customFirm}
+            onCustomValueChange={(v) => setForm((prev) => ({ ...prev, customFirm: v }))}
+            customLabel="Firm name"
           />
-          {form.firm === "__other__" && (
-            <input
-              className="nx-input mt-2"
-              placeholder="Firm name"
-              value={form.customFirm}
-              onChange={(e) => setForm((prev) => ({ ...prev, customFirm: e.target.value }))}
-            />
-          )}
         </div>
 
         <div>
@@ -561,7 +630,7 @@ function AddExpenseQuickModal({
         </div>
 
         <div className="modal-action-bar">
-          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={!form.amount || !form.cat}>
+          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={!form.amount || !form.cat || (form.cat === "other" && !form.customCat.trim()) || (form.firm === OTHER_FIRM_VALUE && !form.customFirm.trim())}>
             <Receipt size={14} />
             Save Expense
           </button>
@@ -583,6 +652,7 @@ function AddAccountQuickModal({
 }) {
   const { update } = useAppData();
   const [form, setForm] = useState<AccountFormState>(createAccountDefaults);
+  const [customFirms, setCustomFirms] = useState<string[]>(loadCustomFirms);
 
   useEffect(() => {
     if (!open) return;
@@ -594,9 +664,11 @@ function AddAccountQuickModal({
 
     const balance = parseFloat(form.balance) || 0;
     const initialBalance = parseFloat(form.initialBalance) || balance;
+    const firmName = form.firm === OTHER_FIRM_VALUE ? form.customFirm.trim() : form.firm;
+    if (!firmName) return;
     const account: Account = {
       id: generateId(),
-      firm: form.firm,
+      firm: firmName,
       type: form.type,
       name: form.name.trim() || undefined,
       status: form.status,
@@ -616,6 +688,7 @@ function AddAccountQuickModal({
     }));
 
     toast.success("Account added");
+    if (form.firm === "__other__" && form.customFirm.trim()) { saveCustomFirm(form.customFirm.trim()); setCustomFirms(loadCustomFirms()); }
     onClose();
   }
 
@@ -626,9 +699,14 @@ function AddAccountQuickModal({
           <label className="text-tx-3 text-xs block mb-1">Firm</label>
           <CustomSelect
             value={form.firm}
-            onChange={(v) => setForm((prev) => ({ ...prev, firm: v }))}
-            options={FIRMS.map((f) => ({ value: f, label: f }))}
+            onChange={(v) => setForm((prev) => ({ ...prev, firm: v, customFirm: v === OTHER_FIRM_VALUE ? prev.customFirm : "" }))}
+            options={[...FIRMS_BASE.map((f) => ({ value: f, label: f })), ...customFirms.map((f) => ({ value: f, label: f })), { value: OTHER_FIRM_VALUE, label: "Other..." }]}
             placeholder="Select firm"
+            allowCustom
+            customOptionValue={OTHER_FIRM_VALUE}
+            customValue={form.customFirm}
+            onCustomValueChange={(v) => setForm((prev) => ({ ...prev, customFirm: v }))}
+            customLabel="Firm name"
           />
         </div>
 
@@ -660,9 +738,9 @@ function AddAccountQuickModal({
             value={form.status}
             onChange={(v) => setForm((prev) => ({ ...prev, status: v as AccountStatus }))}
             options={[
-              { value: "Challenge", label: "Challenge" },
-              { value: "Funded", label: "Funded" },
-              { value: "Breached", label: "Breached" },
+              { value: "challenge", label: "Challenge" },
+              { value: "funded", label: "Funded" },
+              { value: "breached", label: "Breached" },
             ]}
             placeholder="Select status"
           />
@@ -701,7 +779,7 @@ function AddAccountQuickModal({
         </div>
 
         <div className="modal-action-bar">
-          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={!form.type || !form.balance}>
+          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={!form.type || !form.balance || (form.firm === OTHER_FIRM_VALUE && !form.customFirm.trim())}>
             <Briefcase size={14} />
             Save Account
           </button>
@@ -724,6 +802,7 @@ function LogPayoutQuickModal({
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
   const [form, setForm] = useState<PayoutFormState>(() => createPayoutDefaults(data.accounts));
+  const [customFirms, setCustomFirms] = useState<string[]>(loadCustomFirms);
 
   const accountOptions = useMemo(
     () =>
@@ -745,10 +824,12 @@ function LogPayoutQuickModal({
     if (!form.gross) return;
 
     const grossAmount = parseFloat(form.gross) || 0;
+    const firmName = form.firm === OTHER_FIRM_VALUE ? form.customFirm.trim() : form.firm;
+    if (!firmName) return;
     const draftPayout: Withdrawal = {
       id: generateId(),
       date: form.date,
-      firm: form.firm,
+      firm: firmName,
       gross: grossAmount,
       accountId: form.accountId || undefined,
     };
@@ -779,6 +860,7 @@ function LogPayoutQuickModal({
     });
 
     toast.success("Payout logged");
+    if (form.firm === OTHER_FIRM_VALUE && form.customFirm.trim()) { saveCustomFirm(form.customFirm.trim()); setCustomFirms(loadCustomFirms()); }
     onClose();
   }
 
@@ -789,9 +871,14 @@ function LogPayoutQuickModal({
           <label className="text-tx-3 text-xs block mb-1">Firm</label>
           <CustomSelect
             value={form.firm}
-            onChange={(v) => setForm((prev) => ({ ...prev, firm: v }))}
-            options={FIRMS.map((f) => ({ value: f, label: f }))}
+            onChange={(v) => setForm((prev) => ({ ...prev, firm: v, customFirm: v === OTHER_FIRM_VALUE ? prev.customFirm : "" }))}
+            options={[...FIRMS_BASE.map((f) => ({ value: f, label: f })), ...customFirms.map((f) => ({ value: f, label: f })), { value: OTHER_FIRM_VALUE, label: "Other..." }]}
             placeholder="Select firm"
+            allowCustom
+            customOptionValue={OTHER_FIRM_VALUE}
+            customValue={form.customFirm}
+            onCustomValueChange={(v) => setForm((prev) => ({ ...prev, customFirm: v }))}
+            customLabel="Firm name"
           />
         </div>
 
@@ -805,6 +892,7 @@ function LogPayoutQuickModal({
                 ...prev,
                 accountId: v,
                 firm: linked?.firm ?? prev.firm,
+                customFirm: linked?.firm ? "" : prev.customFirm,
               }));
             }}
             options={accountOptions}
@@ -834,7 +922,7 @@ function LogPayoutQuickModal({
         </div>
 
         <div className="modal-action-bar">
-          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={!form.gross}>
+          <button className="btn-primary btn flex-1" onClick={handleSave} disabled={!form.gross || (form.firm === OTHER_FIRM_VALUE && !form.customFirm.trim())}>
             <Wallet size={14} />
             Save Payout
           </button>

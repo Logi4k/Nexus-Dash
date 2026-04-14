@@ -103,7 +103,7 @@ export default function CommandPalette({ open, onClose, items, dynamicItems }: P
       onClick={onClose}
     >
       <div
-        role="dialog"
+        role="dialog" aria-label="Command palette"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}

@@ -3,7 +3,7 @@ export interface Expense {
   date: string;
   description: string;
   cat: string;
-  amount: number | string;
+  amount: number;
   notes?: string;
 }
 
@@ -245,8 +245,35 @@ export interface UserSettings {
   subscriptionRenewalDays: number;  // notify this many days before renewal
   subscriptionAlertsEnabled?: boolean;  // master toggle for subscription alerts
   theme?: "dark" | "bw";
+  density?: "comfortable" | "compact";
   mobileNavItems?: MobileNavItemId[];
   dismissedNotificationIds?: string[];
+  savedViews?: SavedView[];
+  recentEntries?: RecentEntry[];
+}
+
+export interface SavedView {
+  id: string;
+  name: string;
+  route: string;
+  routeLabel: string;
+  description?: string;
+  state: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RecentEntryKind = "page" | "action" | "saved-view" | "entity";
+
+export interface RecentEntry {
+  id: string;
+  kind: RecentEntryKind;
+  route: string;
+  label: string;
+  description?: string;
+  state?: Record<string, unknown>;
+  iconKey?: string;
+  visitedAt: string;
 }
 
 export interface AppData {

@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
    The visual effect: new theme "washes in" from the button as a circle.
 ───────────────────────────────────────────────────────────────────────────── */
 
-const ANIM_DURATION = 320; // ms — fast so it never hangs
+const ANIM_DURATION = 420; // ms — visible enough to read, still short enough to stay responsive
 const RIPPLE_SIZE = "200vmax";
 
 /** Capture current --bg-base before the switch */

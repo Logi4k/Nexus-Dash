@@ -39,7 +39,6 @@ export default function TimePicker({ value, onChange, className }: Props) {
   });
   const [portalStyle, setPortalStyle] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleResize() {
@@ -49,15 +48,6 @@ export default function TimePicker({ value, onChange, className }: Props) {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    function handler(e: PointerEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("pointerdown", handler);
-    return () => document.removeEventListener("pointerdown", handler);
-  }, [open]);
 
   function applyAndClose() {
     let h = hour;
@@ -159,7 +149,7 @@ export default function TimePicker({ value, onChange, className }: Props) {
               key={p}
               type="button"
               onClick={() => setAmpm(p)}
-              className="flex-1 py-2 text-[11px] font-bold uppercase tracking-wider transition-all"
+              className="flex-1 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors"
               style={{
                 background: ampm === p ? "rgba(var(--surface-rgb),0.12)" : "transparent",
                 color: ampm === p ? "var(--accent)" : "var(--tx-3)",
@@ -224,7 +214,7 @@ export default function TimePicker({ value, onChange, className }: Props) {
           <button
             type="button"
             onClick={applyAndClose}
-            className="w-full py-2 rounded-xl text-[12px] font-bold transition-all"
+            className="w-full rounded-xl py-2 text-[12px] font-bold transition-colors"
             style={{ background: "var(--accent)", color: "var(--bg-base)" }}
           >
             Confirm
@@ -235,20 +225,20 @@ export default function TimePicker({ value, onChange, className }: Props) {
   }
 
   return (
-    <div ref={containerRef} className={cn("relative", className)}>
+    <div className={cn("relative", className)}>
       <button
         ref={triggerRef}
         type="button"
         onClick={openDropdown}
         className={cn(
-          "w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] transition-all",
+          "w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] transition-colors",
           "border border-transparent hover:border-[rgba(var(--border-rgb),0.15)]",
           "bg-[rgba(var(--surface-rgb),0.04)] hover:bg-[rgba(var(--surface-rgb),0.07)]",
           "text-[var(--tx-1)]"
         )}
       >
         <Clock size={13} style={{ color: "var(--accent)" }} />
-        <span className="font-medium">{fmtDisplay()}</span>
+        <span className="font-medium">{fmtDisplay() === "Set time" ? "Set time…" : fmtDisplay()}</span>
       </button>
 
       {/* Desktop: portal with fixed positioning */}
@@ -286,6 +276,9 @@ export default function TimePicker({ value, onChange, className }: Props) {
               boxShadow: "0 -18px 50px rgba(0,0,0,0.45)",
               animation: "tpSlideUp 0.2s ease-out",
             }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1.5 w-12 rounded-full" style={{ background: "rgba(var(--surface-rgb),0.12)" }} />
             <div className="mb-3 flex items-center justify-between gap-3">

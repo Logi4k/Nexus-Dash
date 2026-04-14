@@ -76,7 +76,12 @@ function ThemeApplier() {
   useEffect(() => {
     const isBW = data.userSettings?.theme === "bw";
     document.documentElement.classList.toggle("theme-bw", isBW);
-  }, [data.userSettings?.theme]);
+    document.documentElement.setAttribute("data-theme", isBW ? "bw" : "dark");
+    document.documentElement.setAttribute(
+      "data-density",
+      data.userSettings?.density ?? "comfortable"
+    );
+  }, [data.userSettings?.density, data.userSettings?.theme]);
   return null;
 }
 

@@ -16,7 +16,6 @@ import {
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
-  Minus,
 
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
@@ -28,12 +27,15 @@ import StatCard from "@/components/StatCard";
 import CustomSelect from "@/components/CustomSelect";
 import DatePicker from "@/components/DatePicker";
 import type { AppData, Expense } from "@/types";
+import { useRegisterPageView } from "@/components/PageViewContext";
+import { getViewIntentState } from "@/lib/viewIntents";
+import { loadCustomFirms, saveCustomFirm, deleteCustomFirm, loadCustomCats, saveCustomCat, deleteCustomCat } from "@/lib/journal";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const FIRMS = [
+const FIRMS_BASE = [
   "Lucid Trading",
   "Tradeify",
   "Topstep",
@@ -45,12 +47,22 @@ const FIRMS = [
 
 const EXPENSE_CATS = ["account", "subscription", "other"] as const;
 type ExpenseCat = (typeof EXPENSE_CATS)[number];
+type ExpenseCatSelectValue = ExpenseCat | "";
+
+type PropExpenseForm = {
+  date: string;
+  firm: string;
+  cat: ExpenseCatSelectValue;
+  customCat: string;
+  amount: string;
+  customFirm: string;
+};
 
 // Keep in sync with --color-cat-* tokens in index.css
 const CAT_COLORS: Record<string, string> = {
-  account:      "#5b8bbf",  // --color-cat-account
-  subscription: "#9b8ec2",  // --color-cat-subscription
-  other:        "#5aadaa",  // --color-cat-other (brand teal)
+  account:      "#7f99ac",  // --color-cat-account
+  subscription: "#8f88aa",  // --color-cat-subscription
+  other:        "#76998d",  // --color-cat-other
 };
 
 type TabKey = "propfirm" | "other";
@@ -83,7 +95,7 @@ function DeleteButton({ onDelete }: { onDelete: () => void }) {
     return (
       <button
         onClick={() => setPending(true)}
-        className="md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded text-tx-3 hover:text-loss hover:bg-loss/10 transition-all"
+        className="md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded text-tx-3 hover:text-loss hover:bg-loss/10 transition-colors"
         title="Delete"
       >
         <Trash2 size={13} />
@@ -98,13 +110,13 @@ function DeleteButton({ onDelete }: { onDelete: () => void }) {
           setPending(false);
           onDelete();
         }}
-        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-loss/15 text-loss hover:bg-loss/25 transition-all"
+        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-loss/15 text-loss hover:bg-loss/25 transition-colors"
       >
         Delete
       </button>
       <button
         onClick={() => setPending(false)}
-        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[rgba(var(--border-rgb),0.05)] text-tx-3 hover:text-tx-1 transition-all"
+        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[rgba(var(--border-rgb),0.05)] text-tx-3 hover:text-tx-1 transition-colors"
       >
         No
       </button>
@@ -201,7 +213,7 @@ function MonthlyTrendChart({
           const delta = prevD ? d.total - prevD.total : null;
 
           return (
-            <div key={d.month} className="group rounded-xl p-3 md:p-0 transition-all duration-200 hover:bg-[rgba(var(--surface-rgb),0.03)]"
+            <div key={d.month} className="group rounded-xl p-3 md:p-0 transition-[background-color,border-color] duration-200 hover:bg-[rgba(var(--surface-rgb),0.03)]"
               style={{ border: isPeak ? "1px solid rgba(239,68,68,0.15)" : isCurrent ? "1px solid rgba(90,173,170,0.15)" : "1px solid rgba(var(--border-rgb),0.05)" }}>
               <div className="flex items-center justify-between gap-3 mb-2 md:hidden">
                 <div className="flex items-center gap-2">
@@ -223,7 +235,7 @@ function MonthlyTrendChart({
               <div className="flex-1 relative h-7 rounded-lg overflow-hidden"
                 style={{ background: "rgba(var(--surface-rgb),0.06)" }}>
                 <div
-                  className="absolute left-0 top-0 h-full rounded-lg transition-all duration-700"
+                  className="absolute left-0 top-0 h-full rounded-lg transition-[width,background] duration-700"
                   style={{ width: `${pct}%`, background: barBg }}
                 />
                 <span
@@ -263,7 +275,7 @@ function MonthlyTrendChart({
       {chartData.length > 4 && !showAll && (
         <button
           onClick={() => setShowAll(true)}
-          className="w-full py-2 rounded-xl text-[12px] font-medium transition-all text-tx-3 hover:text-tx-1 sm:hidden"
+          className="w-full py-2 rounded-xl text-[12px] font-medium transition-colors text-tx-3 hover:text-tx-1 sm:hidden"
           style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
         >
           View all {chartData.length} months
@@ -272,7 +284,7 @@ function MonthlyTrendChart({
       {showAll && chartData.length > 4 && (
         <button
           onClick={() => setShowAll(false)}
-          className="w-full py-2 rounded-xl text-[12px] font-medium transition-all text-tx-3 hover:text-tx-1 sm:hidden"
+          className="w-full py-2 rounded-xl text-[12px] font-medium transition-colors text-tx-3 hover:text-tx-1 sm:hidden"
           style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
         >
           Show less
@@ -331,7 +343,7 @@ function FirmBreakdownStrip({ expenses }: { expenses: { description: string; amo
         {firmTotals.map(([firm, total], i) => (
           <div
             key={firm}
-            className="h-full rounded-sm transition-all duration-700"
+            className="h-full rounded-sm transition-[width,background] duration-700"
             style={{ width: `${(total / totalAll) * 100}%`, background: FIRM_COLORS[i % FIRM_COLORS.length] }}
             title={`${firm}: ${((total / totalAll) * 100).toFixed(1)}%`}
           />
@@ -367,7 +379,7 @@ function FirmBreakdownStrip({ expenses }: { expenses: { description: string; amo
                 </div>
                 <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.07)" }}>
                   <div
-                    className="h-full rounded-full transition-all duration-700"
+                    className="h-full rounded-full transition-[width,background] duration-700"
                     style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${col}88, ${col})` }}
                   />
                 </div>
@@ -384,12 +396,21 @@ function FirmBreakdownStrip({ expenses }: { expenses: { description: string; amo
 /*  Prop Firm Tab                                                      */
 /* ------------------------------------------------------------------ */
 
-function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean; onOpened?: () => void }) {
+function PropFirmTab({
+  initialOpen = false,
+  onOpened,
+  search,
+  onSearchChange,
+}: {
+  initialOpen?: boolean;
+  onOpened?: () => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+}) {
   const bw = useBWMode();
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
 
-  const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
@@ -399,15 +420,17 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
   }, [initialOpen, onOpened]);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PropExpenseForm>({
     date: new Date().toISOString().slice(0, 10),
-    firm: FIRMS[0] as string,
-    cat: "" as ExpenseCat | "",
+    firm: FIRMS_BASE[0] as string,
+    cat: "",
     customCat: "",
     amount: "",
     customFirm: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [customFirms, setCustomFirms] = useState<string[]>(loadCustomFirms);
+  const [customCats, setCustomCats] = useState<string[]>(loadCustomCats);
 
   /* ---- Stats ---- */
   const stats = useMemo(() => {
@@ -440,7 +463,7 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
     }
 
     // Firm vs earned
-    const firmStats = FIRMS.map((firm) => ({
+    const firmStats = FIRMS_BASE.map((firm) => ({
       firm,
       spent:  expenses.filter((e) => e.description === firm).reduce((s, e) => s + toNum(e.amount), 0),
       earned: data.withdrawals.filter((w) => w.firm === firm).reduce((s, w) => s + toNum(w.gross), 0),
@@ -494,7 +517,7 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
 
   const handleAdd = () => {
     const firmName = form.firm === "__other__" ? form.customFirm.trim() : form.firm;
-    const catValue = form.cat === "__other__" ? form.customCat.trim() : form.cat;
+    const catValue = form.cat === "other" ? form.customCat.trim() : form.cat;
     const newErrors: Record<string, string> = {};
     if (!form.amount || parseFloat(form.amount) <= 0) newErrors.amount = 'Must be > 0';
     if (!catValue) newErrors.cat = 'Required';
@@ -512,10 +535,13 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
     };
     update((prev) => ({ ...prev, expenses: [expense, ...prev.expenses] }));
     toast.success('Expense added');
+    // Persist custom values
+    if (form.firm === "__other__" && form.customFirm.trim()) { saveCustomFirm(form.customFirm.trim()); setCustomFirms(loadCustomFirms()); }
+    if (form.cat === "other" && form.customCat.trim()) { saveCustomCat(form.customCat.trim()); setCustomCats(loadCustomCats()); }
     setAddOpen(false);
     setForm({
       date: new Date().toISOString().slice(0, 10),
-      firm: FIRMS[0],
+      firm: FIRMS_BASE[0],
       cat: "",
       customCat: "",
       amount: "",
@@ -590,9 +616,9 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-3 pointer-events-none" />
               <input
                 className="nx-input pl-9 text-xs"
-                placeholder="Search firm or notes..."
+                placeholder="Search firm or notes…"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => onSearchChange(e.target.value)}
               />
             </div>
             <button className="btn-primary btn btn-sm" onClick={() => setAddOpen(true)}>
@@ -622,7 +648,7 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
               </div>
               <div className="task-empty-actions mt-4">
                 {search ? (
-                  <button className="btn-ghost btn-sm" onClick={() => setSearch("")}>
+                  <button className="btn-ghost btn-sm" onClick={() => onSearchChange("")}>
                     Clear Search
                   </button>
                 ) : (
@@ -796,7 +822,7 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
                 </div>
                 <div className="h-1.5 rounded-full overflow-hidden bg-[rgba(var(--border-rgb),0.06)]">
                   <div
-                    className={cn("h-full rounded-full transition-all duration-700", isPos ? "bg-profit" : "bg-loss")}
+                    className={cn("h-full rounded-full transition-[width,background] duration-700", isPos ? "bg-profit" : "bg-loss")}
                     style={{ width: `${Math.min((Math.min(stats.totalEarned, stats.total) / Math.max(stats.total, stats.totalEarned, 1)) * 100, 100)}%` }}
                   />
                 </div>
@@ -832,20 +858,22 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
               <label className="text-tx-3 text-xs block mb-1">Category</label>
               <CustomSelect
                 value={form.cat}
-                onChange={(v) => { setForm((p) => ({ ...p, cat: v, customCat: v === "__other__" ? "" : p.customCat })); setErrors((prev) => ({ ...prev, cat: '' })); }}
-                options={[...EXPENSE_CATS.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) })), { value: "__other__", label: "Other" }]}
-                placeholder="Select category..."
+                onChange={(v) => {
+                  const nextCat = v as ExpenseCatSelectValue;
+                  setForm((p) => ({ ...p, cat: nextCat, customCat: nextCat === "other" ? p.customCat : "" }));
+                  setErrors((prev) => ({ ...prev, cat: '' }));
+                }}
+                options={[...EXPENSE_CATS.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) })), ...customCats.map((c) => ({ value: c, label: c }))]}
+                placeholder="Select category…"
                 allowCustom={true}
+                customOptionValue="other"
+                customValue={form.customCat}
+                onCustomValueChange={(v) => setForm((p) => ({ ...p, customCat: v }))}
                 customLabel="Type expense type…"
+                onSaveCustom={(name) => { saveCustomCat(name); setCustomCats(loadCustomCats()); setForm((p) => ({ ...p, cat: name as ExpenseCatSelectValue, customCat: "" })); }}
+                onDeleteOption={(name) => { deleteCustomCat(name); setCustomCats(loadCustomCats()); }}
+                canDelete={(name) => ![...EXPENSE_CATS].includes(name as ExpenseCat) && name !== "other"}
               />
-              {form.cat === "__other__" && (
-                <input
-                  className="nx-input mt-2"
-                  placeholder="What was this expense for?"
-                  value={form.customCat}
-                  onChange={(e) => setForm((p) => ({ ...p, customCat: e.target.value }))}
-                />
-              )}
               {errors.cat && <p className="text-[10px] text-loss mt-1">{errors.cat}</p>}
             </div>
           </div>
@@ -854,18 +882,18 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
             <label className="text-tx-3 text-xs block mb-1">Firm</label>
             <CustomSelect
               value={form.firm}
-              onChange={(v) => { setForm((p) => ({ ...p, firm: v, customFirm: "" })); }}
-              options={[...FIRMS.map((f) => ({ value: f, label: f })), { value: "__other__", label: "Other..." }]}
+              onChange={(v) => { setForm((p) => ({ ...p, firm: v, customFirm: v === "__other__" ? p.customFirm : "" })); }}
+              options={[...FIRMS_BASE.map((f) => ({ value: f, label: f })), ...customFirms.map((f) => ({ value: f, label: f })), { value: "__other__", label: "Other…" }]}
               placeholder="Select firm"
+              allowCustom
+              customOptionValue="__other__"
+              customValue={form.customFirm}
+              onCustomValueChange={(v) => setForm((p) => ({ ...p, customFirm: v }))}
+              customLabel="Firm name"
+              onSaveCustom={(name) => { saveCustomFirm(name); setCustomFirms(loadCustomFirms()); setForm((p) => ({ ...p, firm: name, customFirm: "" })); }}
+              onDeleteOption={(name) => { deleteCustomFirm(name); setCustomFirms(loadCustomFirms()); }}
+              canDelete={(name) => !FIRMS_BASE.includes(name as typeof FIRMS_BASE[number]) && name !== "__other__"}
             />
-            {form.firm === "__other__" && (
-              <input
-                className="nx-input mt-2"
-                placeholder="Firm name"
-                value={form.customFirm}
-                onChange={(e) => setForm((p) => ({ ...p, customFirm: e.target.value }))}
-              />
-            )}
           </div>
 
           <div>
@@ -883,8 +911,8 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
 
           <div className="modal-action-bar">
             <button className="btn-primary btn flex-1" onClick={handleAdd}
-              disabled={!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false) || (form.cat === "__other__" ? !form.customCat.trim() : false)}
-              style={(!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false) || (form.cat === "__other__" ? !form.customCat.trim() : false)) ? { opacity: 0.5 } : undefined}>
+              disabled={!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false) || (form.cat === "other" ? !form.customCat.trim() : false)}
+              style={(!form.amount || !form.cat || (form.firm === "__other__" ? !form.customFirm.trim() : false) || (form.cat === "other" ? !form.customCat.trim() : false)) ? { opacity: 0.5 } : undefined}>
               Add Expense
             </button>
             <button className="btn-ghost btn" onClick={() => { setAddOpen(false); setErrors({}); }}>
@@ -901,11 +929,16 @@ function PropFirmTab({ initialOpen = false, onOpened }: { initialOpen?: boolean;
 /*  Other Expenses Tab                                                 */
 /* ------------------------------------------------------------------ */
 
-function OtherExpensesTab() {
+function OtherExpensesTab({
+  search,
+  onSearchChange,
+}: {
+  search: string;
+  onSearchChange: (value: string) => void;
+}) {
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
 
-  const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [listExpanded, setListExpanded] = useState(false);
   const [form, setForm] = useState({
@@ -1025,9 +1058,9 @@ function OtherExpensesTab() {
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-3 pointer-events-none" />
             <input
               className="nx-input pl-9 text-xs"
-              placeholder="Search description or notes..."
+              placeholder="Search description or notes…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => onSearchChange(e.target.value)}
             />
           </div>
         </div>
@@ -1059,7 +1092,7 @@ function OtherExpensesTab() {
             </div>
             <div className="task-empty-actions mt-4">
               {search ? (
-                <button className="btn-ghost btn-sm" onClick={() => setSearch("")}>
+                <button className="btn-ghost btn-sm" onClick={() => onSearchChange("")}>
                   Clear Search
                 </button>
               ) : (
@@ -1145,7 +1178,7 @@ function OtherExpensesTab() {
             <label className="text-tx-3 text-xs block mb-1">Description</label>
             <input
               className="nx-input"
-              placeholder="e.g. Software, Course, Equipment..."
+              placeholder="e.g. Software, Course, Equipment…"
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
             />
@@ -1189,11 +1222,28 @@ export default function Expenses() {
   const data = _data ?? ({} as AppData);
   const location = useLocation();
   const handledLocationAction = useRef<string | null>(null);
+  const handledViewIntent = useRef<string | null>(null);
   const [tab, setTab] = useState<TabKey>("propfirm");
+  const [propSearch, setPropSearch] = useState("");
+  const [otherSearch, setOtherSearch] = useState("");
 
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.expenses, isBW);
   const [triggerAddOpen, setTriggerAddOpen] = useState(false);
+  const currentView = useMemo(
+    () => ({
+      route: "/expenses",
+      title: tab === "propfirm" ? "Prop expense view" : "Other expense view",
+      description: "Selected expense tab and search state",
+      state: {
+        tab,
+        propSearch,
+        otherSearch,
+      },
+    }),
+    [otherSearch, propSearch, tab]
+  );
+  useRegisterPageView(currentView);
 
   useEffect(() => {
     const quickAction = getQuickActionState(location.state);
@@ -1210,6 +1260,29 @@ export default function Expenses() {
       setTab("propfirm");
       setTriggerAddOpen(true);
     }
+  }, [location.state]);
+
+  useEffect(() => {
+    const viewIntent = getViewIntentState(location.state);
+    const requestKey = viewIntent?.id ?? null;
+
+    if (!viewIntent || viewIntent.route !== "/expenses") {
+      handledViewIntent.current = null;
+      return;
+    }
+    if (handledViewIntent.current === requestKey) return;
+
+    if (viewIntent.state.tab === "propfirm" || viewIntent.state.tab === "other") {
+      setTab(viewIntent.state.tab);
+    }
+    if (typeof viewIntent.state.propSearch === "string") {
+      setPropSearch(viewIntent.state.propSearch);
+    }
+    if (typeof viewIntent.state.otherSearch === "string") {
+      setOtherSearch(viewIntent.state.otherSearch);
+    }
+
+    handledViewIntent.current = requestKey;
   }, [location.state]);
 
   const tabs: { key: TabKey; label: string; count: number; icon: React.ReactNode }[] = [
@@ -1257,8 +1330,20 @@ export default function Expenses() {
       <div className="divider" />
 
       {/* Tab content */}
-      {tab === "propfirm" && <PropFirmTab initialOpen={triggerAddOpen} onOpened={() => setTriggerAddOpen(false)} />}
-      {tab === "other" && <OtherExpensesTab />}
+      {tab === "propfirm" && (
+        <PropFirmTab
+          initialOpen={triggerAddOpen}
+          onOpened={() => setTriggerAddOpen(false)}
+          search={propSearch}
+          onSearchChange={setPropSearch}
+        />
+      )}
+      {tab === "other" && (
+        <OtherExpensesTab
+          search={otherSearch}
+          onSearchChange={setOtherSearch}
+        />
+      )}
     </div>
   );
 }

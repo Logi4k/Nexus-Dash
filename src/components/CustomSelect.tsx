@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,21 @@ interface CustomSelectProps {
   /** Label shown in the custom text input */
   customLabel?: string;
   /**
+   * Optional sentinel option value that should keep the select value unchanged
+   * while revealing a companion custom text field.
+   */
+  customOptionValue?: string;
+  /** Controlled custom text for sentinel-based "Other" flows. */
+  customValue?: string;
+  /** Change handler for controlled custom text when using customOptionValue. */
+  onCustomValueChange?: (v: string) => void;
+  /** Called when user clicks save on a custom value — renders a + button next to custom input. */
+  onSaveCustom?: (value: string) => void;
+  /** Called when user clicks delete on an option — renders an X button on matching options. */
+  onDeleteOption?: (value: string) => void;
+  /** Controls whether a specific option shows the delete button. If not provided, shows on all when onDeleteOption is set. */
+  canDelete?: (value: string) => boolean;
+  /**
    * Mobile filter mode: compact floating panel anchored to the trigger (no backdrop, no bottom sheet).
    * Ideal for inline filter dropdowns where space is limited.
    */
@@ -23,7 +38,8 @@ interface CustomSelectProps {
 
 export default function CustomSelect({
   value, onChange, options, placeholder = "Select…", small = false,
-  allowCustom = false, customLabel, inlineMobile = false,
+  allowCustom = false, customLabel, customOptionValue, customValue,
+  onCustomValueChange, onSaveCustom, onDeleteOption, canDelete, inlineMobile = false,
 }: CustomSelectProps) {
   const [customText, setCustomText] = useState(value || "");
   useEffect(() => {
@@ -43,24 +59,52 @@ export default function CustomSelect({
     document.head.appendChild(style);
   }, []);
   const [open, setOpen] = useState(false);
-  const isMobile = useMemo(() =>
+  const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < 640 : false,
-  []);
+  );
   const [portalStyle, setPortalStyle] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const portalRef = useRef<HTMLDivElement>(null);
   const selected = options.find(o => o.value === value);
-
-
+  const usesSentinelCustom = !!customOptionValue;
+  const isSentinelSelected = usesSentinelCustom && value === customOptionValue;
+  const resolvedCustomValue = isSentinelSelected ? (customValue ?? customText) : customText;
+  const shouldShowCustomInput = allowCustom && (isSentinelSelected || (!!value && !selected));
+  const displayLabel = isSentinelSelected
+    ? (resolvedCustomValue.trim() || selected?.label || placeholder)
+    : (selected?.label || value || placeholder);
 
   useEffect(() => {
-    if (!open) return;
+    function handleResize() {
+      setIsMobile(window.innerWidth < 640);
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!open || !inlineMobile) return;
     function handleClick(e: PointerEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (portalRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener("pointerdown", handleClick);
     return () => document.removeEventListener("pointerdown", handleClick);
-  }, [open]);
+  }, [open, inlineMobile]);
+
+  useEffect(() => {
+    if (isSentinelSelected) {
+      setCustomText(customValue ?? "");
+      return;
+    }
+    if (!selected) {
+      setCustomText(value || "");
+    }
+  }, [customValue, isSentinelSelected, selected, value]);
 
   function openDropdown() {
     if (triggerRef.current) {
@@ -79,17 +123,21 @@ export default function CustomSelect({
     setOpen(true);
   }
 
+  function handleCustomInputChange(nextValue: string) {
+    setCustomText(nextValue);
+    if (isSentinelSelected && onCustomValueChange) {
+      onCustomValueChange(nextValue);
+      return;
+    }
+    onChange(nextValue);
+  }
+
   const optionList = options.map(opt => (
-    <button
+    <div
       key={opt.value}
-      type="button"
-      onClick={() => { onChange(opt.value); setOpen(false); }}
-      className="w-full text-left transition-colors"
+      className="w-full flex items-center justify-between group"
       style={{
         background: opt.value === value ? "rgba(var(--surface-rgb),0.08)" : "transparent",
-        color: opt.value === value ? "var(--tx-1)" : "var(--tx-2)",
-        fontSize: small ? 11 : 13,
-        whiteSpace: isMobile ? "normal" : "nowrap",
       }}
       onMouseEnter={e => {
         if (isMobile) return;
@@ -100,13 +148,37 @@ export default function CustomSelect({
         e.currentTarget.style.background = opt.value === value ? "rgba(var(--surface-rgb),0.08)" : "transparent";
       }}
     >
-      <span className={cn(
-        "block",
-        isMobile ? "px-4 py-3 text-sm font-medium" : "px-3 py-2"
-      )}>
-        {opt.label}
-      </span>
-    </button>
+      <button
+        type="button"
+        onClick={() => { onChange(opt.value); setOpen(false); }}
+        className="flex-1 text-left transition-colors"
+        style={{
+          color: opt.value === value ? "var(--tx-1)" : "var(--tx-2)",
+          fontSize: small ? 11 : 13,
+          whiteSpace: isMobile ? "normal" : "nowrap",
+        }}
+      >
+        <span className={cn(
+          "block",
+          isMobile ? "px-4 py-3 text-sm font-medium" : "px-3 py-2"
+        )}>
+          {opt.label}
+        </span>
+      </button>
+      {onDeleteOption && (!canDelete || canDelete(opt.value)) && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDeleteOption(opt.value); }}
+          className={cn(
+            "shrink-0 text-tx-4 hover:text-loss transition-colors opacity-0 group-hover:opacity-100",
+            isMobile ? "px-3 py-3 opacity-100" : "px-2 py-2"
+          )}
+          title={`Remove ${opt.label}`}
+        >
+          x
+        </button>
+      )}
+    </div>
   ));
 
   const dropdownWrapperStyle: React.CSSProperties = isMobile
@@ -130,26 +202,40 @@ export default function CustomSelect({
         }
         style={{ background: "rgba(var(--surface-rgb),0.04)", minWidth: small ? undefined : "100%" }}
       >
-        <span style={{ color: selected ? (small ? "var(--tx-3)" : "var(--tx-1)") : "var(--tx-4)" }}>
-          {selected ? selected.label : placeholder}
+        <span style={{ color: (selected || value) ? (small ? "var(--tx-3)" : "var(--tx-1)") : "var(--tx-4)" }}>
+          {displayLabel}
         </span>
         <svg width="10" height="10" viewBox="0 0 10 10" style={{ color: "var(--tx-4)", flexShrink: 0, transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
           <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
 
-      {/* Free-text input — only shown when allowCustom is enabled AND selected value is not in the predefined options */}
-      {allowCustom && !selected && (
-        <input
-          type="text"
-          className="w-full mt-1.5 px-3 py-2 rounded-xl text-sm bg-[rgba(var(--surface-rgb),0.04)] border border-border text-tx-1 placeholder-tx-4 outline-none focus:border-[var(--accent)] transition-colors"
-          placeholder={customLabel ?? "Type custom value…"}
-          value={customText}
-          onChange={(e) => {
-            setCustomText(e.target.value);
-            onChange(e.target.value);
-          }}
-        />
+      {/* Free-text input — supports both free text values and sentinel-driven "Other" flows */}
+      {shouldShowCustomInput && (
+        <div className="flex items-center gap-1.5 mt-1.5 w-full">
+          <input
+            type="text"
+            className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm bg-[rgba(var(--surface-rgb),0.04)] border border-border text-tx-1 placeholder-tx-4 outline-none focus:border-[var(--accent)] transition-colors"
+            placeholder={customLabel ?? "Type custom value…"}
+            value={resolvedCustomValue}
+            onChange={(e) => handleCustomInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && resolvedCustomValue.trim() && onSaveCustom) {
+                onSaveCustom(resolvedCustomValue.trim());
+              }
+            }}
+          />
+          {onSaveCustom && resolvedCustomValue.trim() && (
+            <button
+              type="button"
+              onClick={() => onSaveCustom(resolvedCustomValue.trim())}
+              className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-tx-3 hover:text-profit hover:bg-[rgba(34,197,94,0.1)] transition-colors border border-border"
+              title={`Save "${resolvedCustomValue.trim()}" to list`}
+            >
+              +
+            </button>
+          )}
+        </div>
       )}
 
       {/* Desktop: portal with fixed positioning */}
@@ -162,6 +248,7 @@ export default function CustomSelect({
           <div style={{ position: "fixed", inset: 0, pointerEvents: "none" }} />
           {/* Actual dropdown — sits above blocker with auto pointerEvents */}
           <div
+            ref={portalRef}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             style={{
@@ -195,6 +282,7 @@ export default function CustomSelect({
           />
           {/* Bottom sheet — separate fixed element, directly receives touch events */}
           <div
+            ref={portalRef}
             className="fixed inset-x-4 bottom-4 z-[var(--z-picker)] rounded-2xl px-4 pt-4 pb-5"
             style={{
               background: "var(--bg-elevated)",
@@ -202,6 +290,9 @@ export default function CustomSelect({
               boxShadow: "0 -18px 50px rgba(0,0,0,0.45)",
               animation: "csSlideUp 0.2s ease-out",
             }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1.5 w-12 rounded-full" style={{ background: "rgba(var(--surface-rgb),0.12)" }} />
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -210,7 +301,7 @@ export default function CustomSelect({
                   {placeholder}
                 </p>
                 <p className="text-sm font-semibold text-tx-1">
-                  {selected ? selected.label : placeholder}
+                  {displayLabel}
                 </p>
               </div>
               <button
@@ -235,6 +326,7 @@ export default function CustomSelect({
       {/* Mobile inline mode: compact floating panel anchored to the trigger */}
       {open && isMobile && inlineMobile && createPortal(
         <div
+          ref={portalRef}
           style={{
             position: "fixed",
             left: portalStyle.left as number | undefined,
@@ -252,6 +344,7 @@ export default function CustomSelect({
           }}
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
         >
           {optionList}
         </div>,
