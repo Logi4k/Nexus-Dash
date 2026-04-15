@@ -38,7 +38,8 @@
     "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
-        "installMode": "perMachine"
+        "installMode": "currentUser",
+        "deleteOldAppFiles": true
       }
     }
   },
