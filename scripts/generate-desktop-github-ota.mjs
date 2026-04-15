@@ -65,16 +65,17 @@ function detectRepoFromGitRemote() {
 const version = readArg("--version") || tauriConfig.version;
 const tag = readArg("--tag") || `v${version}`;
 const repo = readArg("--repo") || process.env.GITHUB_RELEASE_REPO || detectRepoFromGitRemote() || null;
-const defaultArtifact = path.join(
-  root,
-  "src-tauri",
-  "target",
-  "release",
-  "bundle",
-  "nsis",
-  `Nexus_${version}_x64-setup.exe`
-);
-const artifactPath = path.resolve(readArg("--artifact") || defaultArtifact);
+const nsisDir = path.join(root, "src-tauri", "target", "release", "bundle", "nsis");
+
+function discoverNsisInstaller() {
+  if (!fs.existsSync(nsisDir)) return null;
+  const candidates = fs.readdirSync(nsisDir).filter(f => f.endsWith("-setup.exe"));
+  return candidates.length > 0 ? path.join(nsisDir, candidates[0]) : null;
+}
+
+const defaultArtifact = path.join(nsisDir, `${tauriConfig.productName}_${version}_x64-setup.exe`);
+const discoveredArtifact = fs.existsSync(defaultArtifact) ? defaultArtifact : discoverNsisInstaller();
+const artifactPath = path.resolve(readArg("--artifact") || discoveredArtifact || defaultArtifact);
 const signatureFile = path.resolve(readArg("--signature-file") || `${artifactPath}.sig`);
 const outputPath = path.resolve(readArg("--output") || path.join(root, "release", "latest.json"));
 
@@ -83,15 +84,17 @@ if (!repo) {
 }
 
 if (!readArg("--asset-url") && !fs.existsSync(artifactPath)) {
-  fail(`Installer asset not found: ${artifactPath}`);
+  const available = fs.existsSync(nsisDir) ? fs.readdirSync(nsisDir) : [];
+  fail(`Installer asset not found: ${artifactPath}\nAvailable files in ${nsisDir}: ${available.join(", ") || "(directory missing)"}`);
 }
 
 let signature = readArg("--signature");
 if (!signature) {
-  if (!fs.existsSync(signatureFile)) {
-    fail(`Signature file not found: ${signatureFile}. Build a signed desktop updater release first or pass --signature.`);
+  const sigPath = fs.existsSync(signatureFile) ? signatureFile : `${artifactPath.slice(0, -4)}.sig`;
+  if (!fs.existsSync(sigPath)) {
+    fail(`Signature file not found. Tried:\n  - ${signatureFile}\n  - ${sigPath}\nBuild a signed desktop updater release first or pass --signature.`);
   }
-  signature = fs.readFileSync(signatureFile, "utf8").trim();
+  signature = fs.readFileSync(sigPath, "utf8").trim();
 }
 
 if (!signature) {
