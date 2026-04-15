@@ -5,7 +5,6 @@ on:
     tags:
       - 'v*'
 
-# Only allow one concurrent deployment
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
@@ -32,22 +31,18 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Set signing private key
+      - name: Configure signing and updater env
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            echo "$TAURI_SIGNING_PRIVATE_KEY" > "$GITHUB_WORKSPACE/src-tauri/tauri.key"
-            echo "TAURI_SIGNING_PRIVATE_KEY=$TAURI_SIGNING_PRIVATE_KEY" >> "$GITHUB_ENV"
+            echo "TAURI_SIGNING_PRIVATE_KEY=${TAURI_SIGNING_PRIVATE_KEY}" >> "$GITHUB_ENV"
             echo "Signing key configured"
           else
-            echo "No signing key available - build will be unsigned"
+            echo "::warning::No signing key — build will not produce update artifacts"
           fi
 
-      - name: Set updater config
-        shell: bash
-        run: |
           echo "TAURI_UPDATER_PUBKEY=dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExMjc5MzZFMjcwNjhDRkEKUldUNmpBWW5icE1uRVdzT0NYdGNVbk92Tll6MjRZYkdGbmcvZllmMjVJc1pJUWl3enRnTmlBcWgK" >> "$GITHUB_ENV"
           echo "TAURI_UPDATER_ENDPOINTS=https://github.com/Logi4k/Nexus-Dash/releases/latest/download/latest.json" >> "$GITHUB_ENV"
 
@@ -56,24 +51,15 @@ jobs:
         shell: bash
 
       - name: Generate latest.json
+        shell: bash
         env:
-          GITHUB_REF_NAME: ${{ github.ref_name }}
           TAG: ${{ github.ref_name }}
         run: |
-          echo "=== NSIS directory contents ==="
+          echo "=== NSIS directory ==="
           ls -la src-tauri/target/release/bundle/nsis/ || true
-          echo "=== .sig files ==="
-          find src-tauri/target/release/bundle/nsis/ -name '*.sig' -exec ls -la {} \; || true
-          npm run ota:desktop:latest -- --repo Logi4k/Nexus-Dash --version "${TAG#v}"
-        shell: bash
-
-      - name: List built artifacts
-        run: |
-          echo "=== Built artifacts ==="
-          ls -la src-tauri/target/release/bundle/nsis/
           echo ""
-          echo "=== latest.json ==="
-          cat release/latest.json
+          VERSION="${TAG#v}"
+          npm run ota:desktop:latest -- --repo Logi4k/Nexus-Dash --version "$VERSION"
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
