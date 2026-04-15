@@ -56,11 +56,10 @@ jobs:
       - name: Generate latest.json
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}
+          TAG: ${{ github.ref_name }}
         run: |
           npm run ota:desktop:latest -- --repo Logi4k/Nexus-Dash --version "${TAG#v}"
         shell: bash
-        env:
-          TAG: ${{ github.ref_name }}
 
       - name: List built artifacts
         run: |
