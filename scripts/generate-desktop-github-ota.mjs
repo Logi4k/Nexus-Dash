@@ -115,7 +115,7 @@ const payload = {
   notes,
   pub_date: pubDate,
   platforms: {
-    "windows-x86_64": {
+    "windows-x86_64-nsis": {
       url: assetUrl,
       signature,
     },
