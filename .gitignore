@@ -21,3 +21,5 @@ SYNC_AUDIT_REPORT.md
 MOBILE_UX_AUDIT.md
 FEATURE_AUDIT.md
 .worktrees/
+*.key
+*.key.pub
