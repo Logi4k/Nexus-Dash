@@ -92,6 +92,8 @@ function forexFactoryCalendarProxy() {
 }
 
 export default defineConfig(async () => ({
+  /* Relative asset URLs so JS/CSS load under Tauri's custom protocol (absolute `/assets/...` often 404s → blank window). */
+  base: "./",
   plugins: [react(), forexFactoryCalendarProxy()],
   resolve: {
     alias: {

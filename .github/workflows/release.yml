@@ -49,8 +49,12 @@ jobs:
           echo "TAURI_UPDATER_ENDPOINTS=https://github.com/Logi4k/Nexus-Dash/releases/latest/download/latest.json" >> "$GITHUB_ENV"
 
       - name: Build Tauri app
-        run: npm run tauri build
         shell: bash
+        env:
+          # Injected into the Vite bundle at build time (add as repository secrets).
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run tauri build
 
       - name: Generate latest.json
         shell: bash
