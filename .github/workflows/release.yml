@@ -51,10 +51,25 @@ jobs:
       - name: Build Tauri app
         shell: bash
         env:
-          # Injected into the Vite bundle at build time (add as repository secrets).
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: npm run tauri build
+          # Must be present for this step so `npm run build` → prebuild-tauri-config.js
+          # enables createUpdaterArtifacts (GITHUB_ENV alone is not always visible to Node on Windows).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_UPDATER_PUBKEY: dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU2MTc3QzBERkUxNjI4QTcKUldTbktCYitEWHdYNXJkWTV4R0x5KzdmS3o5TU5QTEVOaVluZmRtTVEwcTF0QU9uZjB2RjliLzMK
+          TAURI_UPDATER_ENDPOINTS: https://github.com/Logi4k/Nexus-Dash/releases/latest/download/latest.json
+          # Short names avoid YAML edge cases with long JWTs; written to .env.production.local below.
+          VITE_SECRET_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SECRET_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          rm -f .env.production.local
+          if [ -n "${VITE_SECRET_SUPABASE_URL:-}" ]; then
+            printf '%s\n' "VITE_SUPABASE_URL=${VITE_SECRET_SUPABASE_URL}" >> .env.production.local
+          fi
+          if [ -n "${VITE_SECRET_SUPABASE_ANON_KEY:-}" ]; then
+            printf '%s\n' "VITE_SUPABASE_ANON_KEY=${VITE_SECRET_SUPABASE_ANON_KEY}" >> .env.production.local
+          fi
+          npm run tauri build
 
       - name: Generate latest.json
         shell: bash
