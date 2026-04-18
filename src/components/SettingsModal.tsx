@@ -490,6 +490,7 @@ export default function SettingsModal({ open, onClose }: Props) {
 
   async function handleInstallDesktopUpdate() {
     setDesktopUpdateAction("installing");
+    toast.message("Nexus will close while the installer runs. Reopen it when setup finishes.");
     try {
       const result = await installDesktopUpdate();
       if (!result.installed) {
@@ -928,6 +929,19 @@ export default function SettingsModal({ open, onClose }: Props) {
                   <div className="rounded-md px-2 py-1.5 border border-loss/20 bg-loss/10">
                     <p className="text-[9px] leading-relaxed text-loss">
                       {desktopUpdateStatus.error}
+                    </p>
+                  </div>
+                ) : null}
+
+                {desktopUpdateStatus?.configured ? (
+                  <div className="rounded-md px-2 py-1.5 border border-border-subtle bg-bg-hover/30">
+                    <p className="text-[9px] leading-relaxed text-tx-3">
+                      Choosing <span className="font-semibold text-tx-2">Update</span> downloads the build, then{" "}
+                      <span className="font-semibold text-tx-2">Nexus closes</span> while the Windows installer runs.
+                      Approve UAC if prompted, then reopen Nexus when setup finishes. If in-app install failed on an
+                      older build, install the latest <span className="font-semibold text-tx-2">.exe</span> once from
+                      GitHub Releases; after that, <span className="font-semibold text-tx-2">Check</span> and{" "}
+                      <span className="font-semibold text-tx-2">Update</span> here work for future releases.
                     </p>
                   </div>
                 ) : null}
