@@ -177,16 +177,46 @@ async fn install_desktop_update(_app: tauri::AppHandle) -> Result<DesktopUpdateI
         };
 
         let version = update.version.to_string();
-        update
-            .download_and_install(|_, _| {}, || {})
-            .await
-            .map_err(|e| e.to_string())?;
 
-        Ok(DesktopUpdateInstallResult {
-            installed: true,
-            version: Some(version),
-            restart_required: true,
-        })
+        /* On Windows the updater plugin's `install` ends with `process::exit(0)` after spawning the
+        NSIS installer, so `download_and_install` never returns and the Tauri IPC invoke is dropped —
+        the UI surfaces a spurious "update failed" toast. Download first, return Ok, then install
+        on a short delay so the response is delivered before the process exits. */
+        #[cfg(windows)]
+        {
+            let bytes = update
+                .download(|_, _| {}, || {})
+                .await
+                .map_err(|e| e.to_string())?;
+            let update_for_install = update.clone();
+            std::thread::Builder::new()
+                .name("nexus-desktop-updater".into())
+                .spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    if let Err(e) = update_for_install.install(bytes) {
+                        eprintln!("[updater] install failed: {e}");
+                    }
+                })
+                .map_err(|e| e.to_string())?;
+            return Ok(DesktopUpdateInstallResult {
+                installed: true,
+                version: Some(version),
+                restart_required: true,
+            });
+        }
+
+        #[cfg(not(windows))]
+        {
+            update
+                .download_and_install(|_, _| {}, || {})
+                .await
+                .map_err(|e| e.to_string())?;
+            return Ok(DesktopUpdateInstallResult {
+                installed: true,
+                version: Some(version),
+                restart_required: true,
+            });
+        }
     }
 
     #[cfg(not(desktop))]
