@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import {
   PieChart,
   Plus,
   Receipt,
+  Repeat,
   Scale,
   TrendingUp,
   Wallet,
@@ -34,9 +35,29 @@ import { useAppData, useSyncStatus } from "@/lib/store";
 import type { AppData, RecentEntry, SavedView } from "@/types";
 import { navigateToQuickAction, type QuickAction } from "@/lib/quickActions";
 import { buildViewIntentState, upsertRecentEntry } from "@/lib/viewIntents";
+import { PAGE_THEMES, getPageThemeKeyForPath, hexToRgbTriplet } from "@/lib/theme";
+import { useBWMode, bwPageTheme } from "@/lib/useBWMode";
 
 const MOBILE_SHELL_PAD_VISIBLE = "calc(env(safe-area-inset-bottom) + 5.5rem)";
 const MOBILE_SHELL_PAD_HIDDEN = "calc(env(safe-area-inset-bottom) + 1.2rem)";
+
+/** Lazy route loading — minimal so it does not “pop” after the route motion has already finished. */
+function PageSwitchFallback() {
+  return <div className="min-h-[50vh] w-full" aria-busy="true" />;
+}
+
+/** Warm route chunks so navigations rarely suspend mid-transition. */
+function prefetchRouteChunks() {
+  void import("@/pages/Dashboard");
+  void import("@/pages/Market");
+  void import("@/pages/PropAccounts");
+  void import("@/pages/Expenses");
+  void import("@/pages/Debt");
+  void import("@/pages/Tax");
+  void import("@/pages/Investments");
+  void import("@/pages/Journal");
+  void import("@/pages/Ideas");
+}
 
 const PAGE_METADATA = {
   "/": {
@@ -130,6 +151,7 @@ function LayoutBody() {
   const { data: _data, update } = useAppData();
   const syncStatus = useSyncStatus();
   const data = _data ?? ({} as AppData);
+  const isBW = useBWMode();
   const { currentView } = useCurrentPageView();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [quickActionOpen, setQuickActionOpen] = useState<QuickAction | null>(null);
@@ -186,6 +208,10 @@ function LayoutBody() {
   }, [loc.pathname]);
 
   useEffect(() => {
+    prefetchRouteChunks();
+  }, []);
+
+  useEffect(() => {
     if (!saveViewOpen) return;
     setSaveViewName(currentView?.title ?? "");
   }, [currentView, saveViewOpen]);
@@ -203,6 +229,15 @@ function LayoutBody() {
       iconKey: pageMeta.iconKey,
     });
   }, [loc.pathname, pushRecent]);
+
+  // Route-aware accent on :root so PageHeader, TitleBar, mobile nav, and focus rings match the active page.
+  useEffect(() => {
+    const key = getPageThemeKeyForPath(loc.pathname);
+    const th = bwPageTheme(PAGE_THEMES[key], isBW);
+    const root = document.documentElement;
+    root.style.setProperty("--accent", th.accent);
+    root.style.setProperty("--accent-rgb", hexToRgbTriplet(th.accent));
+  }, [loc.pathname, isBW]);
 
   // Scroll direction tracking for nav hide/show
   useEffect(() => {
@@ -323,16 +358,32 @@ function LayoutBody() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [currentView, navigate]);
 
-  const syncLabel = syncStatus.lastError
-    ? "Sync issue"
-    : syncStatus.syncInFlight
-      ? "Syncing workspace"
-      : syncStatus.syncedAt
-        ? `Synced ${new Date(syncStatus.syncedAt).toLocaleTimeString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}`
-        : "Sync ready";
+  const syncLabel = useMemo(() => {
+    let offline = false;
+    try {
+      const v = localStorage.getItem("nexus.offlineMode");
+      offline = v === "true" || v === "1";
+    } catch {
+      /* ignore */
+    }
+    if (!syncStatus.enabled) {
+      return offline ? "Local only" : "Cloud sync off";
+    }
+    if (syncStatus.lastError) return "Sync needs attention";
+    if (syncStatus.syncInFlight) return "Syncing workspace…";
+    if (syncStatus.syncedAt) {
+      return `Synced ${new Date(syncStatus.syncedAt).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`;
+    }
+    return "Cloud connected";
+  }, [
+    syncStatus.enabled,
+    syncStatus.lastError,
+    syncStatus.syncInFlight,
+    syncStatus.syncedAt,
+  ]);
 
   const commandItems = useMemo<CommandPaletteItem[]>(
     () => [
@@ -927,6 +978,78 @@ function LayoutBody() {
           }),
       }));
 
+    const withdrawalItems: CommandPaletteItem[] = [...(data.withdrawals ?? [])]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 120)
+      .map((w) => ({
+        id: `withdrawal-${w.id}`,
+        label: `Payout ${w.firm} — ${w.date}`,
+        description: `£${Number(w.gross).toLocaleString("en-GB", { maximumFractionDigits: 0 })} gross`,
+        group: "Payouts",
+        keywords: [w.firm, w.notes, w.accountId].filter(Boolean) as string[],
+        Icon: ArrowDownToLine,
+        run: () =>
+          runNavigation(
+            "/prop",
+            buildViewIntentState(
+              "/prop",
+              {
+                filters: { status: "all", sort: "balance" },
+                scrollToWithdrawalId: w.id,
+              },
+              "command-palette"
+            ),
+            {
+              id: `entity-payout-${w.id}`,
+              kind: "entity",
+              route: "/prop",
+              label: `Payout ${w.firm}`,
+              description: w.date,
+              iconKey: "prop",
+              state: {
+                filters: { status: "all", sort: "balance" },
+                scrollToWithdrawalId: w.id,
+              },
+            }
+          ),
+      }));
+
+    const subscriptionItems: CommandPaletteItem[] = [...(data.subscriptions ?? [])]
+      .filter((s) => !s.cancelled)
+      .slice(0, 80)
+      .map((s) => ({
+        id: `subscription-${s.id}`,
+        label: s.name,
+        description: `Renews ${s.nextRenewal} · £${Number(s.amount).toLocaleString("en-GB")}`,
+        group: "Subscriptions",
+        keywords: [s.name, s.notes].filter(Boolean) as string[],
+        Icon: Repeat,
+        run: () =>
+          runNavigation(
+            "/investments",
+            buildViewIntentState(
+              "/investments",
+              {
+                search: s.name,
+                filters: { performance: "all", sort: "value" },
+              },
+              "command-palette"
+            ),
+            {
+              id: `entity-sub-${s.id}`,
+              kind: "entity",
+              route: "/investments",
+              label: s.name,
+              description: "Subscription",
+              iconKey: "investments",
+              state: {
+                search: s.name,
+                filters: { performance: "all", sort: "value" },
+              },
+            }
+          ),
+      }));
+
     return [
       ...tradeItems,
       ...expenseItems,
@@ -935,6 +1058,8 @@ function LayoutBody() {
       ...accountItems,
       ...investmentItems,
       ...debtItems,
+      ...withdrawalItems,
+      ...subscriptionItems,
     ];
   }, [
     data.tradeJournal,
@@ -945,12 +1070,15 @@ function LayoutBody() {
     data.accounts,
     data.investments,
     data.debts,
+    data.withdrawals,
+    data.subscriptions,
     recentCommandItems,
     runNavigation,
     savedViewItems,
   ]);
 
-  const routeKey = loc.pathname + loc.search;
+  /** Pathname only — `search` can change after navigation (view intents), which was retriggering enter animations. */
+  const routeAnimKey = loc.pathname;
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-bg-base">
@@ -980,23 +1108,21 @@ function LayoutBody() {
             <div className="shell-frame">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
-                  key={routeKey}
+                  key={routeAnimKey}
                   className="route-stage"
-                  initial={{ opacity: 0, y: 18, scale: 0.988 }}
+                  initial={{ opacity: 0 }}
                   animate={{
                     opacity: 1,
-                    y: 0,
-                    scale: 1,
-                    transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] },
+                    transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
                   }}
                   exit={{
                     opacity: 0,
-                    y: -12,
-                    scale: 0.992,
-                    transition: { duration: 0.22, ease: [0.4, 0, 1, 1] },
+                    transition: { duration: 0.14, ease: [0.4, 0, 1, 1] },
                   }}
                 >
-                  <Outlet />
+                  <Suspense key={routeAnimKey} fallback={<PageSwitchFallback />}>
+                    <Outlet />
+                  </Suspense>
                 </motion.div>
               </AnimatePresence>
             </div>

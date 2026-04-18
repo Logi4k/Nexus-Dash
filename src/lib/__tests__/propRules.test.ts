@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyPropAccountLifecycle, getPropAccountSnapshot } from "../propRules";
+import { applyPropAccountLifecycle, getPropAccountSnapshot, inferProgramKey } from "../propRules";
 import { getAccountFundingDate } from "../tradePhases";
 import { todayLocalIsoDate } from "../utils";
 import type { Account, PassedChallenge, TradeEntry } from "@/types";
@@ -36,8 +36,9 @@ describe("prop account lifecycle", () => {
     expect(funded.type).toBe("LucidFlex 50K");
     expect(funded.balance).toBe(50000);
     expect(funded.initialBalance).toBe(50000);
-    // Peak is preserved from the challenge (53000 > 50000 start balance)
-    expect(funded.peakBalance).toBe(53000);
+    // Funded account starts a new risk phase, so the funded trailing floor
+    // must not inherit the evaluation peak and instantly breach the account.
+    expect(funded.peakBalance).toBe(50000);
     expect(funded.fundedAt).toBe(nextIsoDate(today));
 
     expect(pass.accountId).toBe("acct-pass");
@@ -176,6 +177,61 @@ describe("funding dates and payout cycle rules", () => {
 
     expect(snapshot?.cycleWinningDays).toBe(2);
     expect(snapshot?.cycleLargestWinningDay).toBe(180);
+  });
+
+  it("maps a generic Tradeify challenge type to Select Evaluation", () => {
+    expect(
+      inferProgramKey({
+        firm: "Tradeify",
+        type: "100K Challenge",
+        status: "challenge",
+        phaseHint: "challenge",
+      })
+    ).toBe("tradeify-select-evaluation");
+  });
+
+  it("uses Select Evaluation profit targets for Tradeify 100K and 150K", () => {
+    const eval100: Account = {
+      id: "t-eval-100",
+      firm: "Tradeify",
+      type: "Select 100K",
+      status: "challenge",
+      phaseHint: "challenge",
+      balance: 50000,
+      initialBalance: 50000,
+      peakBalance: 50000,
+    };
+    const eval150: Account = {
+      id: "t-eval-150",
+      firm: "Tradeify",
+      type: "Select Evaluation 150K",
+      status: "challenge",
+      phaseHint: "challenge",
+      balance: 50000,
+      initialBalance: 150000,
+      peakBalance: 50000,
+    };
+    expect(getPropAccountSnapshot(eval100)?.profitTarget).toBe(6000);
+    expect(getPropAccountSnapshot(eval150)?.profitTarget).toBe(9000);
+  });
+
+  it("caps Tradeify Select Flex payout availability at the per-size plan cap", () => {
+    const flex100: Account = {
+      id: "t-flex-100",
+      firm: "Tradeify",
+      type: "Select Flex 100K",
+      status: "funded",
+      phaseHint: "funded",
+      fundedAt: "2026-03-10",
+      balance: 110000,
+      initialBalance: 100000,
+      peakBalance: 110000,
+      payoutCycleStartBalance: 100000,
+    };
+    const snapshot = getPropAccountSnapshot(flex100, { tradeJournal: [], withdrawals: [] });
+    expect(snapshot?.payoutMinimumRequest).toBe(250);
+    /* 50% of $10k profit = $5k, capped at $4k for 100K Flex */
+    expect(snapshot?.payoutAvailableAmount).toBe(4000);
   });
 
   it("calculates the capped payout availability for Tradeify Select Daily", () => {

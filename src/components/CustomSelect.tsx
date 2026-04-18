@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +63,7 @@ export default function CustomSelect({
     typeof window !== "undefined" ? window.innerWidth < 640 : false,
   );
   const [portalStyle, setPortalStyle] = useState<React.CSSProperties>({});
+  const listboxId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
@@ -132,9 +133,10 @@ export default function CustomSelect({
     onChange(nextValue);
   }
 
-  const optionList = options.map(opt => (
+  const optionList = options.map((opt, index) => (
     <div
       key={opt.value}
+      role="presentation"
       className="w-full flex items-center justify-between group"
       style={{
         background: opt.value === value ? "rgba(var(--surface-rgb),0.08)" : "transparent",
@@ -150,6 +152,9 @@ export default function CustomSelect({
     >
       <button
         type="button"
+        id={`${listboxId}-option-${index}`}
+        role="option"
+        aria-selected={opt.value === value}
         onClick={() => { onChange(opt.value); setOpen(false); }}
         className="flex-1 text-left transition-colors"
         style={{
@@ -195,7 +200,20 @@ export default function CustomSelect({
       <button
         ref={triggerRef}
         type="button"
+        role="combobox"
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
         onClick={openDropdown}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openDropdown();
+          }
+          if (event.key === "Escape") {
+            setOpen(false);
+          }
+        }}
         className={small
           ? "text-[10px] px-2 py-0.5 rounded-full font-semibold border border-border text-tx-3 flex items-center gap-1"
           : "w-full text-left px-3 py-2 rounded-xl text-sm border border-border text-tx-1 flex items-center justify-between gap-2"
@@ -249,15 +267,15 @@ export default function CustomSelect({
           {/* Actual dropdown — sits above blocker with auto pointerEvents */}
           <div
             ref={portalRef}
+            id={listboxId}
+            role="listbox"
+            className="menu-surface"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             style={{
               position: "relative",
               ...dropdownWrapperStyle,
-              background: "var(--bg-elevated)",
-              border: "1px solid rgba(var(--border-rgb),0.12)",
               borderRadius: 12,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
               maxHeight: 300,
               overflowY: "auto",
               transformOrigin: "top",
@@ -277,17 +295,14 @@ export default function CustomSelect({
           {/* Backdrop — standalone fixed overlay, no pointer-events parent */}
           <div
             className="fixed inset-0 z-[var(--z-picker-bg)]"
-            style={{ background: "rgba(2,6,23,0.72)", backdropFilter: "blur(10px)", touchAction: "none" }}
+            style={{ background: "var(--overlay-scrim)", backdropFilter: "blur(10px)", touchAction: "none" }}
             onClick={() => setOpen(false)}
           />
           {/* Bottom sheet — separate fixed element, directly receives touch events */}
           <div
             ref={portalRef}
-            className="fixed inset-x-4 bottom-4 z-[var(--z-picker)] rounded-2xl px-4 pt-4 pb-5"
+            className="menu-surface fixed inset-x-4 bottom-4 z-[var(--z-picker)] rounded-2xl border border-border-subtle px-4 pt-4 pb-5"
             style={{
-              background: "var(--bg-elevated)",
-              borderTop: "1px solid rgba(var(--border-rgb),0.08)",
-              boxShadow: "0 -18px 50px rgba(0,0,0,0.45)",
               animation: "csSlideUp 0.2s ease-out",
             }}
             onClick={(e) => e.stopPropagation()}
@@ -313,8 +328,10 @@ export default function CustomSelect({
               </button>
             </div>
             <div
-              className="overflow-y-auto rounded-2xl"
-              style={{ maxHeight: "min(55vh, 420px)", background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}
+              id={listboxId}
+              role="listbox"
+              className="overflow-y-auto rounded-2xl border border-border-subtle bg-bg-subtle"
+              style={{ maxHeight: "min(55vh, 420px)" }}
             >
               {optionList}
             </div>
@@ -327,15 +344,15 @@ export default function CustomSelect({
       {open && isMobile && inlineMobile && createPortal(
         <div
           ref={portalRef}
+          id={listboxId}
+          role="listbox"
+          className="menu-surface"
           style={{
             position: "fixed",
             left: portalStyle.left as number | undefined,
             top: (portalStyle.top as number | undefined) ?? 0,
             width: portalStyle.width as number | undefined,
-            background: "var(--bg-elevated)",
-            border: "1px solid rgba(var(--border-rgb),0.12)",
             borderRadius: 10,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
             maxHeight: 300,
             overflowY: "auto",
             transformOrigin: "top",

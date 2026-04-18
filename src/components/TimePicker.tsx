@@ -100,11 +100,8 @@ export default function TimePicker({ value, onChange, className }: Props) {
 
     return (
       <div
-        className="rounded-2xl overflow-hidden shadow-xl"
+        className="menu-surface rounded-2xl overflow-hidden shadow-xl"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid rgba(var(--border-rgb),0.12)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.28)",
           transformOrigin: "top",
           animation: isMobile ? "tpSlideUp 0.2s ease-out" : "tpDropIn 0.15s ease-out",
           minWidth: isMobile ? "100%" : undefined,
@@ -124,9 +121,9 @@ export default function TimePicker({ value, onChange, className }: Props) {
           >
             <ChevronLeft size={14} style={{ color: "var(--tx-3)" }} />
           </button>
-          <span className="text-[15px] font-black tabular-nums text-[var(--tx-1)]">
+            <span className="text-[15px] font-black tabular-nums text-[var(--tx-1)]">
             {hour}:{String(minute).padStart(2, "0")}
-            <span className="text-[10px] ml-1 font-semibold" style={{ color: "var(--accent)" }}>
+            <span className="text-[10px] ml-1 font-semibold text-tx-3">
               {ampm.toUpperCase()}
             </span>
           </span>
@@ -151,9 +148,9 @@ export default function TimePicker({ value, onChange, className }: Props) {
               onClick={() => setAmpm(p)}
               className="flex-1 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors"
               style={{
-                background: ampm === p ? "rgba(var(--surface-rgb),0.12)" : "transparent",
-                color: ampm === p ? "var(--accent)" : "var(--tx-3)",
-                borderBottom: ampm === p ? "2px solid var(--accent)" : "2px solid transparent",
+                background: ampm === p ? "rgba(var(--surface-rgb),0.1)" : "transparent",
+                color: ampm === p ? "var(--tx-1)" : "var(--tx-3)",
+                borderBottom: ampm === p ? "2px solid var(--tx-1)" : "2px solid transparent",
                 marginBottom: "-1px",
               }}
             >
@@ -176,9 +173,9 @@ export default function TimePicker({ value, onChange, className }: Props) {
                   onClick={() => setHour(displayH)}
                   className={cn(
                     "w-full py-1.5 text-[13px] font-medium transition-colors",
-                    isSelected ? "text-[var(--bg-base)]" : "text-[var(--tx-2)]"
+                    isSelected ? "text-[var(--bg-card)]" : "text-[var(--tx-2)]"
                   )}
-                  style={isSelected ? { background: "var(--accent)", color: "var(--bg-base)" } : {}}
+                  style={isSelected ? { background: "var(--tx-1)", color: "var(--bg-card)" } : {}}
                 >
                   {h}
                 </button>
@@ -198,7 +195,7 @@ export default function TimePicker({ value, onChange, className }: Props) {
                   className="w-full py-1.5 text-[13px] font-medium transition-colors"
                   style={
                     isSelected
-                      ? { background: "var(--accent)", color: "var(--bg-base)" }
+                      ? { background: "var(--tx-1)", color: "var(--bg-card)" }
                       : { color: "var(--tx-2)" }
                   }
                 >
@@ -214,8 +211,7 @@ export default function TimePicker({ value, onChange, className }: Props) {
           <button
             type="button"
             onClick={applyAndClose}
-            className="w-full rounded-xl py-2 text-[12px] font-bold transition-colors"
-            style={{ background: "var(--accent)", color: "var(--bg-base)" }}
+            className="w-full rounded-xl border border-border-strong bg-tx-1 py-2 text-[12px] font-bold text-bg-card transition-opacity hover:opacity-90"
           >
             Confirm
           </button>
@@ -237,7 +233,7 @@ export default function TimePicker({ value, onChange, className }: Props) {
           "text-[var(--tx-1)]"
         )}
       >
-        <Clock size={13} style={{ color: "var(--accent)" }} />
+        <Clock size={13} className="text-tx-4" />
         <span className="font-medium">{fmtDisplay() === "Set time" ? "Set time…" : fmtDisplay()}</span>
       </button>
 
@@ -265,15 +261,13 @@ export default function TimePicker({ value, onChange, className }: Props) {
           {/* Backdrop — standalone fixed overlay, no pointer-events parent */}
           <div
             className="fixed inset-0 z-[var(--z-picker-bg)]"
-            style={{ background: "rgba(2,6,23,0.72)", backdropFilter: "blur(10px)", touchAction: "none" }}
+            style={{ background: "var(--overlay-scrim)", backdropFilter: "blur(10px)", touchAction: "none" }}
             onClick={() => setOpen(false)}
           />
           {/* Bottom sheet — separate fixed element, directly receives touch events */}
           <div
-            className="fixed inset-x-4 bottom-4 z-[var(--z-picker)] rounded-2xl px-4 pt-4 pb-5"
+            className="menu-surface fixed inset-x-4 bottom-4 z-[var(--z-picker)] rounded-2xl px-4 pt-4 pb-5"
             style={{
-              background: "var(--bg-elevated)",
-              boxShadow: "0 -18px 50px rgba(0,0,0,0.45)",
               animation: "tpSlideUp 0.2s ease-out",
             }}
             onClick={(e) => e.stopPropagation()}

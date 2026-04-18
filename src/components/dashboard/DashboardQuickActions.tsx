@@ -7,6 +7,8 @@ type DashboardQuickActionsProps = {
   blueColor: string;
   profitColor: string;
   warnColor: string;
+  /** Paper mode: keep quick actions in brass / ink instead of neon per-action fills */
+  isBW?: boolean;
   onAction: (path: string, action?: QuickAction) => void;
 };
 
@@ -16,6 +18,7 @@ export function DashboardQuickActions({
   blueColor,
   profitColor,
   warnColor,
+  isBW = false,
   onAction,
 }: DashboardQuickActionsProps) {
   const actions: Array<{
@@ -35,13 +38,15 @@ export function DashboardQuickActions({
     <div
       className="card-secondary p-4 hidden md:block"
       style={{
-        background: `linear-gradient(145deg, ${accentColor}12 0%, rgba(var(--surface-rgb),0.02) 48%, ${blueColor}10 100%)`,
+        background: isBW
+          ? "linear-gradient(145deg, rgba(var(--accent-rgb),0.08) 0%, rgba(var(--surface-rgb),0.35) 48%, rgba(var(--border-rgb),0.05) 100%)"
+          : `linear-gradient(145deg, ${accentColor}12 0%, rgba(var(--surface-rgb),0.02) 48%, ${blueColor}10 100%)`,
         borderColor: "rgba(var(--border-rgb),0.12)",
         boxShadow: "inset 0 1px 0 rgba(var(--surface-rgb),0.06)",
       }}
     >
       <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
-        <Zap size={10} style={{ color: accentColor }} />Quick Actions
+        <Zap size={10} style={{ color: isBW ? "var(--accent)" : accentColor }} />Quick Actions
       </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {actions.map(({ label, path, color, icon, action }) => (
@@ -49,12 +54,21 @@ export function DashboardQuickActions({
             key={label}
             onClick={() => onAction(path, action)}
             className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-[10px] font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] active:scale-[0.98]"
-            style={{
-              background: `linear-gradient(180deg, ${color}12 0%, ${color}08 100%)`,
-              border: `1px solid ${color}24`,
-              boxShadow: `inset 0 1px 0 ${color}18`,
-              color,
-            }}
+            style={
+              isBW
+                ? {
+                    background: "rgba(var(--accent-rgb),0.05)",
+                    border: "1px solid rgba(var(--border-rgb),0.12)",
+                    boxShadow: "inset 0 1px 0 rgba(var(--surface-rgb),0.25)",
+                    color: "var(--tx-2)",
+                  }
+                : {
+                    background: `linear-gradient(180deg, ${color}12 0%, ${color}08 100%)`,
+                    border: `1px solid ${color}24`,
+                    boxShadow: `inset 0 1px 0 ${color}18`,
+                    color,
+                  }
+            }
           >
             {icon}
             <span>{label}</span>

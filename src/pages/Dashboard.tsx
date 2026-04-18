@@ -7,15 +7,14 @@ import {
   Clock, ChevronRight, ChevronDown, ChevronUp, CheckCircle2, Target,
   AlertCircle, Activity, CreditCard, Zap, BarChart3,
   Receipt, Wallet, CalendarDays, PiggyBank,
-  Banknote, Flame, BookOpen, Trophy, Percent, Shield,
-  Calendar, Plus, Pencil, Trash2,
-  Sparkles,
+  Banknote, Flame, BookOpen, Trophy,
+  Calendar, Plus, Pencil, Trash2, Search,
 } from "lucide-react";
 import {
-  Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, ComposedChart, Bar, Cell,
+  XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid, BarChart, Bar,
 } from "recharts";
-import { useAppData } from "@/lib/store";
+import { useAppData, useSyncStatus } from "@/lib/store";
 import type { AppData } from "@/types";
 import Modal from "@/components/Modal";
 import { navigateToQuickAction } from "@/lib/quickActions";
@@ -27,6 +26,7 @@ import {
 } from "@/lib/utils";
 import type { MarketSession } from "@/types";
 import AnimatedNumber from "@/components/AnimatedNumber";
+import StatCard from "@/components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -54,7 +54,7 @@ import {
 
 const container = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+  visible: { transition: { staggerChildren: 0.055, delayChildren: 0.1 } },
 };
 
 const item = {
@@ -62,9 +62,12 @@ const item = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
 };
 
-const hoverLift = {
-  y: -3,
-  transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] as const },
+const sidebarItem = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1], delay: 0.08 },
+  },
 };
 
 function useCurrentTime() {
@@ -80,6 +83,12 @@ function formatCompactGBP(value: number) {
   const abs = Math.abs(value);
   if (abs >= 1000) return `£${(value / 1000).toFixed(abs >= 10000 ? 0 : 1)}k`;
   return `£${Math.round(value)}`;
+}
+
+function daysFromToday(isoDay: string): number | null {
+  const d = new Date(isoDay + "T12:00:00");
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.ceil((d.getTime() - Date.now()) / 86400000);
 }
 
 function MonthlyBreakdownTooltip({ active, payload, label }: {
@@ -130,6 +139,7 @@ export default function Dashboard() {
   );
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [heroPeriod, setHeroPeriod] = useState<"1W" | "1M" | "3M" | "All">("All");
+  const syncStatus = useSyncStatus();
 
   // ── Wealth target modal ──────────────────────────────────────────────────────
   const emptyTargetForm = { emoji: "TG", name: "", desc: "", target: "", saved: "", monthly: "" };
@@ -227,7 +237,7 @@ export default function Dashboard() {
 
     // Accounts
     const fundedAccs = data.accounts.filter((a) =>
-      ["funded", "Funded"].includes(a.status)
+      String(a.status).toLowerCase() === "funded"
     );
     const challengeAccs = data.accounts.filter((a) => a.status.toLowerCase() === "challenge");
     const breachedAccs = data.accounts.filter((a) =>
@@ -351,77 +361,60 @@ export default function Dashboard() {
     };
   }, [data, heroPeriod]);
 
-  const premiumInsights = useMemo(() => {
-    const insights: Array<{
-      title: string;
-      summary: string;
-      detail: string;
-      tone: string;
-      actionLabel: string;
-      onClick: () => void;
-    }> = [];
+  const savedAgoLabel = useMemo(() => {
+    const t = syncStatus.localSavedAt ?? syncStatus.syncedAt;
+    if (!t) return null;
+    const mins = Math.floor((Date.now() - t) / 60000);
+    if (mins < 1) return "Saved just now";
+    if (mins < 120) return `Saved ${mins}m ago`;
+    const h = Math.floor(mins / 60);
+    return `Saved ${h}h ago`;
+  }, [syncStatus.localSavedAt, syncStatus.syncedAt]);
 
-    const latestMonth = stats.monthlyChart[stats.monthlyChart.length - 1];
-    const avgCosts =
-      stats.monthlyChart.length > 0
-        ? stats.monthlyChart.reduce((sum, month) => sum + month.costs, 0) / stats.monthlyChart.length
-        : 0;
+  const renewalDays = data.userSettings?.subscriptionRenewalDays ?? 7;
+  const subAlertsOn = data.userSettings?.subscriptionAlertsEnabled !== false;
 
-    if (latestMonth && avgCosts > 0 && latestMonth.costs > avgCosts * 1.2) {
-      insights.push({
-        title: "Cost spike detected",
-        summary: `${latestMonth.month} costs landed ${Math.round((latestMonth.costs / avgCosts - 1) * 100)}% above your baseline.`,
-        detail: "This is usually caused by challenge resets, stacked account fees, or a one-off overhead charge.",
-        tone: "var(--color-loss)",
-        actionLabel: "Review expenses",
-        onClick: () =>
-          navigate("/expenses", {
-            state: buildViewIntentState("/expenses", { tab: "propfirm", propSearch: "" }, "dashboard-insight"),
-          }),
-      });
+  const alertStrip = useMemo(() => {
+    const out: { id: string; text: string; to: string; urgent: boolean }[] = [];
+    if (subAlertsOn) {
+      for (const s of data.subscriptions ?? []) {
+        if (s.cancelled) continue;
+        const d = daysFromToday(s.nextRenewal);
+        if (d !== null && d >= 0 && d <= renewalDays) {
+          out.push({
+            id: `sub-${s.id}`,
+            text: `${s.name} renews in ${d}d`,
+            to: "/investments",
+            urgent: d <= 2,
+          });
+        }
+      }
     }
-
-    if (stats.totalDebt > stats.portfolioValue * 0.5 && stats.totalDebt > 0) {
-      insights.push({
-        title: "Debt is crowding growth",
-        summary: `Debt equals ${Math.round((stats.totalDebt / Math.max(stats.portfolioValue, 1)) * 100)}% of invested capital.`,
-        detail: "Reducing revolving balances will usually improve flexibility faster than a marginal portfolio contribution.",
-        tone: "var(--color-warn)",
-        actionLabel: "Model payoff plan",
-        onClick: () => navigate("/debt"),
-      });
+    for (const debt of data.debts ?? []) {
+      const d = daysFromToday(debt.nextPayment);
+      if (d !== null && d >= 0 && d <= 7) {
+        out.push({
+          id: `debt-${debt.id}`,
+          text: `${debt.name} payment in ${d}d`,
+          to: "/debt",
+          urgent: d <= 2,
+        });
+      }
     }
+    return out.slice(0, 6);
+  }, [data.debts, data.subscriptions, renewalDays, subAlertsOn]);
 
-    if (stats.fundedAccs.length === 0 && stats.challengeAccs.length > 0) {
-      insights.push({
-        title: "No funded accounts active",
-        summary: "Your prop pipeline is concentrated in challenge mode.",
-        detail: "That increases fee sensitivity and makes cashflow more dependent on one future pass event.",
-        tone: "var(--color-blue)",
-        actionLabel: "Review prop accounts",
-        onClick: () =>
-          navigate("/prop", {
-            state: buildViewIntentState("/prop", { filters: { status: "challenge", sort: "balance" } }, "dashboard-insight"),
-          }),
-      });
-    }
+  const showOnboarding = useMemo(() => {
+    if (data.userSettings?.onboardingChecklistDismissed) return false;
+    const trades = data.tradeJournal?.length ?? 0;
+    const accs = data.accounts?.length ?? 0;
+    return trades < 3 || accs < 1;
+  }, [data.accounts, data.tradeJournal, data.userSettings?.onboardingChecklistDismissed]);
 
-    if (stats.topPayouts[0] && stats.totalWithdrawals > 0 && stats.topPayouts[0][1] / stats.totalWithdrawals > 0.55) {
-      insights.push({
-        title: "Payout concentration is high",
-        summary: `${stats.topPayouts[0][0]} accounts for most of your realised payouts.`,
-        detail: "A single-firm concentration is efficient until rules shift or a payout cycle stalls.",
-        tone: "var(--color-teal)",
-        actionLabel: "Inspect funded accounts",
-        onClick: () =>
-          navigate("/prop", {
-            state: buildViewIntentState("/prop", { filters: { status: "funded", sort: "balance" } }, "dashboard-insight"),
-          }),
-      });
-    }
-
-    return insights.slice(0, 3);
-  }, [navigate, stats]);
+  const paletteHint = useMemo(() => {
+    if (typeof navigator === "undefined") return "Ctrl+K";
+    return /mac/i.test(navigator.platform) ? "⌘K" : "Ctrl+K";
+  }, []);
 
   // ── Time strings ──────────────────────────────────────────────────────────────
   const timeStr = now.toLocaleTimeString("en-GB", {
@@ -469,41 +462,29 @@ export default function Dashboard() {
               <span className="text-tx-1 text-xs font-mono tabular-nums font-semibold">
                 {timeStr}
               </span>
+              <span className="text-tx-4 text-xs">·</span>
+              <Search size={11} className="text-tx-4" aria-hidden />
+              <span className="text-tx-4 text-[10px]">{paletteHint}</span>
+              {savedAgoLabel && (
+                <>
+                  <span className="text-tx-4 text-xs">·</span>
+                  <span className="text-tx-4 text-[10px]">{savedAgoLabel}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
       </motion.div>
 
-      <motion.div variants={item} className="grid grid-cols-3 gap-2 md:hidden">
-        {[
-          {
-            label: "Portfolio",
-            value: fmtGBP(stats.portfolioValue),
-            icon: <PiggyBank size={12} className="text-tx-3" />,
-          },
-          {
-            label: "Debt",
-            value: fmtGBP(stats.totalDebt),
-            icon: <CreditCard size={12} className="text-tx-3" />,
-          },
-          {
-            label: "Next session",
-            value: getNextMarketSession(new Date())?.name ?? "Closed",
-            icon: <CalendarDays size={12} className="text-tx-3" />,
-          },
-        ].map((item) => (
-          <div key={item.label} className="rounded-2xl border border-border-subtle bg-bg-hover px-3 py-3">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-tx-4">
-              {item.icon}
-              {item.label}
-            </div>
-            <div className="mt-2 text-sm font-semibold text-tx-1">{item.value}</div>
-          </div>
-        ))}
-      </motion.div>
-
       {/* ── HERO BANNER ───────────────────────────────────────────────────────── */}
-      <motion.div variants={item} className="card-hero p-6 md:p-7 xl:p-8 relative overflow-hidden" style={{ background: theme.dim, border: `1px solid ${theme.border}`, position: "relative", zIndex: 1 }}>
+      <motion.div
+        variants={item}
+        className={cn(
+          "card-hero p-6 md:p-7 xl:p-8 relative overflow-hidden",
+          isBW && "ring-1 ring-[rgba(var(--border-rgb),0.12)]",
+        )}
+        style={{ background: theme.dim, border: `1px solid ${theme.border}`, position: "relative", zIndex: 1 }}
+      >
         {/* Decorative glow orbs */}
         <motion.div
           className="pointer-events-none absolute -top-32 -right-20 hidden md:block"
@@ -520,7 +501,7 @@ export default function Dashboard() {
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
           style={{
             width: 280, height: 280, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(34,197,94,0.10) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(var(--color-profit-rgb),0.09) 0%, transparent 70%)",
           }}
         />
         <motion.div
@@ -767,14 +748,14 @@ export default function Dashboard() {
         {/* Divider */}
         <Separator className="my-5 relative z-10 opacity-60" />
 
-        {/* 4-stat bottom row */}
+        {/* 4-stat bottom row — matches Prop Accounts StatCard pattern */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             {
               label: "Prop Income",
               value: stats.totalWithdrawals,
-              color: PROFIT,
-              icon: <ArrowDownToLine size={13} />,
+              accent: PROFIT,
+              icon: <ArrowDownToLine size={15} />,
               onClick: () =>
                 navigate("/prop", {
                   state: buildViewIntentState("/prop", {
@@ -786,8 +767,8 @@ export default function Dashboard() {
             {
               label: "Firm Costs",
               value: stats.totalExpenses,
-              color: LOSS,
-              icon: <Receipt size={13} />,
+              accent: LOSS,
+              icon: <Receipt size={15} />,
               onClick: () =>
                 navigate("/expenses", {
                   state: buildViewIntentState("/expenses", {
@@ -800,8 +781,8 @@ export default function Dashboard() {
             {
               label: "Portfolio",
               value: stats.portfolioValue,
-              color: PURPLE,
-              icon: <BarChart3 size={13} />,
+              accent: PURPLE,
+              icon: <BarChart3 size={15} />,
               onClick: () =>
                 navigate("/investments", {
                   state: buildViewIntentState("/investments", {
@@ -814,8 +795,8 @@ export default function Dashboard() {
             {
               label: "Monthly Burn",
               value: stats.monthlySubs,
-              color: WARN,
-              icon: <Zap size={13} />,
+              accent: WARN,
+              icon: <Zap size={15} />,
               onClick: () =>
                 navigate("/investments", {
                   state: buildViewIntentState("/investments", {
@@ -826,92 +807,85 @@ export default function Dashboard() {
               delay: 180,
             },
           ].map((s) => (
-            <motion.button
-              key={s.label}
-              onClick={s.onClick}
-              whileHover={hoverLift}
-              whileTap={{ scale: 0.985 }}
-              className="text-left rounded-xl p-3.5 transition-[background-color,border-color,transform,filter] duration-200 hover:brightness-110 cursor-pointer"
-              style={{
-                background: `linear-gradient(180deg, ${s.color}16 0%, ${s.color}08 100%)`,
-                border: `1px solid ${s.color}25`,
-                boxShadow: `inset 0 1px 0 ${s.color}16`,
-              }}
-            >
-              <div className="flex items-center gap-2 mb-2.5">
-                <div className="p-1.5 rounded-lg flex-shrink-0" style={{ background: `${s.color}18`, color: s.color }}>
-                  {s.icon}
-                </div>
-                <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: s.color }}>{s.label}</p>
-              </div>
-              <p className="text-[17px] font-black font-mono tabular-nums leading-none" style={{ color: s.color }}>
-                {fmtGBP(s.value)}
-              </p>
-            </motion.button>
+            <div key={s.label} className="min-w-0">
+              <StatCard
+                label={s.label}
+                value={s.value}
+                prefix="£"
+                decimals={2}
+                icon={s.icon}
+                accentColor={s.accent}
+                onClick={s.onClick}
+                delay={s.delay}
+              />
+            </div>
           ))}
         </div>
       </motion.div>
 
-      {(premiumInsights.length > 0) && (
-        <motion.div variants={item} className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_340px]">
-          {premiumInsights.length > 0 && (
-            <div className="card p-5">
-              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-tx-4">
-                <Sparkles size={12} />
-                Premium insights
-              </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {premiumInsights.map((insight) => (
-                  <button
-                    key={insight.title}
-                    type="button"
-                    onClick={insight.onClick}
-                    className="rounded-2xl border border-border-subtle bg-bg-hover px-4 py-4 text-left transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-border"
-                  >
-                    <div className="text-sm font-semibold" style={{ color: insight.tone }}>{insight.title}</div>
-                    <div className="mt-2 text-xs leading-relaxed text-tx-2">{insight.summary}</div>
-                    <div className="mt-2 text-[11px] leading-relaxed text-tx-4">{insight.detail}</div>
-                    <div className="mt-3 text-[11px] font-semibold" style={{ color: insight.tone }}>{insight.actionLabel}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-<div className="card p-5">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-tx-4">
-              <Zap size={12} />
-              Quick actions
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {[
-                { label: "Log Trade", icon: <Plus size={14} />, action: () => navigateToQuickAction(navigate, "/journal", "addTrade"), color: "rgba(var(--profit-rgb),0.08)" },
-                { label: "Add Expense", icon: <Receipt size={14} />, action: () => navigateToQuickAction(navigate, "/expenses", "addExpense"), color: "rgba(var(--loss-rgb),0.08)" },
-                { label: "Log Payout", icon: <Banknote size={14} />, action: () => navigateToQuickAction(navigate, "/prop", "logPayout"), color: "rgba(var(--profit-rgb),0.08)" },
-                { label: "Add Idea", icon: <BookOpen size={14} />, action: () => navigateToQuickAction(navigate, "/ideas", "addNote"), color: "rgba(var(--surface-rgb),0.04)" },
-              ].map((item) => (
+      {(alertStrip.length > 0 || showOnboarding) && (
+        <motion.div variants={item} className="space-y-3">
+          {alertStrip.length > 0 && (
+            <div
+              className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
+              aria-label="Upcoming reminders"
+            >
+              {alertStrip.map((a) => (
                 <button
-                  key={item.label}
+                  key={a.id}
                   type="button"
-                  onClick={item.action}
-                  className="flex items-center gap-2 rounded-xl border border-border-subtle px-3 py-3 text-left transition-[background] hover:bg-bg-hover"
-                  style={{ background: item.color }}
+                  onClick={() => navigate(a.to)}
+                  className={cn(
+                    "shrink-0 rounded-xl border px-3 py-2 text-left transition-colors",
+                    a.urgent ? "border-loss/30 bg-loss/5" : "border-border bg-[rgba(var(--surface-rgb),0.03)]"
+                  )}
                 >
-                  <span className="text-tx-2">{item.icon}</span>
-                  <span className="text-xs font-medium text-tx-1">{item.label}</span>
+                  <span className="text-[10px] font-semibold text-tx-2 whitespace-nowrap">{a.text}</span>
+                  <span className="block text-[9px] text-tx-4 mt-0.5">Open</span>
                 </button>
               ))}
             </div>
-          </div>
+          )}
+
+          {showOnboarding && (
+            <div
+              className="rounded-xl border p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+              style={{ borderColor: theme.border, background: "rgba(var(--surface-rgb),0.04)" }}
+            >
+              <div>
+                <p className="text-xs font-semibold text-tx-2">Welcome — wire up the basics</p>
+                <ul className="mt-2 text-[11px] text-tx-3 space-y-1 list-disc pl-4">
+                  <li>Log a trade on Journal</li>
+                  <li>Add a prop account</li>
+                  <li>Turn on renewal alerts in Settings</li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                className="btn-ghost btn-sm shrink-0 self-start sm:self-center"
+                onClick={() =>
+                  update((prev) => ({
+                    ...prev,
+                    userSettings: {
+                      ...(prev.userSettings ?? { subscriptionRenewalDays: 7 }),
+                      onboardingChecklistDismissed: true,
+                    },
+                  }))
+                }
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </motion.div>
       )}
 
       {/* ── MAIN 2-COL LAYOUT ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5 items-start">
-      <div className="space-y-5">
+      <div className={cn(isBW ? "dash-stack" : "space-y-5")}>
 
-      {/* ── KPI GRID ────────────────────────────────────────────────────── */}
-      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
+      {/* ── KPI GRID (2×2 on phone — avoids a long single column) ─────────────── */}
+      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
         <KPICard
           label="Total Payouts"
           value={stats.totalWithdrawals}
@@ -925,9 +899,15 @@ export default function Dashboard() {
           value={stats.avgMonthlyIncome}
           color={BLUE}
           icon={<Wallet size={15} />}
-          sub="per active month"
-          sparkData={stats.incomeSparkData}
-          onClick={() => navigate("/journal")}
+          sub="Prop withdrawals · avg / mo"
+          onClick={() =>
+            navigate("/prop", {
+              state: buildViewIntentState("/prop", {
+                filters: { status: "all", sort: "balance" },
+                scrollToPayoutHistory: true,
+              }, "dashboard"),
+            })
+          }
         />
         <KPICard
           label="Portfolio"
@@ -949,7 +929,16 @@ export default function Dashboard() {
           value={stats.totalDebt}
           color={stats.totalDebt > 0 ? LOSS : PROFIT}
           icon={<CreditCard size={15} />}
-          sub={`${stats.allDebts.length} account${stats.allDebts.length !== 1 ? "s" : ""} · £${stats.monthlyDebtPayments.toFixed(0)}/mo`}
+          sub={
+            stats.totalDebt > 0
+              ? `Liability · ${stats.allDebts.length} account${stats.allDebts.length !== 1 ? "s" : ""} · £${stats.monthlyDebtPayments.toFixed(0)}/mo`
+              : `${stats.allDebts.length} account${stats.allDebts.length !== 1 ? "s" : ""}`
+          }
+          renderValue={
+            stats.totalDebt > 0 ? (
+              <span className="text-loss font-black font-mono tabular-nums">{fmtGBP(stats.totalDebt).replace("£", "−£")}</span>
+            ) : undefined
+          }
           onClick={() => navigate("/debt")}
         />
       </motion.div>
@@ -957,13 +946,27 @@ export default function Dashboard() {
       {/* ── CHARTS ROW ────────────────────────────────────────────────────────── */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Monthly Breakdown */}
-        <Card className="md:col-span-3 flex flex-col">
+        <Card className={cn("md:col-span-3 flex flex-col", isBW && "card--parchment-panel")}>
           <CardContent className="pt-5 flex flex-col flex-1">
             {stats.monthlyChart.length > 0 ? ((isBW: boolean) => {
-              const bgIncome = isBW ? "rgba(0,100,50,0.08)" : "rgba(34,197,94,0.07)";
-              const bgCost   = isBW ? "rgba(100,0,0,0.06)" : "rgba(239,68,68,0.07)";
-              const bdrIncome = isBW ? "rgba(0,100,50,0.18)" : "rgba(34,197,94,0.18)";
-              const bdrCost   = isBW ? "rgba(100,0,0,0.16)" : "rgba(239,68,68,0.18)";
+              const bgIncome = isBW
+                ? "color-mix(in srgb, var(--color-profit-bg) 28%, var(--bg-elevated))"
+                : "rgba(34,197,94,0.07)";
+              const bgCost = isBW
+                ? "color-mix(in srgb, var(--color-loss-bg) 28%, var(--bg-elevated))"
+                : "rgba(239,68,68,0.07)";
+              const bdrIncome = isBW
+                ? "color-mix(in srgb, var(--color-profit-border) 55%, rgba(var(--border-rgb),0.14))"
+                : "rgba(34,197,94,0.18)";
+              const bdrCost = isBW
+                ? "color-mix(in srgb, var(--color-loss-border) 55%, rgba(var(--border-rgb),0.14))"
+                : "rgba(239,68,68,0.18)";
+              const stripProfit = isBW
+                ? "color-mix(in srgb, var(--color-profit) 38%, var(--tx-2))"
+                : "var(--color-profit)";
+              const stripLoss = isBW
+                ? "color-mix(in srgb, var(--color-loss) 38%, var(--tx-2))"
+                : "var(--color-loss)";
               const totalIncome = stats.monthlyChart.reduce((s, m) => s + m.income, 0);
               const totalCosts  = stats.monthlyChart.reduce((s, m) => s + m.costs,  0);
               const totalNet    = totalIncome - totalCosts;
@@ -975,8 +978,8 @@ export default function Dashboard() {
                     totalIncome={totalIncome}
                     totalCosts={totalCosts}
                     totalNet={totalNet}
-                    profitColor={PROFIT}
-                    lossColor={LOSS}
+                    profitColor={stripProfit}
+                    lossColor={stripLoss}
                     bgIncome={bgIncome}
                     bgCost={bgCost}
                     bdrIncome={bdrIncome}
@@ -986,30 +989,47 @@ export default function Dashboard() {
                   <div
                     className="relative flex-1 min-h-[240px] sm:min-h-[260px] mb-3 rounded-2xl overflow-hidden"
                     style={{
-                      background: `linear-gradient(180deg, ${ACCENT}10 0%, rgba(var(--surface-rgb),0.02) 44%, rgba(var(--surface-rgb),0.03) 100%)`,
+                      background: isBW
+                        ? "linear-gradient(180deg, rgba(var(--border-rgb),0.05) 0%, rgba(var(--accent-rgb),0.05) 38%, rgba(var(--bg-base-rgb),0.35) 100%)"
+                        : `linear-gradient(180deg, ${ACCENT}10 0%, rgba(var(--surface-rgb),0.02) 44%, rgba(var(--surface-rgb),0.03) 100%)`,
                       border: "1px solid rgba(var(--border-rgb),0.10)",
-                      boxShadow: "inset 0 1px 0 rgba(var(--surface-rgb),0.06)",
+                      boxShadow: isBW
+                        ? "inset 0 1px 0 rgba(255, 250, 242, 0.22)"
+                        : "inset 0 1px 0 rgba(var(--surface-rgb),0.06)",
                     }}
                   >
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart
+                      <BarChart
                         data={stats.monthlyChart}
-                        margin={{ top: 18, right: 18, bottom: 4, left: 4 }}
+                        margin={{ top: 18, right: 14, bottom: 6, left: 4 }}
+                        barCategoryGap="16%"
+                        barGap={3}
+                        style={{ background: "transparent" }}
                       >
                         <defs>
-                          <linearGradient id="dashboardIncomeBar" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={PROFIT} stopOpacity="0.96" />
-                            <stop offset="100%" stopColor={PROFIT} stopOpacity="0.44" />
-                          </linearGradient>
-                          <linearGradient id="dashboardCostBar" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={LOSS} stopOpacity="0.94" />
-                            <stop offset="100%" stopColor={LOSS} stopOpacity="0.40" />
-                          </linearGradient>
-                          <linearGradient id="dashboardNetLine" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stopColor={ACCENT} stopOpacity="0.35" />
-                            <stop offset="50%" stopColor={ACCENT} stopOpacity="0.98" />
-                            <stop offset="100%" stopColor={BLUE} stopOpacity="0.62" />
-                          </linearGradient>
+                          {isBW ? (
+                            <>
+                              <linearGradient id="dashboardIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--color-profit)" stopOpacity="0.68" />
+                                <stop offset="100%" stopColor="var(--color-profit)" stopOpacity="0.26" />
+                              </linearGradient>
+                              <linearGradient id="dashboardCostBar" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--color-loss)" stopOpacity="0.64" />
+                                <stop offset="100%" stopColor="var(--color-loss)" stopOpacity="0.24" />
+                              </linearGradient>
+                            </>
+                          ) : (
+                            <>
+                              <linearGradient id="dashboardIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--color-profit)" stopOpacity="0.96" />
+                                <stop offset="100%" stopColor="var(--color-profit)" stopOpacity="0.44" />
+                              </linearGradient>
+                              <linearGradient id="dashboardCostBar" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--color-loss)" stopOpacity="0.94" />
+                                <stop offset="100%" stopColor="var(--color-loss)" stopOpacity="0.40" />
+                              </linearGradient>
+                            </>
+                          )}
                         </defs>
                         <CartesianGrid vertical={false} stroke="rgba(var(--surface-rgb),0.10)" />
                         <XAxis
@@ -1032,58 +1052,44 @@ export default function Dashboard() {
                           cursor={{ fill: "rgba(var(--surface-rgb),0.08)" }}
                           content={<MonthlyBreakdownTooltip />}
                         />
-                        <Line
-                          type="monotone"
-                          dataKey="net"
-                          stroke="url(#dashboardNetLine)"
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 4, fill: ACCENT, stroke: "var(--bg-card)", strokeWidth: 2 }}
-                          isAnimationActive
-                          animationDuration={720}
-                        />
                         <Bar
                           dataKey="income"
                           name="Income"
-                          radius={[8, 8, 0, 0]}
-                          maxBarSize={22}
+                          fill="url(#dashboardIncomeBar)"
+                          radius={[6, 6, 0, 0]}
+                          maxBarSize={28}
                           isAnimationActive
-                          animationDuration={640}
-                          background={{ fill: "rgba(var(--surface-rgb),0.04)", radius: 8 }}
-                        >
-                          {stats.monthlyChart.map((month) => (
-                            <Cell
-                              key={`income-${month.monthKey}`}
-                              fill="url(#dashboardIncomeBar)"
-                              fillOpacity={0.88}
-                            />
-                          ))}
-                        </Bar>
+                          animationDuration={520}
+                        />
                         <Bar
                           dataKey="costs"
                           name="Costs"
-                          radius={[8, 8, 0, 0]}
-                          maxBarSize={22}
+                          fill="url(#dashboardCostBar)"
+                          radius={[6, 6, 0, 0]}
+                          maxBarSize={28}
                           isAnimationActive
-                          animationDuration={680}
-                          animationBegin={80}
-                        >
-                          {stats.monthlyChart.map((month) => (
-                            <Cell
-                              key={`cost-${month.monthKey}`}
-                              fill="url(#dashboardCostBar)"
-                              fillOpacity={0.84}
-                            />
-                          ))}
-                        </Bar>
-                      </ComposedChart>
+                          animationDuration={560}
+                          animationBegin={40}
+                        />
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
 
                   {/* Legend */}
-                  <div className="flex flex-wrap items-center gap-4 text-[10px] text-tx-4 mb-4 px-1">
-                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: PROFIT }} />Income</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: LOSS }} />Costs</span>
+                  <div className="flex flex-col gap-1.5 mb-4 px-1">
+                    <div className="flex flex-wrap items-center gap-4 text-[10px] text-tx-4">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-sm bg-profit" />
+                        Income
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-sm bg-loss" />
+                        Costs
+                      </span>
+                    </div>
+                    <p className="text-[10px] leading-snug text-tx-4">
+                      Net for each month is in the tooltip (income minus costs).
+                    </p>
                   </div>
                 </div>
               );
@@ -1098,7 +1104,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Firm spending breakdown */}
-        <Card className="md:col-span-2">
+        <Card className={cn("md:col-span-2", isBW && "card--parchment-panel")}>
           <CardHeader className="pb-3">
             <CardDescription>Cost Breakdown</CardDescription>
             <CardTitle className="mt-1">Spending by Firm</CardTitle>
@@ -1108,7 +1114,7 @@ export default function Dashboard() {
               {stats.topFirms.map(([name, val], i) => {
                 const pct = (val / stats.firmMax) * 100;
                 const colors = [LOSS, ORANGE, WARN, ACCENT, PURPLE, BLUE];
-                const col = colors[i % colors.length];
+                const col = bwColor(colors[i % colors.length], isBW);
                 return (
                   <div key={name}>
                     <div className="flex items-center justify-between mb-1.5">
@@ -1144,7 +1150,10 @@ export default function Dashboard() {
                   <span className="text-[10px] uppercase tracking-wider font-bold text-tx-3">
                     Total costs
                   </span>
-                  <span className="text-sm font-black font-mono text-loss">
+                  <span
+                    className="text-sm font-black font-mono text-loss"
+                    style={isBW ? { color: "color-mix(in srgb, var(--color-loss) 40%, var(--tx-2))" } : undefined}
+                  >
                     {fmtGBP(stats.totalExpenses)}
                   </span>
                 </div>
@@ -1157,7 +1166,7 @@ export default function Dashboard() {
       {/* ── ACCOUNTS + ACTIVITY ───────────────────────────────────────────────── */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Active prop accounts */}
-        <Card className="lg:col-span-3 flex flex-col">
+        <Card className={cn("lg:col-span-3 flex flex-col", isBW && "card--parchment-panel")}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -1191,20 +1200,36 @@ export default function Dashboard() {
                     {stats.activeAccs.map((acc) => {
                       const isFunded = ["funded", "Funded"].includes(acc.status);
                       const pillColor = isFunded ? PROFIT : WARN;
+                      const dotHue = bwColor(pillColor, isBW);
+                      const pillBg = isBW
+                        ? isFunded
+                          ? "color-mix(in srgb, var(--color-profit-bg) 30%, var(--bg-elevated))"
+                          : "color-mix(in srgb, var(--color-warn-bg) 30%, var(--bg-elevated))"
+                        : `${pillColor}0c`;
+                      const pillBorder = isBW
+                        ? isFunded
+                          ? "color-mix(in srgb, var(--color-profit-border) 48%, rgba(var(--border-rgb),0.12))"
+                          : "color-mix(in srgb, var(--color-warn-border) 48%, rgba(var(--border-rgb),0.12))"
+                        : `${pillColor}22`;
+                      const balColor = isBW
+                        ? isFunded
+                          ? "color-mix(in srgb, var(--color-profit) 38%, var(--tx-2))"
+                          : "color-mix(in srgb, var(--color-warn) 38%, var(--tx-2))"
+                        : pillColor;
                       return (
                         <button
                           key={acc.id}
                           onClick={() => navigate("/prop")}
                           className="flex min-w-[12.75rem] flex-shrink-0 snap-start items-center justify-between gap-2 px-3 py-2 rounded-2xl transition-[background-color,border-color,transform] duration-200"
                           style={{
-                            background: `${pillColor}0c`,
-                            border: `1px solid ${pillColor}22`,
+                            background: pillBg,
+                            border: `1px solid ${pillBorder}`,
                           }}
                         >
                           <div className="min-w-0 flex items-center gap-2">
                             <span
                               className="w-2 h-2 rounded-full flex-shrink-0"
-                              style={{ background: pillColor }}
+                              style={{ background: dotHue }}
                             />
                             <div className="min-w-0">
                               <div className="text-[11px] font-semibold text-tx-2 truncate">
@@ -1215,7 +1240,7 @@ export default function Dashboard() {
                               </Badge>
                             </div>
                           </div>
-                          <span className="text-[11px] font-black tabular-nums font-mono flex-shrink-0" style={{ color: pillColor }}>
+                          <span className="text-[11px] font-black tabular-nums font-mono flex-shrink-0" style={{ color: balColor }}>
                             {fmtUSD(toNum(acc.balance))}
                           </span>
                         </button>
@@ -1249,7 +1274,10 @@ export default function Dashboard() {
                   <p className="text-[10px] uppercase tracking-wider font-bold text-tx-3">
                     Top Payout Sources
                   </p>
-                  <span className="text-xs font-black font-mono text-profit">
+                  <span
+                    className="text-xs font-black font-mono text-profit"
+                    style={isBW ? { color: "color-mix(in srgb, var(--color-profit) 40%, var(--tx-2))" } : undefined}
+                  >
                     {fmtGBP(stats.topPayouts.reduce((s, [, a]) => s + a, 0))}
                   </span>
                 </div>
@@ -1257,11 +1285,19 @@ export default function Dashboard() {
                   {(() => {
                     const maxAmt = stats.topPayouts[0]?.[1] ?? 1;
                     const totalAmt = stats.topPayouts.reduce((s, [, a]) => s + a, 0);
-                    const rankBg = isBW
-                      ? ["rgba(0,80,40,0.16)", "rgba(0,80,40,0.10)", "rgba(0,80,40,0.07)", "rgba(0,80,40,0.05)"]
-                      : ["rgba(34,197,94,0.18)", "rgba(34,197,94,0.12)", "rgba(34,197,94,0.09)", "rgba(34,197,94,0.07)"];
+                    const rankBg = [
+                      "rgba(var(--color-profit-rgb),0.14)",
+                      "rgba(var(--color-profit-rgb),0.10)",
+                      "rgba(var(--color-profit-rgb),0.07)",
+                      "rgba(var(--color-profit-rgb),0.05)",
+                    ];
                     const barColors = isBW
-                      ? ["linear-gradient(90deg,#3d8a5a,#6dbf80)", "linear-gradient(90deg,#76998d,#9bb7ac)", "linear-gradient(90deg,#7d84a3,#8f88aa)", "linear-gradient(90deg,#b98966,#c4a06b)"]
+                      ? [
+                          "linear-gradient(90deg,color-mix(in srgb,var(--accent) 55%,var(--tx-3)),var(--accent))",
+                          "linear-gradient(90deg,color-mix(in srgb,var(--color-teal) 50%,var(--tx-4)),var(--color-teal))",
+                          "linear-gradient(90deg,color-mix(in srgb,var(--color-purple) 50%,var(--tx-4)),var(--color-purple))",
+                          "linear-gradient(90deg,color-mix(in srgb,var(--color-orange) 55%,var(--tx-3)),var(--color-orange))",
+                        ]
                       : ["linear-gradient(90deg,#3d8a5a,#22c55e)", "linear-gradient(90deg,#6c8f84,#76998d)", "linear-gradient(90deg,#767ea0,#8f88aa)", "linear-gradient(90deg,#a97a58,#b98966)"];
                     return stats.topPayouts.map(([firm, amount], i) => {
                       const pct = (amount / maxAmt) * 100;
@@ -1271,19 +1307,29 @@ export default function Dashboard() {
                           <div className="flex items-center gap-2 mb-1.5">
                             <div
                               className="w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                              style={{ background: rankBg[i], color: PROFIT }}
+                              style={{
+                                background: rankBg[i],
+                                color: isBW ? "color-mix(in srgb, var(--color-profit) 42%, var(--tx-2))" : "var(--color-profit)",
+                              }}
                             >
                               {i + 1}
                             </div>
                             <span className="text-xs font-medium text-tx-2 flex-1 min-w-0 truncate">{firm}</span>
                             <span className="text-[10px] text-tx-4 flex-shrink-0 tabular-nums">{sharePct.toFixed(0)}%</span>
-                            <span className="text-xs font-black font-mono text-profit flex-shrink-0 tabular-nums">
+                            <span
+                              className="text-xs font-black font-mono text-profit flex-shrink-0 tabular-nums"
+                              style={isBW ? { color: "color-mix(in srgb, var(--color-profit) 40%, var(--tx-2))" } : undefined}
+                            >
                               {fmtGBP(amount)}
                             </span>
                           </div>
                           <div
                             className="h-1.5 rounded-full overflow-hidden"
-                            style={{ background: "rgba(34,197,94,0.08)" }}
+                            style={{
+                              background: isBW
+                                ? "rgba(var(--border-rgb),0.06)"
+                                : "rgba(var(--color-profit-rgb),0.08)",
+                            }}
                           >
                             <div
                               className="h-full rounded-full transition-[width,background] duration-700"
@@ -1301,7 +1347,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Recent activity */}
-        <Card className="md:col-span-2 hidden md:block">
+        <Card className={cn("md:col-span-2 hidden md:block", isBW && "card--parchment-panel")}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -1320,7 +1366,7 @@ export default function Dashboard() {
             <div className="space-y-0.5">
               {stats.recentTx.map((tx, i) => {
                 const txColors = [LOSS, ORANGE, WARN, BLUE, PURPLE, ACCENT];
-                const dotColor = txColors[i % txColors.length];
+                const dotColor = bwColor(txColors[i % txColors.length], isBW);
                 return (
                   <div
                     key={tx.id}
@@ -1558,7 +1604,7 @@ export default function Dashboard() {
       {/* ── ACTIVE SUBSCRIPTIONS ─────────────────────────────────────────────── */}
       {data.subscriptions.filter(s => !s.cancelled).length > 0 && (
         <motion.div variants={item}>
-          <Card>
+          <Card className={cn(isBW && "card--parchment-panel")}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -1569,9 +1615,9 @@ export default function Dashboard() {
                   <div
                     className="px-3 py-1.5 rounded-xl text-xs font-bold font-mono"
                     style={{
-                      background: "rgba(245,158,11,0.12)",
-                      color: WARN,
-                      border: "1px solid rgba(245,158,11,0.2)",
+                      background: isBW ? "color-mix(in srgb, var(--color-warn-bg) 30%, var(--bg-elevated))" : "var(--color-warn-bg)",
+                      color: isBW ? "color-mix(in srgb, var(--color-warn) 36%, var(--tx-2))" : "var(--color-warn)",
+                      border: `1px solid ${isBW ? "color-mix(in srgb, var(--color-warn-border) 50%, rgba(var(--border-rgb),0.12))" : "var(--color-warn-border)"}`,
                     }}
                   >
                     {fmtGBP(stats.monthlySubs)}/mo
@@ -1595,32 +1641,47 @@ export default function Dashboard() {
                       : sub.frequency === "yearly"
                       ? sub.amount / 12
                       : (sub.amount * 52) / 12;
-                  const freqColors: Record<string, string> = {
-                    monthly: WARN,
-                    yearly: BLUE,
-                    weekly: ORANGE,
+                  const freqTheme: Record<string, { bg: string; border: string; fg: string; top: string }> = {
+                    monthly: {
+                      bg: isBW ? "color-mix(in srgb, var(--color-warn-bg) 26%, var(--bg-elevated))" : "var(--color-warn-bg)",
+                      border: isBW ? "color-mix(in srgb, var(--color-warn-border) 50%, rgba(var(--border-rgb),0.12))" : "var(--color-warn-border)",
+                      fg: isBW ? "color-mix(in srgb, var(--color-warn) 36%, var(--tx-2))" : "var(--color-warn)",
+                      top: "linear-gradient(90deg, color-mix(in srgb, var(--color-warn) 45%, transparent), transparent)",
+                    },
+                    yearly: {
+                      bg: isBW ? "color-mix(in srgb, var(--color-blue-bg) 26%, var(--bg-elevated))" : "var(--color-blue-bg)",
+                      border: isBW ? "color-mix(in srgb, var(--color-blue-border) 50%, rgba(var(--border-rgb),0.12))" : "var(--color-blue-border)",
+                      fg: isBW ? "color-mix(in srgb, var(--color-blue) 36%, var(--tx-2))" : "var(--color-blue)",
+                      top: "linear-gradient(90deg, color-mix(in srgb, var(--color-blue) 45%, transparent), transparent)",
+                    },
+                    weekly: {
+                      bg: isBW ? "color-mix(in srgb, var(--color-orange-bg) 26%, var(--bg-elevated))" : "var(--color-orange-bg)",
+                      border: isBW ? "color-mix(in srgb, var(--color-orange-border) 50%, rgba(var(--border-rgb),0.12))" : "var(--color-orange-border)",
+                      fg: isBW ? "color-mix(in srgb, var(--color-orange) 36%, var(--tx-2))" : "var(--color-orange)",
+                      top: "linear-gradient(90deg, color-mix(in srgb, var(--color-orange) 45%, transparent), transparent)",
+                    },
                   };
-                  const col = freqColors[sub.frequency] ?? WARN;
+                  const th = freqTheme[sub.frequency] ?? freqTheme.monthly;
                   return (
                     <div
                       key={sub.id}
                       className="relative flex flex-col gap-1 px-3 py-2.5 rounded-xl overflow-hidden"
                       style={{
-                        background: `${col}08`,
-                        border: `1px solid ${col}18`,
+                        background: th.bg,
+                        border: `1px solid ${th.border}`,
                       }}
                     >
-                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, ${col}60, transparent)` }} />
+                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: th.top }} />
                       <div className="flex items-center justify-between gap-1">
                         <p className="text-xs font-bold text-tx-1 truncate">{sub.name}</p>
                         <span
                           className="text-[10px] px-1 py-px rounded font-bold uppercase shrink-0"
-                          style={{ background: `${col}20`, color: col }}
+                          style={{ background: th.bg, color: th.fg, border: `1px solid ${th.border}` }}
                         >
                           {sub.frequency.slice(0, 2)}
                         </span>
                       </div>
-                      <p className="text-sm font-black font-mono tabular-nums" style={{ color: col }}>
+                      <p className="text-sm font-black font-mono tabular-nums" style={{ color: th.fg }}>
                         {fmtGBP(monthly)}<span className="text-[10px] font-medium text-tx-4">/mo</span>
                       </p>
                     </div>
@@ -1679,7 +1740,7 @@ export default function Dashboard() {
 
       {/* ── MARKET SESSIONS ───────────────────────────────────────────────────── */}
       <motion.div variants={item} className="hidden md:block">
-        <Card>
+        <Card className={cn(isBW && "card--parchment-panel")}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1691,22 +1752,25 @@ export default function Dashboard() {
 
               {/* Countdown strip */}
               {activeSession ? (
+                (() => {
+                  const activeHue = bwColor(activeSession["color"], isBW);
+                  return (
                 <div
                   className="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-4 py-2 rounded-xl text-xs"
                   style={{
-                    background: `${activeSession.color}0d`,
-                    border: `1px solid ${activeSession.color}28`,
+                    background: `${activeHue}0d`,
+                    border: `1px solid ${activeHue}28`,
                   }}
                 >
                   <span
                     className="w-1.5 h-1.5 rounded-full inline-block"
                     style={{
-                      background: activeSession.color,
-                      boxShadow: `0 0 8px ${activeSession.color}`,
+                      background: activeHue,
+                      boxShadow: `0 0 8px ${activeHue}`,
                       animation: "pulseDot 2s ease-in-out infinite",
                     }}
                   />
-                  <span className="font-semibold" style={{ color: activeSession.color }}>
+                  <span className="font-semibold" style={{ color: activeHue }}>
                     {activeSession.name}
                   </span>
                   <span className="text-tx-3">·</span>
@@ -1715,6 +1779,8 @@ export default function Dashboard() {
                   </span>
                   <span className="text-tx-3">remaining</span>
                 </div>
+                  );
+                })()
               ) : (
                 <div
                   className="px-3 py-1.5 rounded-xl text-xs font-semibold text-tx-3"
@@ -1733,6 +1799,7 @@ export default function Dashboard() {
                   const isActive = activeSession?.name === session.name;
                   const isNext = !isActive && nextSession?.name === session.name;
                   const progress = isActive ? sessionProgress(session, now) : 0;
+                  const sessionHue = bwColor(session["color"], isBW);
                   const openLabel = !isActive ? opensInLabel(session, now) : "";
                   return (
                     <div
@@ -1741,10 +1808,10 @@ export default function Dashboard() {
                       style={
                         isActive
                           ? {
-                              border: `1px solid ${session.color}35`,
+                              border: `1px solid ${sessionHue}35`,
                               borderLeft: 0,
-                              boxShadow: `0 0 28px ${session.color}0d, 0 4px 20px rgba(0,0,0,0.4)`,
-                              background: `linear-gradient(160deg, ${session.color}09 0%, var(--bg-base) 60%)`,
+                              boxShadow: `0 0 28px ${sessionHue}0d, var(--shadow-drop-md)`,
+                              background: `linear-gradient(160deg, ${sessionHue}09 0%, var(--bg-base) 60%)`,
                             }
                           : isNext
                             ? {
@@ -1764,7 +1831,7 @@ export default function Dashboard() {
                       {!isActive && (
                         <div
                           className="absolute top-0 left-0 right-0 h-px pointer-events-none"
-                          style={{ background: `linear-gradient(90deg, ${session.color}40, transparent)` }}
+                          style={{ background: `linear-gradient(90deg, ${sessionHue}40, transparent)` }}
                         />
                       )}
 
@@ -1775,8 +1842,8 @@ export default function Dashboard() {
                             <span
                               className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                               style={{
-                                background: session.color,
-                                boxShadow: `0 0 8px ${session.color}cc`,
+                                background: sessionHue,
+                                boxShadow: `0 0 8px ${sessionHue}cc`,
                                 animation: "pulseDot 2s ease-in-out infinite",
                               }}
                             />
@@ -1784,14 +1851,14 @@ export default function Dashboard() {
                             <span
                               className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                               style={{
-                                background: session.color,
+                                background: sessionHue,
                                 opacity: isNext ? 0.5 : 0.22,
                               }}
                             />
                           )}
                           <span
                             className="font-semibold text-sm"
-                            style={{ color: isActive ? session.color : "var(--tx-4)" }}
+                            style={{ color: isActive ? sessionHue : "var(--tx-4)" }}
                           >
                             {session.name}
                           </span>
@@ -1801,9 +1868,9 @@ export default function Dashboard() {
                             <span
                               className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
                               style={{
-                                background: `${session.color}18`,
-                                color: session.color,
-                                border: `1px solid ${session.color}35`,
+                                background: `${sessionHue}18`,
+                                color: sessionHue,
+                                border: `1px solid ${sessionHue}35`,
                               }}
                             >
                               Active
@@ -1813,9 +1880,9 @@ export default function Dashboard() {
                             <span
                               className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
                               style={{
-                                background: `${session.color}12`,
-                                color: `${session.color}cc`,
-                                border: `1px solid ${session.color}28`,
+                                background: `${sessionHue}12`,
+                                color: `${sessionHue}cc`,
+                                border: `1px solid ${sessionHue}28`,
                               }}
                             >
                               Next
@@ -1851,7 +1918,7 @@ export default function Dashboard() {
                             style={{
                               width: `${isActive ? progress : 0}%`,
                               background: isActive
-                                ? `linear-gradient(90deg, ${session.color}60, ${session.color})`
+                                ? `linear-gradient(90deg, ${sessionHue}60, ${sessionHue})`
                                 : "transparent",
                             }}
                           />
@@ -1859,7 +1926,7 @@ export default function Dashboard() {
                         {isActive && (
                           <div className="flex justify-between">
                             <span className="text-tx-4 text-[10px] font-mono">{session.startET}</span>
-                            <span className="text-[10px] font-mono tabular-nums" style={{ color: session.color }}>
+                            <span className="text-[10px] font-mono tabular-nums" style={{ color: sessionHue }}>
                               {progress.toFixed(1)}%
                             </span>
                             <span className="text-tx-4 text-[10px] font-mono">{session.endET}</span>
@@ -1878,7 +1945,7 @@ export default function Dashboard() {
       </div>{/* end left col */}
 
       {/* ── RIGHT SIDEBAR ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 xl:sticky xl:top-6">
+      <motion.div variants={sidebarItem} className={cn("flex flex-col gap-4 xl:sticky xl:top-6", isBW && "dash-sidebar-rail")}>
 
         {/* Quick Actions */}
         <DashboardQuickActions
@@ -1887,6 +1954,7 @@ export default function Dashboard() {
           blueColor={BLUE}
           profitColor={PROFIT}
           warnColor={WARN}
+          isBW={isBW}
           onAction={(path, action) =>
             action ? navigateToQuickAction(navigate, path, action) : navigate(path)
           }
@@ -1894,16 +1962,27 @@ export default function Dashboard() {
 
         {/* ── Key Metrics ── */}
         {stats.totalMonths > 0 && (() => {
+          // Paper mode: same warm wash as Market Pulse (no cool blue in the card shell).
+          // Metric inks: blend semantic hues into warm text so values are not “neon on parchment”.
+          const profitInk = isBW
+            ? "color-mix(in srgb, var(--color-profit) 42%, var(--tx-2))"
+            : "var(--color-profit)";
+          const midWinInk = isBW
+            ? "color-mix(in srgb, var(--accent) 42%, var(--tx-2))"
+            : "var(--color-blue)";
+          const streakInk = isBW
+            ? "color-mix(in srgb, var(--color-orange) 48%, var(--tx-2))"
+            : "var(--color-orange)";
           const metrics = [
-            { label: "Win Rate", value: `${stats.winRateMonths.toFixed(0)}%`, sub: `${stats.profitableMonths}/${stats.totalMonths} profitable mo`, color: stats.winRateMonths >= 60 ? PROFIT : stats.winRateMonths >= 40 ? BLUE : WARN },
-            { label: "Best Payout", value: fmtGBP(stats.bestMonthIncome), sub: undefined, color: PROFIT },
-            { label: "Avg Payout", value: fmtGBP(stats.avgMonthlyIncome), sub: "per active month", color: ACCENT },
-            { label: "Streak", value: stats.streak > 0 ? `${stats.streak}mo` : "—", sub: stats.streak > 0 ? "consecutive profitable" : undefined, color: ORANGE },
+            { label: "Win Rate", value: `${stats.winRateMonths.toFixed(0)}%`, sub: `${stats.profitableMonths}/${stats.totalMonths} profitable mo`, color: stats.winRateMonths >= 60 ? profitInk : stats.winRateMonths >= 40 ? midWinInk : "var(--color-warn)" },
+            { label: "Best Payout", value: fmtGBP(stats.bestMonthIncome), sub: undefined, color: profitInk },
+            { label: "Avg Payout", value: fmtGBP(stats.avgMonthlyIncome), sub: "per active month", color: "var(--accent)" },
+            { label: "Streak", value: stats.streak > 0 ? `${stats.streak}mo` : "—", sub: stats.streak > 0 ? "consecutive profitable" : undefined, color: streakInk },
           ];
           return (
             <div
               className="card p-4"
-              style={{ background: `linear-gradient(160deg, ${ACCENT}12 0%, ${BLUE}10 52%, rgba(var(--surface-rgb),0.03) 100%)` }}
+              style={{ background: "linear-gradient(135deg, rgba(var(--accent-rgb),0.09) 0%, rgba(var(--surface-rgb),0.02) 100%)" }}
             >
               <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                 <TrendingUp size={10} />Key Metrics
@@ -1925,7 +2004,7 @@ export default function Dashboard() {
         <div>
         <div
           className="card p-4"
-          style={{ background: `linear-gradient(135deg, ${ACCENT}12 0%, rgba(var(--surface-rgb),0.02) 100%)` }}
+          style={{ background: "linear-gradient(135deg, rgba(var(--accent-rgb),0.09) 0%, rgba(var(--surface-rgb),0.02) 100%)" }}
         >
           <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
             <Globe size={10} />Market Pulse
@@ -1934,26 +2013,27 @@ export default function Dashboard() {
             {MARKET_SESSIONS.map((session) => {
               const isActive = activeSession?.name === session.name;
               const prog = isActive ? sessionProgress(session, now) : 0;
+              const sessionHue = bwColor(session["color"], isBW);
               return (
                 <div key={session.name} className="flex items-center gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ background: isActive ? session.color : "rgba(var(--surface-rgb),0.2)",
-                      boxShadow: isActive ? `0 0 6px ${session.color}` : "none",
+                    style={{ background: isActive ? sessionHue : "rgba(var(--surface-rgb),0.2)",
+                      boxShadow: isActive ? `0 0 6px ${sessionHue}` : "none",
                       animation: isActive ? "pulseDot 2s ease-in-out infinite" : "none" }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className="text-[11px] font-medium"
-                        style={{ color: isActive ? session.color : "var(--tx-4)" }}>
+                        style={{ color: isActive ? sessionHue : "var(--tx-4)" }}>
                         {session.name}
                       </span>
                       {isActive && (
                         <span className="text-[10px] font-bold tabular-nums font-mono"
-                          style={{ color: session.color }}>{prog.toFixed(0)}%</span>
+                          style={{ color: sessionHue }}>{prog.toFixed(0)}%</span>
                       )}
                     </div>
                     <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
                       <div className="h-full rounded-full transition-[width,background] duration-1000"
-                        style={{ width: `${prog}%`, background: isActive ? session.color : "transparent" }} />
+                        style={{ width: `${prog}%`, background: isActive ? sessionHue : "transparent" }} />
                     </div>
                     <span className="text-[10px] text-tx-4 font-mono">{session.startET}–{session.endET} ET</span>
                   </div>
@@ -1977,7 +2057,7 @@ export default function Dashboard() {
           return (
             <div
               className="card p-4"
-              style={{ background: `linear-gradient(135deg, ${PROFIT}12 0%, rgba(var(--surface-rgb),0.02) 100%)` }}
+              style={{ background: "linear-gradient(135deg, rgba(var(--color-profit-rgb),0.08) 0%, rgba(var(--surface-rgb),0.02) 100%)" }}
             >
               <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                 <CalendarDays size={10} />This Month
@@ -2025,7 +2105,7 @@ export default function Dashboard() {
           return (
             <div
               className="card p-4"
-              style={{ background: `linear-gradient(135deg, ${ACCENT}12 0%, ${BLUE}10 100%)` }}
+              style={{ background: "linear-gradient(135deg, rgba(var(--accent-rgb),0.09) 0%, rgba(var(--color-blue-rgb),0.07) 100%)" }}
             >
               <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                 <Banknote size={10} />Net Worth
@@ -2078,14 +2158,16 @@ export default function Dashboard() {
                 })
               }
               style={{
-                background: `linear-gradient(135deg, ${isPos ? `${PROFIT}12` : `${LOSS}12`} 0%, rgba(var(--surface-rgb),0.02) 100%)`,
-                borderColor: isPos ? "rgba(34,197,94,0.16)" : "rgba(239,68,68,0.16)",
+                background: isPos
+                  ? "linear-gradient(135deg, rgba(var(--color-profit-rgb),0.08) 0%, rgba(var(--surface-rgb),0.02) 100%)"
+                  : "linear-gradient(135deg, rgba(var(--color-loss-rgb),0.08) 0%, rgba(var(--surface-rgb),0.02) 100%)",
+                borderColor: isPos ? "var(--color-profit-border)" : "var(--color-loss-border)",
                 cursor: "pointer",
               }}
             >
               {/* Watermark */}
               <div className="absolute right-2 top-0 text-[42px] font-black tabular-nums select-none pointer-events-none leading-none"
-                style={{ color: isPos ? "rgba(34,197,94,0.06)" : "rgba(239,68,68,0.06)" }}>
+                style={{ color: isPos ? "rgba(var(--color-profit-rgb),0.07)" : "rgba(var(--color-loss-rgb),0.07)" }}>
                 {todayTrades.length}
               </div>
               <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-2 flex items-center gap-1.5">
@@ -2120,13 +2202,37 @@ export default function Dashboard() {
           const diff = Math.ceil((jan31.getTime() - now2.getTime()) / 86400000);
           if (diff < 0 || diff > 365) return null;
           return (
-            <div className={cn("card p-4", diff <= 30 ? "border-warn/20 bg-warn/[0.04]" : "")}>
+            <div
+              className={cn(
+                "card p-4",
+                isBW && "card--parchment-panel",
+                !isBW && diff <= 30 && "border-warn/20 bg-warn/[0.04]",
+              )}
+              style={
+                isBW && diff <= 30
+                  ? {
+                      background:
+                        "linear-gradient(135deg, color-mix(in srgb, var(--color-warn-bg) 58%, var(--bg-elevated)) 0%, rgba(var(--surface-rgb),0.06) 100%)",
+                      border: "1px solid var(--color-warn-border)",
+                    }
+                  : undefined
+              }
+            >
               <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-2 flex items-center gap-1.5">
                 <PiggyBank size={10} />SA Tax Deadline
               </p>
               <div className="flex items-end justify-between">
                 <div>
-                  <p className={cn("text-2xl font-black tabular-nums", diff <= 30 ? "text-warn" : "text-tx-1")}>{diff}</p>
+                  <p
+                    className={cn(
+                      "text-2xl font-black tabular-nums",
+                      diff > 30 && "text-tx-1",
+                      diff <= 30 && !isBW && "text-warn",
+                    )}
+                    style={isBW && diff <= 30 ? { color: "color-mix(in srgb, var(--color-warn) 42%, var(--tx-2))" } : undefined}
+                  >
+                    {diff}
+                  </p>
                   <p className="text-[10px] text-tx-4">days until Jan 31</p>
                 </div>
                 <div className="text-right">
@@ -2162,7 +2268,7 @@ export default function Dashboard() {
           if (upcoming.length === 0) return null;
           const todayET = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
           return (
-            <div className="card p-4">
+            <div className={cn("card p-4", isBW && "card--parchment-panel")}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium flex items-center gap-1.5">
                   <Calendar size={10} className="text-accent" />Upcoming Events
@@ -2230,7 +2336,7 @@ export default function Dashboard() {
           const pf = grossLoss > 0 ? grossWins / grossLoss : null;
 
           return (
-            <div className="card p-4">
+            <div className={cn("card p-4", isBW && "card--parchment-panel")}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium flex items-center gap-1.5">
                   <BookOpen size={10} className="text-accent" />Trade Journal
@@ -2248,8 +2354,22 @@ export default function Dashboard() {
                 <div
                   className="rounded-lg p-2.5 mb-3 flex items-center justify-between"
                   style={{
-                    background: todayNet >= 0 ? "rgba(34,197,94,0.06)" : "rgba(239,68,68,0.06)",
-                    border: `1px solid ${todayNet >= 0 ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)"}`,
+                    background: isBW
+                      ? todayNet >= 0
+                        ? "color-mix(in srgb, var(--color-profit-bg) 32%, var(--bg-elevated))"
+                        : "color-mix(in srgb, var(--color-loss-bg) 32%, var(--bg-elevated))"
+                      : todayNet >= 0
+                        ? "var(--color-profit-bg)"
+                        : "var(--color-loss-bg)",
+                    border: `1px solid ${
+                      isBW
+                        ? todayNet >= 0
+                          ? "color-mix(in srgb, var(--color-profit-border) 50%, rgba(var(--border-rgb),0.12))"
+                          : "color-mix(in srgb, var(--color-loss-border) 50%, rgba(var(--border-rgb),0.12))"
+                        : todayNet >= 0
+                          ? "var(--color-profit-border)"
+                          : "var(--color-loss-border)"
+                    }`,
                   }}
                 >
                   <div>
@@ -2257,8 +2377,16 @@ export default function Dashboard() {
                     <p className="text-[11px] font-semibold text-tx-2">{todayTrades.length} trade{todayTrades.length !== 1 ? "s" : ""}</p>
                   </div>
                   <span
-                    className="text-sm font-black tabular-nums"
-                    style={{ color: todayNet >= 0 ? PROFIT : LOSS }}
+                    className={cn("text-sm font-black tabular-nums", todayNet >= 0 ? "text-profit" : "text-loss")}
+                    style={
+                      isBW
+                        ? {
+                            color: todayNet >= 0
+                              ? "color-mix(in srgb, var(--color-profit) 38%, var(--tx-2))"
+                              : "color-mix(in srgb, var(--color-loss) 38%, var(--tx-2))",
+                          }
+                        : undefined
+                    }
                   >
                     {todayNet >= 0 ? "+" : ""}{fmtUSD(todayNet)}
                   </span>
@@ -2269,7 +2397,7 @@ export default function Dashboard() {
                 <button
                   onClick={() => navigate("/journal")}
                   className="w-full py-6 flex flex-col items-center gap-2 rounded-xl transition-colors hover:bg-accent-subtle"
-                  style={{ border: "1px dashed rgba(var(--border-rgb,255,255,255),0.1)" }}
+                  style={{ border: "1px dashed rgba(var(--border-rgb),0.12)" }}
                 >
                   <BookOpen size={20} className="text-tx-4" />
                   <p className="text-[11px] text-tx-4">No trades logged yet</p>
@@ -2282,7 +2410,18 @@ export default function Dashboard() {
                     {/* Net P&L - most prominent */}
                     <div className="min-w-0">
                       <p className="text-[9px] text-tx-4 uppercase tracking-wider mb-0.5 truncate">Net P&L</p>
-                      <p className="text-[11px] sm:text-sm font-black tabular-nums leading-tight truncate" style={{ color: net >= 0 ? PROFIT : LOSS }}>
+                      <p
+                        className={cn("text-[11px] sm:text-sm font-black tabular-nums leading-tight truncate", net >= 0 ? "text-profit" : "text-loss")}
+                        style={
+                          isBW
+                            ? {
+                                color: net >= 0
+                                  ? "color-mix(in srgb, var(--color-profit) 38%, var(--tx-2))"
+                                  : "color-mix(in srgb, var(--color-loss) 38%, var(--tx-2))",
+                              }
+                            : undefined
+                        }
+                      >
                         {net >= 0 ? "+" : ""}{fmtUSD(net)}
                       </p>
                     </div>
@@ -2310,9 +2449,9 @@ export default function Dashboard() {
                   {/* W/L bar - compact */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-tx-4 w-6 text-right tabular-nums shrink-0">{wins}W</span>
-                    <div className="flex-1 h-1.5 rounded-full overflow-hidden flex" style={{ background: "rgba(var(--surface-rgb,255,255,255),0.06)" }}>
-                      <div style={{ width: `${(wins / trades.length) * 100}%`, background: `linear-gradient(90deg, ${PROFIT}cc, ${PROFIT})` }} className="h-full rounded-l-full" />
-                      <div style={{ flex: 1, background: `linear-gradient(90deg, ${LOSS}cc, ${LOSS})` }} className="h-full rounded-r-full" />
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden flex" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
+                      <div style={{ width: `${(wins / trades.length) * 100}%`, background: "linear-gradient(90deg, color-mix(in srgb, var(--color-profit) 72%, transparent), var(--color-profit))" }} className="h-full rounded-l-full" />
+                      <div style={{ flex: 1, background: "linear-gradient(90deg, color-mix(in srgb, var(--color-loss) 72%, transparent), var(--color-loss))" }} className="h-full rounded-r-full" />
                     </div>
                     <span className="text-[10px] text-tx-4 w-6 tabular-nums shrink-0">{losses}L</span>
                   </div>
@@ -2326,7 +2465,7 @@ export default function Dashboard() {
         {data.withdrawals.length > 0 && (
           <div
             className="card p-4"
-            style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.04) 0%, transparent 100%)" }}
+            style={{ background: "linear-gradient(135deg, var(--color-profit-bg) 0%, transparent 100%)" }}
           >
             <p className="text-[10px] text-tx-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
               <ArrowDownToLine size={10} />Recent Payouts
@@ -2347,7 +2486,7 @@ export default function Dashboard() {
           </div>
         )}
 
-      </div>{/* end right sidebar */}
+      </motion.div>{/* end right sidebar */}
       </div>{/* end 2-col grid */}
 
     {/* ── WEALTH TARGET MODAL ──────────────────────────────────────────────── */}

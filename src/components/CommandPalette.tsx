@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBWMode } from "@/lib/useBWMode";
 
 export interface CommandPaletteItem {
   id: string;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function CommandPalette({ open, onClose, items, dynamicItems }: Props) {
+  const isBW = useBWMode();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +109,10 @@ export default function CommandPalette({ open, onClose, items, dynamicItems }: P
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="mx-auto w-full max-w-2xl overflow-hidden rounded-[28px] bg-bg-base border border-border shadow-modal"
+        className={cn(
+          "mx-auto w-full max-w-2xl overflow-hidden border border-border shadow-modal",
+          isBW ? "card card--parchment-panel !rounded-[28px]" : "rounded-[28px] bg-bg-base",
+        )}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
@@ -194,13 +199,13 @@ export default function CommandPalette({ open, onClose, items, dynamicItems }: P
                           }}
                           className={cn(
                             "w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition-all border",
-                            isSelected ? "bg-accent-muted border-border" : "bg-transparent border-transparent"
+                            isSelected ? "border-border-subtle bg-bg-hover" : "border-transparent bg-transparent",
                           )}
                         >
                           <div
                             className={cn(
-                              "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0",
-                              isSelected ? "bg-accent-glow" : "bg-accent-muted"
+                              "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-border-subtle",
+                              isSelected ? "bg-bg-subtle" : "bg-bg-hover",
                             )}
                           >
                             <Icon size={16} className={isSelected ? "text-tx-1" : "text-tx-3"} />

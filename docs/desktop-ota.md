@@ -6,7 +6,7 @@ Nexus desktop OTA uses Tauri's updater plugin on Windows desktop only. Android i
 
 Releases are automated via GitHub Actions. When you push a version tag (`v*`), the workflow:
 1. Builds the Tauri app with signing enabled
-2. Generates `latest.json` with the signature
+2. Generates `latest.json` with artifact-specific signatures
 3. Uploads all artifacts to the GitHub Release
 
 **No manual build steps required for releases.**
@@ -28,7 +28,7 @@ cat ~/.tauri/nexus-updater.key
 
 The public key is already committed in `tauri.conf.json`:
 ```
-dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExMjc5MzZFMjcwNjhDRkEKUldUNmpBWW5icE1uRVdzT0NYdGNVbk92Tll6MjRZYkdGbmcvZllmMjVJc1pJUWl3enRnTmlBcWgK
+dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU2MTc3QzBERkUxNjI4QTcKUldTbktCYitEWHdYNXJkWTV4R0x5KzdmS3o5TU5QTEVOaVluZmRtTVEwcTF0QU9uZjB2RjliLzMK
 ```
 
 ---
@@ -41,13 +41,13 @@ Both files must have the same version number:
 ```toml
 # src-tauri/Cargo.toml
 [package]
-version = "1.0.11"
+version = "1.2.6"
 ```
 
 ```json
 // package.json
 {
-  "version": "1.0.11"
+  "version": "1.2.6"
 }
 ```
 
@@ -55,22 +55,22 @@ version = "1.0.11"
 
 ```bash
 git add -A
-git commit -m "Release 1.0.11"
-git tag v1.0.11
+git commit -m "Release 1.2.6"
+git tag v1.2.6
 git push && git push --tags
 ```
 
 ### 3. Wait for the workflow
 
 The GitHub Actions workflow will:
-- Build `Nexus_1.0.11_x64-setup.exe`
-- Sign it and produce `Nexus_1.0.11_x64-setup.exe.sig`
+- Build `Nexus_1.2.6_x64-setup.exe` and, when enabled, the MSI bundle
+- Sign each updater artifact and produce matching `.sig` files
 - Generate `latest.json`
-- Create a GitHub Draft release with all three files
+- Publish a GitHub release with the installer artifacts and `latest.json`
 
-### 4. Publish the release
+### 4. Verify the release
 
-Go to your GitHub repo's **Releases** page, edit the draft, add release notes, and publish.
+Go to your GitHub repo's **Releases** page and confirm the release has `latest.json` plus every distributed installer and matching `.sig`.
 
 ---
 
@@ -83,7 +83,7 @@ If the automated workflow fails, you can build manually:
 ```powershell
 # Set environment variables
 $env:TAURI_SIGNING_PRIVATE_KEY_PATH="$env:USERPROFILE\.tauri\nexus-updater.key"
-$env:TAURI_UPDATER_PUBKEY="dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExMjc5MzZFMjcwNjhDRkEKUldUNmpBWW5icE1uRVdzT0NYdGNVbk92Tll6MjRZYkdGbmcvZllmMjVJc1pJUWl3enRnTmlBcWgK"
+$env:TAURI_UPDATER_PUBKEY="dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU2MTc3QzBERkUxNjI4QTcKUldTbktCYitEWHdYNXJkWTV4R0x5KzdmS3o5TU5QTEVOaVluZmRtTVEwcTF0QU9uZjB2RjliLzMK"
 $env:TAURI_UPDATER_ENDPOINTS="https://github.com/Logi4k/Nexus-Dash/releases/latest/download/latest.json"
 ```
 
@@ -96,14 +96,15 @@ npm run tauri build
 ### 3. Generate latest.json
 
 ```powershell
-npm run ota:desktop:latest -- --repo Logi4k/Nexus-Dash --version 1.0.11
+npm run ota:desktop:latest -- --repo Logi4k/Nexus-Dash --version 1.2.6
 ```
 
 ### 4. Upload
 
 Upload these files to your GitHub release:
-- `src-tauri/target/release/bundle/nsis/Nexus_1.0.11_x64-setup.exe`
-- `src-tauri/target/release/bundle/nsis/Nexus_1.0.11_x64-setup.exe.sig`
+- `src-tauri/target/release/bundle/nsis/Nexus_1.2.6_x64-setup.exe`
+- `src-tauri/target/release/bundle/nsis/Nexus_1.2.6_x64-setup.exe.sig`
+- `src-tauri/target/release/bundle/msi/*.msi` and matching `.sig` files, if you distribute MSI
 - `release/latest.json`
 
 ---
@@ -112,8 +113,8 @@ Upload these files to your GitHub release:
 
 After the first GitHub Actions release, check that:
 
-1. The release has three assets (`.exe`, `.exe.sig`, `latest.json`)
-2. The `latest.json` contains a valid `signature` field
+1. The release has `latest.json` plus each installer and its matching `.sig`
+2. The `latest.json` contains a valid `signature` field for each distributed platform
 3. The Settings → Desktop Updates section shows "Up to date" on the new version
 
 ---

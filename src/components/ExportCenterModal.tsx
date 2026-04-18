@@ -1,4 +1,4 @@
-import { ArrowDownToLine, Database, FileSpreadsheet, FileText, Wallet } from "lucide-react";
+import { ArrowDownToLine, Database, FileSpreadsheet, FileText, ListTree, ShieldAlert, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import Modal from "@/components/Modal";
 import {
@@ -8,6 +8,8 @@ import {
   todayISO,
   toCSV,
 } from "@/lib/exportUtils";
+import { buildAuditFeedCsvRows } from "@/lib/auditFeed";
+import { collectDataQualityIssues, dataQualityRowsForCsv } from "@/lib/dataQuality";
 import type { AppData } from "@/types";
 
 export default function ExportCenterModal({
@@ -112,6 +114,47 @@ export default function ExportCenterModal({
           "text/markdown"
         );
         toast.success("Monthly review exported");
+      },
+    },
+    {
+      id: "audit-feed-csv",
+      title: "Activity audit (CSV)",
+      description: "Trades, payouts, and journal day notes in one chronological export.",
+      Icon: ListTree,
+      run: () => {
+        downloadFile(
+          toCSV(buildAuditFeedCsvRows(data) as unknown as Record<string, unknown>[], [
+            "timestamp",
+            "kind",
+            "label",
+            "detail",
+            "amount",
+          ]),
+          `nexus-audit-${todayISO()}.csv`,
+          "text/csv"
+        );
+        toast.success("Audit trail exported");
+      },
+    },
+    {
+      id: "data-quality-csv",
+      title: "Data quality report (CSV)",
+      description: "Duplicate payouts, stale renewals, and other hygiene flags.",
+      Icon: ShieldAlert,
+      run: () => {
+        const issues = collectDataQualityIssues(data);
+        downloadFile(
+          toCSV(dataQualityRowsForCsv(issues) as unknown as Record<string, unknown>[], [
+            "id",
+            "severity",
+            "title",
+            "detail",
+            "ref",
+          ]),
+          `nexus-data-quality-${todayISO()}.csv`,
+          "text/csv"
+        );
+        toast.success("Data quality report exported");
       },
     },
   ];

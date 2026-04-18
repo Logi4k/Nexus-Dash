@@ -13,7 +13,7 @@ interface Props {
 
 export default function PageHeader({ eyebrow, title, subtitle, icon, meta, actions, className }: Props) {
   return (
-    <div className={cn("mb-7 flex flex-col gap-3 xl:mb-8 md:flex-row md:items-start md:justify-between", className)}>
+    <div className={cn("mb-5 flex flex-col gap-2.5 sm:gap-3 xl:mb-8 md:mb-7 md:flex-row md:items-start md:justify-between", className)}>
       <div className="min-w-0 flex-1">
         {eyebrow && (
           <div className="mb-1 text-[11px] font-semibold" style={{ color: "var(--accent)", letterSpacing: "0.04em" }}>

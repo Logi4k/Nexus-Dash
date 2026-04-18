@@ -11,7 +11,7 @@ import {
   Newspaper,
   ExternalLink,
 } from "lucide-react";
-import { useBWMode, bwPageTheme } from "@/lib/useBWMode";
+import { useBWMode, bwPageTheme, bwColor } from "@/lib/useBWMode";
 import {
   cn,
   formatMinutesAsLabel,
@@ -132,6 +132,8 @@ const WORLD_CLOCKS = [
 function LiveSessionTracker() {
   const [now, setNow] = useState(new Date());
   const [active, setActive] = useState<MarketSession | null>(() => getActiveSession(new Date()));
+  const isBW = useBWMode();
+  const theme = bwPageTheme(PAGE_THEMES.market, isBW);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -185,7 +187,7 @@ function LiveSessionTracker() {
           {/* ET clock */}
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-            style={{ background: `${PAGE_THEMES.market.dim}`, border: `1px solid ${PAGE_THEMES.market.border}` }}
+            style={{ background: theme.dim, border: `1px solid ${theme.border}` }}
           >
             <Clock size={11} className="text-accent" />
             <span className="text-tx-2 text-xs font-mono tabular-nums">{etTime} {easternTz}</span>
@@ -200,6 +202,7 @@ function LiveSessionTracker() {
           const isNext = !active && nextSession?.name === session.name;
           const progress = isActive ? getSessionProgress(session, now) : 0;
           const openLabel = !isActive ? opensInLabel(session, now) : "";
+          const sessionHue = bwColor(session["color"], isBW);
 
           return (
             <div
@@ -208,10 +211,10 @@ function LiveSessionTracker() {
               style={
                 isActive
                   ? {
-                      border: `1px solid ${session.color}35`,
+                      border: `1px solid ${sessionHue}35`,
                       borderLeft: 0,
-                      boxShadow: `0 0 28px ${session.color}0d, 0 4px 20px rgba(0,0,0,0.4)`,
-                      background: `linear-gradient(160deg, ${session.color}09 0%, var(--bg-base) 60%)`,
+                      boxShadow: `0 0 28px ${sessionHue}0d, var(--shadow-drop-md)`,
+                      background: `linear-gradient(160deg, ${sessionHue}09 0%, var(--bg-base) 60%)`,
                     }
                   : isNext
                     ? {
@@ -231,7 +234,7 @@ function LiveSessionTracker() {
               {!isActive && (
                 <div
                   className="absolute top-0 left-0 right-0 h-px pointer-events-none"
-                  style={{ background: `linear-gradient(90deg, ${session.color}40, transparent)` }}
+                  style={{ background: `linear-gradient(90deg, ${sessionHue}40, transparent)` }}
                 />
               )}
 
@@ -242,8 +245,8 @@ function LiveSessionTracker() {
                     <span
                       className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                       style={{
-                        background: session.color,
-                        boxShadow: `0 0 8px ${session.color}cc`,
+                        background: sessionHue,
+                        boxShadow: `0 0 8px ${sessionHue}cc`,
                         animation: "pulseDot 2s ease-in-out infinite",
                       }}
                     />
@@ -251,14 +254,14 @@ function LiveSessionTracker() {
                     <span
                       className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                       style={{
-                        background: session.color,
+                        background: sessionHue,
                         opacity: isNext ? 0.5 : 0.22,
                       }}
                     />
                   )}
                   <span
                     className="font-semibold text-sm"
-                    style={{ color: isActive ? session.color : "var(--tx-4)" }}
+                    style={{ color: isActive ? sessionHue : "var(--tx-4)" }}
                   >
                     {session.name}
                   </span>
@@ -268,9 +271,9 @@ function LiveSessionTracker() {
                     <span
                       className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
                       style={{
-                        background: `${session.color}18`,
-                        color: session.color,
-                        border: `1px solid ${session.color}35`,
+                        background: `${sessionHue}18`,
+                        color: sessionHue,
+                        border: `1px solid ${sessionHue}35`,
                       }}
                     >
                       Active
@@ -280,9 +283,9 @@ function LiveSessionTracker() {
                     <span
                       className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
                       style={{
-                        background: `${session.color}12`,
-                        color: `${session.color}cc`,
-                        border: `1px solid ${session.color}28`,
+                        background: `${sessionHue}12`,
+                        color: `${sessionHue}cc`,
+                        border: `1px solid ${sessionHue}28`,
                       }}
                     >
                       Next
@@ -318,7 +321,7 @@ function LiveSessionTracker() {
                     style={{
                       width: `${isActive ? progress : 0}%`,
                       background: isActive
-                        ? `linear-gradient(90deg, ${session.color}60, ${session.color})`
+                        ? `linear-gradient(90deg, ${sessionHue}60, ${sessionHue})`
                         : "transparent",
                     }}
                   />
@@ -326,7 +329,7 @@ function LiveSessionTracker() {
                 {isActive && (
                   <div className="flex justify-between">
                     <span className="text-tx-4 text-[10px] font-mono">{session.startET}</span>
-                    <span className="text-[10px] font-mono tabular-nums" style={{ color: session.color }}>
+                    <span className="text-[10px] font-mono tabular-nums" style={{ color: sessionHue }}>
                       {progress.toFixed(1)}%
                     </span>
                     <span className="text-tx-4 text-[10px] font-mono">{session.endET}</span>
@@ -433,6 +436,8 @@ async function fetchFFCalendarWeek(week: "this" | "next"): Promise<FFEvent[]> {
 }
 
 function ForexCalendar() {
+  const isBW = useBWMode();
+  const mTheme = bwPageTheme(PAGE_THEMES.market, isBW);
   const [events, setEvents] = useState<FFEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -524,7 +529,7 @@ function ForexCalendar() {
 
   return (
     <div
-      className="card overflow-hidden animate-fade-up"
+      className={cn("card overflow-hidden", isBW && "card--parchment-panel")}
       style={{ animationDelay: "240ms", animationFillMode: "both" }}
     >
       {/* Header */}
@@ -534,7 +539,7 @@ function ForexCalendar() {
           <h2 className="text-sm font-semibold text-tx-1">Economic Calendar</h2>
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: PAGE_THEMES.market.dim, color: PAGE_THEMES.market.accent, border: `1px solid ${PAGE_THEMES.market.border}` }}
+            style={{ background: mTheme.dim, color: mTheme.accent, border: `1px solid ${mTheme.border}` }}
           >
             LIVE
           </span>
@@ -655,7 +660,7 @@ function ForexCalendar() {
                     {today && (
                       <span
                         className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                        style={{ background: PAGE_THEMES.market.dim, color: PAGE_THEMES.market.accent, border: `1px solid ${PAGE_THEMES.market.border}` }}
+                        style={{ background: mTheme.dim, color: mTheme.accent, border: `1px solid ${mTheme.border}` }}
                       >
                         TODAY
                       </span>
@@ -754,6 +759,8 @@ function fmtNewsAge(dateStr: string): string {
 }
 
 function NewsFeed() {
+  const isBW = useBWMode();
+  const mTheme = bwPageTheme(PAGE_THEMES.market, isBW);
   const [source, setSource] = useState<NewsSourceId>("forexlive");
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -791,7 +798,7 @@ function NewsFeed() {
 
   return (
     <div
-      className="card overflow-hidden animate-fade-up"
+      className={cn("card overflow-hidden", isBW && "card--parchment-panel")}
       style={{ animationDelay: "280ms", animationFillMode: "both" }}
     >
       {/* Header */}
@@ -801,7 +808,7 @@ function NewsFeed() {
           <h2 className="text-sm font-semibold text-tx-1">Market News</h2>
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: PAGE_THEMES.market.dim, color: PAGE_THEMES.market.accent, border: `1px solid ${PAGE_THEMES.market.border}` }}
+            style={{ background: mTheme.dim, color: mTheme.accent, border: `1px solid ${mTheme.border}` }}
           >
             LIVE
           </span>
@@ -909,7 +916,7 @@ export default function Market() {
           <h1 className="page-title">Market Overview</h1>
           <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ background: PAGE_THEMES.market.dim, border: `1px solid ${PAGE_THEMES.market.border}`, color: PAGE_THEMES.market.accent }}
+              style={{ background: theme.dim, border: `1px solid ${theme.border}`, color: theme.accent }}
             >
               <Globe size={11} />
               Live · ET
@@ -924,12 +931,7 @@ export default function Market() {
       </div>
 
       <div className="space-y-6 xl:space-y-7">
-        <div
-          className="animate-fade-up"
-          style={{ animationDelay: "60ms", animationFillMode: "both" }}
-        >
-          <LiveSessionTracker />
-        </div>
+        <LiveSessionTracker />
 
         <ForexCalendar />
         <NewsFeed />

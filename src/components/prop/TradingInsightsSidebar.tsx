@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { PoundSterling, Trophy } from "lucide-react";
 import { fmtGBP, cn, toNum } from "@/lib/utils";
+import { useBWMode } from "@/lib/useBWMode";
 import type { Account, Withdrawal, PassedChallenge, Expense } from "@/types";
 
 const FIRMS = [
@@ -27,6 +28,7 @@ export function TradingInsightsSidebar({
   accounts: Account[];
   passedChallenges: PassedChallenge[];
 }) {
+  const isBW = useBWMode();
   const [taxRate, setTaxRate] = useState(20);
   const firmData = useMemo(() => FIRMS.map((firm) => {
     const spent  = expenses.filter((e) => e.description === firm).reduce((s, e) => s + toNum(e.amount), 0);
@@ -67,7 +69,11 @@ export function TradingInsightsSidebar({
         const roiPct = totalSpent > 0 ? (net / totalSpent) * 100 : 0;
         const isPos = net >= 0;
         return (
-          <div className="card p-4 overflow-hidden relative"
+          <div
+            className={cn(
+              "card relative overflow-hidden p-4",
+              isBW && "card--parchment-panel",
+            )}
             style={{
               background: isPos
                 ? "linear-gradient(135deg, rgba(34,197,94,0.07) 0%, transparent 60%)"
@@ -119,7 +125,7 @@ export function TradingInsightsSidebar({
 
             {/* Progress bar */}
             {totalSpent > 0 && (
-              <div className="h-1.5 rounded-full overflow-hidden rgba(var(--surface-rgb),0.08)">
+              <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(var(--surface-rgb),0.08)]">
                 <div
                   className={cn("h-full rounded-full transition-all duration-700", isPos ? "bg-profit" : "bg-loss")}
                   style={{ width: `${Math.min((totalEarned / Math.max(totalSpent, totalEarned)) * 100, 100)}%` }}
@@ -177,7 +183,8 @@ export function TradingInsightsSidebar({
         }).filter((r) => r.t > 0).sort((a, b) => b.t - a.t);
 
         return (
-          <div className="card p-4 overflow-hidden relative"
+          <div
+            className={cn("card relative overflow-hidden p-4", isBW && "card--parchment-panel")}
             style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.05) 0%, transparent 60%)" }}
           >
             {/* Header */}
@@ -210,7 +217,7 @@ export function TradingInsightsSidebar({
             </div>
 
             {rate !== null && (
-              <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: "rgba(255,255,255,0.06)" }}>
+              <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: "rgba(var(--surface-rgb),0.06)" }}>
                 <div className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${rate}%`, background: rate >= 50 ? "var(--color-warn)" : "var(--color-loss)" }} />
               </div>
@@ -250,12 +257,13 @@ export function TradingInsightsSidebar({
         const estimatedTax = totalGross * (taxRate / 100);
         const netAfterTax  = totalGross - estimatedTax;
         return (
-          <div className="hidden sm:block card p-4"
-            style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.05) 0%, transparent 60%)" }}
+          <div
+            className={cn("card hidden p-4 sm:block", isBW && "card--parchment-panel")}
+            style={{ background: "linear-gradient(135deg, rgba(var(--color-purple-rgb),0.05) 0%, transparent 60%)" }}
           >
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
-              <PoundSterling size={13} className="text-purple-400 shrink-0" />
+              <PoundSterling size={13} className="shrink-0" style={{ color: "var(--color-purple)" }} />
               <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium">Tax Estimate</p>
             </div>
 
@@ -282,7 +290,7 @@ export function TradingInsightsSidebar({
               </div>
             </div>
 
-            <div className="h-px mb-3" style={{ background: "rgba(255,255,255,0.06)" }} />
+            <div className="h-px mb-3" style={{ background: "rgba(var(--surface-rgb),0.06)" }} />
 
             {/* Estimated tax */}
             <div className="flex items-center justify-between mb-1.5">
@@ -303,21 +311,18 @@ export function TradingInsightsSidebar({
 
       {/* Payout stats — hidden on mobile for compact view */}
       {withdrawals.length > 0 && (
-        <div className="hidden sm:block card p-4">
+        <div className={cn("card hidden p-4 sm:block", isBW && "card--parchment-panel")}>
           <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3">Payout Stats</p>
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg p-2.5 text-center"
-              style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
+            <div className="rounded-lg border border-border-subtle bg-bg-hover p-2.5 text-center">
               <p className="text-[10px] text-tx-4">Count</p>
               <p className="text-base font-bold text-tx-1">{withdrawals.length}</p>
             </div>
-            <div className="rounded-lg p-2.5 text-center"
-              style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
+            <div className="rounded-lg border border-border-subtle bg-bg-hover p-2.5 text-center">
               <p className="text-[10px] text-tx-4">Avg</p>
               <p className="text-sm font-bold text-profit tabular-nums font-mono">{fmtGBP(avgPayout)}</p>
             </div>
-            <div className="col-span-2 rounded-lg p-2.5 text-center"
-              style={{ background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
+            <div className="col-span-2 rounded-lg border border-border-subtle bg-bg-hover p-2.5 text-center">
               <p className="text-[10px] text-tx-4">Best Payout</p>
               <p className="text-lg font-bold text-profit tabular-nums font-mono">{fmtGBP(bestPayout)}</p>
             </div>
@@ -327,7 +332,7 @@ export function TradingInsightsSidebar({
 
       {/* Challenge pass rate — hidden on mobile for compact view */}
       {passRate !== null && (
-        <div className="hidden sm:block card p-4">
+        <div className={cn("card hidden p-4 sm:block", isBW && "card--parchment-panel")}>
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-tx-3 font-medium">Challenge Pass Rate</span>
             <span className="text-sm font-bold px-2.5 py-1 rounded-lg tabular-nums"
@@ -349,7 +354,7 @@ export function TradingInsightsSidebar({
 
       {/* Mobile compact stats strip — visible only on small screens */}
       {(withdrawals.length > 0 || passRate !== null) && (
-        <div className="sm:hidden card p-3">
+        <div className={cn("card p-3 sm:hidden", isBW && "card--parchment-panel")}>
           <div className="grid grid-cols-3 gap-2 text-center">
             {withdrawals.length > 0 && (
               <>
@@ -382,7 +387,7 @@ export function TradingInsightsSidebar({
 
       {/* Empty state */}
       {withdrawals.length === 0 && firmData.length === 0 && (
-        <div className="card p-4 text-center text-tx-4 text-xs">
+        <div className={cn("card p-4 text-center text-xs text-tx-4", isBW && "card--parchment-panel")}>
           <p>Add accounts and record payouts to see insights here.</p>
         </div>
       )}

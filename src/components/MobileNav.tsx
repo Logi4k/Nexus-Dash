@@ -88,7 +88,7 @@ function Avatar({ avatarUrl, username, avatarColor, size }: {
       width: size, height: size, borderRadius: "50%",
       background: avatarColor ?? "#5aadaa",
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.35, fontWeight: 700, color: "var(--bg-base)",
+      fontSize: size * 0.35, fontWeight: 700, color: "var(--on-solid-emphasis)",
     }}>
       {initials}
     </div>
@@ -226,10 +226,11 @@ export default function MobileNav({
 
   async function handleSyncNow() {
     if (syncStatus.syncInFlight) return;
-    if (await syncNow()) {
+    const result = await syncNow();
+    if (result.ok) {
       toast.success("Sync complete");
     } else {
-      toast.error("Sync is unavailable right now");
+      toast.error(result.message);
     }
   }
 
@@ -316,13 +317,14 @@ export default function MobileNav({
         style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: "var(--z-mobile-nav)" }}
       >
         <div
-          className="mx-auto flex items-center gap-0.5 px-2 py-2 rounded-[24px] w-fit max-w-[calc(100vw-0.75rem)]"
+          className="mx-auto flex items-center gap-0.5 pl-2 pr-3 py-2 rounded-[24px] w-fit max-w-[calc(100vw-0.75rem)]"
           style={{
-            background: `rgba(var(--bg-card-rgb),0.08)`,
-            border: "1px solid rgba(var(--border-rgb),0.05)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+            background: "var(--bg-glass)",
+            border: "1px solid rgba(var(--border-rgb),0.1)",
+            boxShadow: "var(--shadow-mobile-nav)",
             backdropFilter: "blur(48px) saturate(220%)",
             WebkitBackdropFilter: "blur(48px) saturate(220%)",
+            overflow: "visible",
           }}
         >
           {leftItems.map((item) => (
@@ -355,8 +357,11 @@ export default function MobileNav({
                 <div key={`right-empty-${index}`} className="min-w-[36px]" />
               ))}
 
-            {/* Profile avatar with notification badge */}
-            <div style={{ position: "relative", flexShrink: 0 }}>
+            {/* Profile avatar + notification badge — extra gutter so the badge is never clipped */}
+            <div
+              className="flex shrink-0 items-center justify-center self-center"
+              style={{ position: "relative", width: 46, height: 44, marginLeft: 2 }}
+            >
               <button
                 type="button"
                 onPointerDown={(e) => e.stopPropagation()}
@@ -370,12 +375,12 @@ export default function MobileNav({
                   width: 40, height: 40,
                   minWidth: 40,
                   borderRadius: "50%",
-                  border: "2px solid rgba(99,102,241,0.35)",
+                  border: "2px solid rgba(var(--accent-rgb),0.38)",
                   padding: 0,
                   background: "transparent", cursor: "pointer",
-                  boxShadow: panelOpen ? "0 0 0 3px rgba(99,102,241,0.25)" : "none",
-                  overflow: "visible",
-                  transition: "box-shadow 0.2s ease",
+                  boxShadow: panelOpen ? "0 0 0 3px rgba(var(--accent-rgb),0.22)" : "none",
+                  overflow: "hidden",
+                  transition: "box-shadow 0.2s ease, border-color 0.2s ease",
                 }}
                 aria-label="Open account panel"
               >
@@ -392,20 +397,24 @@ export default function MobileNav({
                   onClick={() => setNotificationsOpen((o) => !o)}
                   style={{
                     position: "absolute",
-                    top: -5,
-                    right: -5,
-                    width: 16,
-                    height: 16,
-                    borderRadius: "50%",
+                    top: 0,
+                    right: 0,
+                    minWidth: 18,
+                    height: 18,
+                    padding: "0 5px",
+                    borderRadius: 9999,
                     background: "var(--color-loss)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: 9,
-                    fontWeight: 700,
-                    color: "var(--tx-1)",
-                    border: "2.5px solid var(--bg-base)",
-                    zIndex: "var(--z-base)",
+                    fontWeight: 800,
+                    lineHeight: 1,
+                    letterSpacing: "-0.02em",
+                    color: "var(--on-solid-emphasis)",
+                    border: "2px solid var(--bg-card)",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    zIndex: 2,
                     cursor: "pointer",
                   }}
                   aria-label={notificationCount + " notifications"}
@@ -429,7 +438,7 @@ export default function MobileNav({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
               className="fixed inset-0 z-[var(--z-mobile-nav)] md:hidden"
-              style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
+              style={{ background: "var(--overlay-scrim)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
               onClick={() => setFabOpen(false)}
             />
           )}
@@ -460,7 +469,7 @@ export default function MobileNav({
                     background: `rgba(var(--bg-card-rgb), 0.95)`,
                     backdropFilter: "blur(18px)",
                     border: `1px solid ${action.cssColor}60`,
-                    boxShadow: `0 12px 28px rgba(0,0,0,0.28), 0 6px 16px ${action.cssColor}18`,
+                    boxShadow: `var(--shadow-elevated-soft), 0 6px 16px ${action.cssColor}18`,
                     minWidth: 172,
                   }}
                 >
@@ -487,9 +496,9 @@ export default function MobileNav({
               width: 52,
               height: 52,
               zIndex: "var(--z-fab)",
-              background: "var(--tx-1)",
-              color: "var(--bg-base)",
-              boxShadow: fabOpen ? "0 10px 28px rgba(0,0,0,0.42)" : "0 6px 22px rgba(0,0,0,0.32)",
+              background: "linear-gradient(145deg, var(--accent) 0%, var(--accent-dim) 100%)",
+              color: "var(--on-solid-emphasis)",
+              boxShadow: fabOpen ? "var(--shadow-fab-open)" : "var(--shadow-fab)",
             }}
           >
             <motion.div
@@ -521,7 +530,7 @@ export default function MobileNav({
               border: "1px solid rgba(var(--border-rgb),0.12)",
               borderRadius: 16,
               padding: "12px 10px",
-              boxShadow: "0 16px 40px rgba(0,0,0,0.7)",
+              boxShadow: "var(--shadow-elevated)",
               zIndex: "var(--z-cmd-palette)",
               transition: "bottom 0.24s cubic-bezier(0.22, 1, 0.36, 1)",
               backdropFilter: "blur(16px) saturate(180%)",
@@ -566,7 +575,7 @@ export default function MobileNav({
                   width: 14, height: 14, borderRadius: "50%",
                   background: "var(--color-loss)", display: "flex",
                   alignItems: "center", justifyContent: "center",
-                  fontSize: 9, fontWeight: 700, color: "var(--tx-1)", flexShrink: 0,
+                  fontSize: 9, fontWeight: 700, color: "var(--on-solid-emphasis)", flexShrink: 0,
                 }}>
                   {notificationCount > 9 ? "9+" : notificationCount}
                 </span>
@@ -598,10 +607,11 @@ export default function MobileNav({
               type="button"
               ref={themeBtnRef}
               style={rowStyle}
+              aria-label={currentTheme === "dark" ? "Switch to paper mode" : "Switch to dark mode"}
               onClick={() => { if (themeBtnRef.current) activateTheme(themeBtnRef.current); }}
             >
               {currentTheme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
-              {currentTheme === "dark" ? "Light Mode" : "Dark Mode"}
+              {currentTheme === "dark" ? "Paper mode" : "Dark mode"}
             </button>
 
             {/* Sign Out */}
@@ -635,7 +645,7 @@ export default function MobileNav({
               border: "1px solid rgba(var(--border-rgb),0.12)",
               borderRadius: 16,
               padding: "12px 10px",
-              boxShadow: "0 16px 40px rgba(0,0,0,0.7)",
+              boxShadow: "var(--shadow-elevated)",
               zIndex: "calc(var(--z-cmd-palette) - 1)",
               backdropFilter: "blur(16px) saturate(180%)",
               WebkitBackdropFilter: "blur(16px) saturate(180%)",
@@ -664,7 +674,7 @@ export default function MobileNav({
                       notificationsList.forEach((n) => dismissNotification(n.id));
                     }}
                     className="text-[9px] font-semibold text-tx-4 hover:text-tx-2 px-1.5 py-1 rounded-lg transition-colors"
-                    style={notifHeaderHovered ? { background: "rgba(255,255,255,0.06)" } : undefined}
+                    style={notifHeaderHovered ? { background: "rgba(var(--surface-rgb),0.08)" } : undefined}
                   >
                     Clear all
                   </button>
@@ -675,7 +685,7 @@ export default function MobileNav({
                   onPointerLeave={() => setNotifHeaderHovered(false)}
                   onClick={() => setNotificationsOpen(false)}
                   className="p-1 rounded-lg transition-colors"
-                  style={notifHeaderHovered ? { background: "rgba(255,255,255,0.06)" } : undefined}
+                  style={notifHeaderHovered ? { background: "rgba(var(--surface-rgb),0.08)" } : undefined}
                 >
                   <X size={12} className="text-tx-3" />
                 </button>
@@ -688,7 +698,7 @@ export default function MobileNav({
                 <div
                   key={notif.id}
                   className="flex items-start gap-2.5 px-3 py-3 rounded-lg transition-colors group"
-                  style={notifItemHovered ? { background: "rgba(255,255,255,0.04)" } : undefined}
+                  style={notifItemHovered ? { background: "rgba(var(--surface-rgb),0.06)" } : undefined}
                   onPointerDown={() => setNotifItemHovered(true)}
                   onPointerLeave={() => setNotifItemHovered(false)}
                 >
@@ -705,7 +715,7 @@ export default function MobileNav({
                         type="button"
                         onClick={(e) => { e.stopPropagation(); dismissNotification(notif.id); }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all shrink-0"
-                        style={notifItemHovered ? { background: "rgba(255,255,255,0.08)" } : undefined}
+                        style={notifItemHovered ? { background: "rgba(var(--surface-rgb),0.09)" } : undefined}
                         aria-label="Dismiss notification"
                       >
                         <X size={10} className="text-tx-4" />
@@ -734,7 +744,7 @@ export default function MobileNav({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
             className="fixed inset-0 z-[var(--z-drawer)] md:hidden"
-            style={{ background: "rgba(0,0,0,0.42)", backdropFilter: "blur(2px)" }}
+            style={{ background: "var(--overlay-scrim-soft)", backdropFilter: "blur(2px)" }}
             onClick={() => setMoreOpen(false)}
           />
         )}
@@ -748,7 +758,7 @@ export default function MobileNav({
           style={{
             background: `rgba(var(--bg-card-rgb),0.98)`,
             border: "1px solid rgba(var(--border-rgb),0.1)",
-            boxShadow: "0 -8px 40px rgba(0,0,0,0.42)",
+            boxShadow: "var(--shadow-sheet-up)",
             backdropFilter: "blur(16px)",
             paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)",
             maxHeight: "min(78vh, 680px)",

@@ -200,7 +200,11 @@ export default function NotificationBell({ collapsed: _collapsed }: { collapsed:
         {count > 0 && (
           <span
             className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full text-[9px] font-black flex items-center justify-center px-0.5"
-            style={{ background: "var(--color-warn)", color: "#000", boxShadow: "0 0 6px rgba(245,158,11,0.5)" }}
+            style={{
+              background: "var(--color-warn)",
+              color: "var(--on-solid-emphasis)",
+              boxShadow: "0 0 6px rgba(var(--color-warn-rgb),0.35)",
+            }}
           >
             {count > 9 ? "9+" : count}
           </span>

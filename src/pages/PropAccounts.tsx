@@ -14,8 +14,10 @@ import {
   DollarSign,
   Activity,
   Award,
+  ArrowDownToLine,
   Trophy,
   Briefcase,
+  MoreHorizontal,
 
 } from "lucide-react";
 import type { AppData } from "@/types";
@@ -71,6 +73,13 @@ type FilterTab = "all" | "funded" | "challenge" | "breached";
 const isFundedStatus = (s: string) => s.toLowerCase().trim() === "funded";
 const isChallengeStatus = (s: string) => s.toLowerCase().trim() === "challenge";
 const isBreachedStatus = (s: string) => s.toLowerCase().trim() === "breached";
+
+function payoutNotePreview(notes: string | undefined, maxLen = 46): { display: string; title: string } {
+  const raw = (notes ?? "").trim();
+  if (!raw) return { display: "—", title: "" };
+  if (raw.length <= maxLen) return { display: raw, title: raw };
+  return { display: `${raw.slice(0, maxLen - 1)}…`, title: raw };
+}
 
 function getPhaseForStatus(status: AccountStatus, fallback: PropPhase = "challenge"): PropPhase {
   if (isFundedStatus(status)) return "funded";
@@ -188,6 +197,10 @@ export default function PropAccounts() {
   const [deleteChallengeConfirm, setDeleteChallengeConfirm] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
 
+  /** Long breached lists: show a window first; expand + scroll container so content below stays reachable. */
+  const ACCOUNT_PAGE_SIZE = 18;
+  const [accountListLimit, setAccountListLimit] = useState(ACCOUNT_PAGE_SIZE);
+
   /* ---- Page theme + filter state ---- */
   const isBW = useBWMode();
   const theme = bwPageTheme(PAGE_THEMES.prop, isBW);
@@ -254,6 +267,21 @@ export default function PropAccounts() {
         status: typeof nextFilters.status === "string" ? nextFilters.status : prev.status,
         sort: typeof nextFilters.sort === "string" ? nextFilters.sort : prev.sort,
       }));
+    }
+
+    const scrollWid = viewIntent.state.scrollToWithdrawalId;
+    if (typeof scrollWid === "string" && scrollWid.length > 0) {
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`payout-row-${scrollWid}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+
+    if (viewIntent.state.scrollToPayoutHistory === true) {
+      requestAnimationFrame(() => {
+        document.getElementById("prop-payout-history")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     }
 
     handledViewIntent.current = requestKey;
@@ -383,6 +411,16 @@ export default function PropAccounts() {
       default: return arr;
     }
   }, [data.accounts, tab, sortBy, filters.status]);
+
+  useEffect(() => {
+    setAccountListLimit(ACCOUNT_PAGE_SIZE);
+  }, [tab, sortBy, filters.status]);
+
+  const visibleAccounts = useMemo(
+    () => filtered.slice(0, accountListLimit),
+    [filtered, accountListLimit]
+  );
+  const hiddenAccountCount = Math.max(0, filtered.length - visibleAccounts.length);
 
   /* ---- Withdrawals total ---- */
   const totalWithdrawals = useMemo(
@@ -910,7 +948,7 @@ export default function PropAccounts() {
               Record Payout
             </button>
             <button
-              className="btn-primary btn w-full lg:w-auto"
+              className="btn-accent-outline btn w-full lg:w-auto"
               onClick={() => {
                 setEditAccount(null);
                 setForm(emptyAccountForm());
@@ -932,11 +970,11 @@ export default function PropAccounts() {
         const totalPayouts = data.withdrawals.reduce((s, w) => s + toNum(w.gross), 0);
         return (
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
-            <StatCard label="Active Funded"    value={counts.funded}    prefix="" suffix="" decimals={0} icon={<Shield size={15} className="text-profit" />}      accentColor="#22c55e" delay={0}   />
-            <StatCard label="Active Challenges" value={counts.challenge} prefix="" suffix="" decimals={0} icon={<Target size={15} className="text-warn" />}         accentColor="#f59e0b" delay={60}  />
-            <StatCard label="Total Breached"   value={counts.breached}  prefix="" suffix="" decimals={0} icon={<AlertTriangle size={15} className="text-loss" />}   accentColor="#ef4444" delay={120} />
-            <StatCard label="Funded Capital"   value={fundedCapital}                                     icon={<DollarSign size={15} className="text-profit" />}    accentColor="#22c55e" delay={150} />
-            <StatCard label="Total Payouts"    value={totalPayouts}                                      icon={<Award size={15} className={netPnL >= 0 ? "text-profit" : "text-loss"} />} accentColor={netPnL >= 0 ? "#22c55e" : "#ef4444"} delay={180} />
+            <StatCard label="Active Funded"    value={counts.funded}    prefix="" suffix="" decimals={0} icon={<Shield size={15} className="text-profit" />}      accentColor="#22c55e" delay={0} />
+            <StatCard label="Active Challenges" value={counts.challenge} prefix="" suffix="" decimals={0} icon={<Target size={15} className="text-warn" />}         accentColor="#f59e0b" delay={0} />
+            <StatCard label="Total Breached"   value={counts.breached}  prefix="" suffix="" decimals={0} icon={<AlertTriangle size={15} className="text-loss" />}   accentColor="#ef4444" delay={0} />
+            <StatCard label="Funded Capital"   value={fundedCapital}                                     icon={<DollarSign size={15} className="text-profit" />}    accentColor="#22c55e" delay={0} />
+            <StatCard label="Total Payouts"    value={totalPayouts}                                      icon={<Award size={15} className={netPnL >= 0 ? "text-profit" : "text-loss"} />} accentColor={netPnL >= 0 ? "#22c55e" : "#ef4444"} delay={0} />
           </div>
         );
       })()}
@@ -1047,9 +1085,9 @@ export default function PropAccounts() {
                 </span>
               ))}
             </div>
-            <div className="flex flex-col gap-2 p-2.5 sm:gap-3 sm:p-3">
-            {filtered.map((account, i) => (
-              <div key={account.id} className="animate-fade-up" style={{ animationDelay: `${Math.min(i * 30, 180)}ms`, animationFillMode: "both" }}>
+            <div className="flex max-h-[min(520px,58vh)] flex-col gap-2 overflow-y-auto overscroll-y-contain p-2.5 sm:gap-3 sm:p-3">
+            {visibleAccounts.map((account) => (
+              <div key={account.id}>
                 <AccountCard
                   account={account}
                   snapshotContext={propContext}
@@ -1070,6 +1108,27 @@ export default function PropAccounts() {
                 />
               </div>
             ))}
+            {hiddenAccountCount > 0 && (
+              <div className="flex flex-col items-center gap-2 border-t border-border-subtle px-2 py-3 sm:px-3">
+                <p className="text-center text-[11px] text-tx-3">
+                  Showing {visibleAccounts.length} of {filtered.length} in this view.
+                </p>
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={() => setAccountListLimit((n) => n + ACCOUNT_PAGE_SIZE)}
+                >
+                  Load {Math.min(ACCOUNT_PAGE_SIZE, hiddenAccountCount)} more
+                </button>
+                <button
+                  type="button"
+                  className="text-[10px] font-semibold text-tx-4 underline-offset-2 hover:underline"
+                  onClick={() => setAccountListLimit(filtered.length)}
+                >
+                  Show all ({filtered.length})
+                </button>
+              </div>
+            )}
             {filtered.length === 0 && data.accounts.length === 0 && (
               <div className="col-span-full task-empty">
                 <div className="task-empty-copy">
@@ -1101,7 +1160,7 @@ export default function PropAccounts() {
                 </div>
                 <div className="task-empty-actions mt-4">
                   <button
-                    className="btn-primary btn-sm"
+                    className="btn-accent-outline btn-sm"
                     onClick={() => {
                       setEditAccount(null);
                       setForm(emptyAccountForm());
@@ -1138,223 +1197,360 @@ export default function PropAccounts() {
           </div>
 
           {/* Payout History */}
-          {data.withdrawals.length > 0 && (
-            <div className="card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-tx-3 text-[10px] uppercase tracking-wider font-medium">Payout History</div>
-                <div className="flex items-center gap-2">
-                  <Activity size={12} className="text-tx-4" />
-                  <span className="text-[11px] font-bold text-profit tabular-nums">+{fmtGBP(totalWithdrawals)}</span>
-                  <span className="text-tx-4 text-[10px]">{data.withdrawals.length} payouts</span>
+          {data.withdrawals.length > 0 && (() => {
+            const sorted = [...data.withdrawals].sort((a, b) => b.date.localeCompare(a.date));
+            const maxPayout = Math.max(...sorted.map((w) => toNum(w.gross)));
+            const chronological = [...sorted].reverse();
+            const runningMap: Record<string, number> = {};
+            let running = 0;
+            for (const w of chronological) {
+              running += toNum(w.gross);
+              runningMap[w.id] = running;
+            }
+
+            const payoutRow = (w: Withdrawal, idx: number, layout: "mobile" | "desktop") => {
+              const wFirmCol = bwColor(getFirmColor(w.firm), isBW);
+              const amount = toNum(w.gross);
+              const isTop = amount === maxPayout;
+              const isFirst = idx === sorted.length - 1;
+              const runningTotal = runningMap[w.id] ?? 0;
+              const linkedAccountLabel = w.accountId ? payoutAccountLabels.get(w.accountId) : null;
+              const note = payoutNotePreview(w.notes, layout === "desktop" ? 52 : 120);
+
+              const actionButtons = (
+                deletingPayoutId === w.id ? (
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePayout(w.id)}
+                      className="rounded-lg bg-loss/15 px-2 py-1 text-[10px] font-semibold text-loss transition-colors hover:bg-loss/25"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingPayoutId(null)}
+                      className="rounded-lg px-2 py-1 text-[10px] font-semibold text-tx-3 transition-colors hover:text-tx-1"
+                      style={{ background: "rgba(var(--surface-rgb),0.06)" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openEditPayout(w)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border/50 px-2 py-1 text-[10px] font-medium text-tx-3 transition-colors hover:border-accent/40 hover:bg-accent-subtle hover:text-tx-1"
+                      title="Edit payout"
+                    >
+                      <Edit2 size={11} />
+                      <span className="hidden sm:inline">Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingPayoutId(w.id)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border/50 px-2 py-1 text-[10px] font-medium text-tx-3 transition-colors hover:border-loss/30 hover:bg-loss/10 hover:text-loss"
+                      title="Delete payout"
+                    >
+                      <Trash2 size={11} />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  </div>
+                )
+              );
+
+              const closePayoutMenu = (el: HTMLElement) => {
+                const d = el.closest("details");
+                if (d) d.open = false;
+              };
+
+              if (layout === "mobile") {
+                return (
+                  <div
+                    key={w.id}
+                    id={`payout-row-${w.id}`}
+                    className="group/payout relative rounded-xl border px-2.5 py-2"
+                    style={{
+                      background: isTop ? "rgba(34,197,94,0.05)" : theme.dim,
+                      borderColor: isTop ? "rgba(34,197,94,0.18)" : theme.border,
+                    }}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                            <span className="font-mono text-[10px] text-tx-3 tabular-nums">{fmtDate(w.date)}</span>
+                            {isTop && (
+                              <span
+                                className="inline-flex items-center gap-0.5 rounded-full px-1 py-0.5 text-[8px] font-bold uppercase tracking-wide text-warn"
+                                style={{ background: "rgba(196,160,107,0.12)", border: "1px solid rgba(196,160,107,0.22)" }}
+                              >
+                                <Award size={9} /> Top
+                              </span>
+                            )}
+                            {isFirst && !isTop && (
+                              <span
+                                className="rounded-full px-1 py-0.5 text-[8px] font-bold uppercase tracking-wide text-tx-4"
+                                style={{ background: "rgba(var(--surface-rgb),0.06)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
+                              >
+                                First
+                              </span>
+                            )}
+                          </div>
+                          <span className="shrink-0 font-black font-mono text-xs tabular-nums text-profit">+{fmtGBP(amount)}</span>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1.5 min-w-0">
+                          <div className="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-white/5" style={{ background: wFirmCol }} />
+                          <span className="truncate text-xs font-semibold text-tx-1">{w.firm}</span>
+                          <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums text-tx-4">run {fmtGBP(runningTotal)}</span>
+                        </div>
+                        {linkedAccountLabel && (
+                          <p className="mt-0.5 truncate text-[9px] text-tx-4">{linkedAccountLabel}</p>
+                        )}
+                        {note.display !== "—" && (
+                          <p className="mt-0.5 line-clamp-1 text-[9px] leading-snug text-tx-4" title={note.title || undefined}>
+                            {note.display}
+                          </p>
+                        )}
+                      </div>
+                      {deletingPayoutId === w.id ? (
+                        <div className="shrink-0">{actionButtons}</div>
+                      ) : (
+                        <>
+                          <details className="relative shrink-0">
+                            <summary className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-border/40 text-tx-3 transition-colors hover:border-border hover:bg-[rgba(var(--surface-rgb),0.06)] hover:text-tx-1 [&::-webkit-details-marker]:hidden">
+                              <MoreHorizontal size={16} strokeWidth={2} />
+                            </summary>
+                            <div
+                              className="menu-surface absolute right-0 top-full z-[var(--z-dropdown)] mt-1 flex min-w-[132px] flex-col gap-0.5 rounded-lg p-1 shadow-lg"
+                            >
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-tx-2 hover:bg-[rgba(var(--surface-rgb),0.06)]"
+                                onClick={(e) => {
+                                  openEditPayout(w);
+                                  closePayoutMenu(e.currentTarget);
+                                }}
+                              >
+                                <Edit2 size={12} /> Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-loss hover:bg-loss/10"
+                                onClick={(e) => {
+                                  setDeletingPayoutId(w.id);
+                                  closePayoutMenu(e.currentTarget);
+                                }}
+                              >
+                                <Trash2 size={12} /> Delete
+                              </button>
+                            </div>
+                          </details>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <tr
+                  key={w.id}
+                  id={`payout-row-${w.id}`}
+                  className="group/payout border-b border-border/40 transition-colors hover:bg-[rgba(var(--surface-rgb),0.035)]"
+                  style={{ background: isTop ? "rgba(34,197,94,0.035)" : undefined }}
+                >
+                  <td className="align-middle py-3 pl-4 pr-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-mono text-[11px] tabular-nums text-tx-2">{fmtDate(w.date)}</span>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {isTop && (
+                          <span className="inline-flex items-center gap-0.5 text-warn" title="Largest payout">
+                            <Award size={12} strokeWidth={2.2} />
+                          </span>
+                        )}
+                        {isFirst && !isTop && (
+                          <span
+                            className="rounded px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-tx-4"
+                            style={{ background: "rgba(var(--surface-rgb),0.06)" }}
+                          >
+                            First
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="align-middle py-3 pr-3 min-w-0">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full ring-2 ring-white/5" style={{ background: wFirmCol }} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-tx-1 truncate">{w.firm}</p>
+                        {linkedAccountLabel && (
+                          <p className="text-[10px] text-tx-4 truncate mt-0.5">{linkedAccountLabel}</p>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="align-middle py-3 pr-4 text-right">
+                    <span className="font-black font-mono text-sm tabular-nums text-profit">+{fmtGBP(amount)}</span>
+                  </td>
+                  <td className="align-middle py-3 pr-4 text-right">
+                    <span className="font-mono text-[11px] tabular-nums text-tx-3">{fmtGBP(runningTotal)}</span>
+                  </td>
+                  <td className="align-middle w-[36%] min-w-0 py-3 pr-2">
+                    <p
+                      className="truncate text-[11px] leading-snug text-tx-3"
+                      title={note.title || undefined}
+                    >
+                      {note.display}
+                    </p>
+                  </td>
+                  <td className="align-middle py-3 pr-4 text-right w-[124px]">
+                    <div
+                      className={cn(
+                        "flex justify-end transition-opacity duration-150",
+                        deletingPayoutId === w.id ? "opacity-100" : "opacity-0 group-hover/payout:opacity-100",
+                      )}
+                    >
+                      {actionButtons}
+                    </div>
+                  </td>
+                </tr>
+              );
+            };
+
+            return (
+              <div
+                id="prop-payout-history"
+                className="card overflow-hidden p-0"
+                style={{
+                  borderColor: theme.border,
+                  background: `linear-gradient(165deg, rgba(var(--surface-rgb),0.07) 0%, rgba(var(--surface-rgb),0.02) 42%, rgba(var(--surface-rgb),0.03) 100%)`,
+                }}
+              >
+                <div
+                  className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between border-b"
+                  style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                      style={{
+                        background: "rgba(34,197,94,0.1)",
+                        border: "1px solid rgba(34,197,94,0.22)",
+                        color: "#4ade80",
+                      }}
+                    >
+                      <ArrowDownToLine size={20} strokeWidth={2.2} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold tracking-tight text-tx-1">Payout history</h3>
+                      <p className="mt-0.5 text-[11px] leading-snug text-tx-4">
+                        Newest first · running total builds from your oldest payout upward
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <div
+                      className="inline-flex items-baseline gap-2 rounded-xl px-3 py-2 tabular-nums"
+                      style={{ background: theme.dim, border: `1px solid ${theme.border}` }}
+                    >
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-tx-4">Lifetime</span>
+                      <span className="text-base font-black text-profit">+{fmtGBP(totalWithdrawals)}</span>
+                    </div>
+                    <div
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] text-tx-3"
+                      style={{ background: "rgba(var(--surface-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.07)" }}
+                    >
+                      <Activity size={12} className="text-tx-4 shrink-0" />
+                      <span>
+                        {data.withdrawals.length} payout{data.withdrawals.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 p-3 md:hidden">
+                  {sorted.map((w, idx) => payoutRow(w, idx, "mobile"))}
+                  <div
+                    className="flex items-center justify-between rounded-xl px-4 py-3"
+                    style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.14)" }}
+                  >
+                    <span className="text-xs font-semibold text-tx-2">Total received</span>
+                    <span className="text-base font-black font-mono tabular-nums text-profit">+{fmtGBP(totalWithdrawals)}</span>
+                  </div>
+                </div>
+
+                <div className="hidden md:block px-2 pb-3">
+                  <div className="overflow-x-auto rounded-b-lg">
+                    <table className="w-full min-w-[680px] table-fixed border-separate border-spacing-0 text-sm">
+                      <thead>
+                        <tr>
+                          <th
+                            className="sticky top-0 z-[1] w-[112px] border-b bg-[rgba(var(--bg-base-rgb),0.92)] px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-tx-4 backdrop-blur-sm"
+                            style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}
+                          >
+                            Date
+                          </th>
+                          <th
+                            className="sticky top-0 z-[1] border-b bg-[rgba(var(--bg-base-rgb),0.92)] py-2.5 pr-3 text-left text-[10px] font-bold uppercase tracking-wider text-tx-4 backdrop-blur-sm"
+                            style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}
+                          >
+                            Firm
+                          </th>
+                          <th
+                            className="sticky top-0 z-[1] w-[108px] border-b bg-[rgba(var(--bg-base-rgb),0.92)] py-2.5 pr-4 text-right text-[10px] font-bold uppercase tracking-wider text-tx-4 backdrop-blur-sm"
+                            style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}
+                          >
+                            Amount
+                          </th>
+                          <th
+                            className="sticky top-0 z-[1] w-[108px] border-b bg-[rgba(var(--bg-base-rgb),0.92)] py-2.5 pr-4 text-right text-[10px] font-bold uppercase tracking-wider text-tx-4 backdrop-blur-sm"
+                            style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}
+                          >
+                            Running
+                          </th>
+                          <th
+                            className="sticky top-0 z-[1] w-[36%] min-w-0 border-b bg-[rgba(var(--bg-base-rgb),0.92)] py-2.5 pr-2 text-left text-[10px] font-bold uppercase tracking-wider text-tx-4 backdrop-blur-sm"
+                            style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}
+                          >
+                            Notes
+                          </th>
+                          <th
+                            className="sticky top-0 z-[1] w-[128px] border-b bg-[rgba(var(--bg-base-rgb),0.92)] py-2.5 pr-4 text-right text-[10px] font-bold uppercase tracking-wider text-tx-4 backdrop-blur-sm"
+                            style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}
+                          >
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>{sorted.map((w, idx) => payoutRow(w, idx, "desktop"))}</tbody>
+                      <tfoot>
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="p-2"
+                            style={{ borderTop: `1px solid rgba(var(--border-rgb),0.1)` }}
+                          >
+                            <div
+                              className="flex items-center justify-between rounded-xl px-4 py-2.5"
+                              style={{ background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.14)" }}
+                            >
+                              <span className="text-xs font-semibold text-tx-2">Total received</span>
+                              <span className="text-lg font-black font-mono tabular-nums text-profit">
+                                +{fmtGBP(totalWithdrawals)}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-3 md:hidden">
-                {(() => {
-                  const sorted = [...data.withdrawals].sort((a, b) => b.date.localeCompare(a.date));
-                  const maxPayout = Math.max(...sorted.map((w) => toNum(w.gross)));
-                  const chronological = [...sorted].reverse();
-                  const runningMap: Record<string, number> = {};
-                  let running = 0;
-                  for (const w of chronological) {
-                    running += toNum(w.gross);
-                    runningMap[w.id] = running;
-                  }
-                  return sorted.map((w, idx) => {
-                    const wFirmCol = bwColor(getFirmColor(w.firm), isBW);
-                    const amount = toNum(w.gross);
-                    const isTop = amount === maxPayout;
-                    const isFirst = idx === sorted.length - 1;
-                    const runningTotal = runningMap[w.id] ?? 0;
-                    const linkedAccountLabel = w.accountId ? payoutAccountLabels.get(w.accountId) : null;
-                    return (
-                      <div
-                        key={w.id}
-                        className="rounded-2xl border p-4"
-                        style={{
-                          background: isTop ? "rgba(34,197,94,0.04)" : theme.dim,
-                          borderColor: isTop ? "rgba(34,197,94,0.12)" : theme.border,
-                        }}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 text-xs text-tx-2">
-                              {isTop && <span className="text-[10px]">Top</span>}
-                              {isFirst && !isTop && <span className="text-[10px]">First</span>}
-                              <span className="font-mono tabular-nums">{fmtDate(w.date)}</span>
-                            </div>
-                            <div className="mt-1 flex items-center gap-1.5">
-                              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: wFirmCol }} />
-                              <span className="text-sm font-medium text-tx-1 break-words">{w.firm}</span>
-                            </div>
-                            {linkedAccountLabel && (
-                              <div className="mt-1 text-[11px] text-tx-3 break-words">
-                                {linkedAccountLabel}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {deletingPayoutId === w.id ? (
-                              <>
-                                <button
-                                  onClick={() => handleDeletePayout(w.id)}
-                                  className="rounded bg-loss/15 px-2 py-1 text-[10px] font-semibold text-loss transition-colors hover:bg-loss/25"
-                                >
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={() => setDeletingPayoutId(null)}
-                                  className="rounded px-2 py-1 text-[10px] font-semibold text-tx-3 transition-colors hover:text-tx-1"
-                                  style={{ background: "rgba(var(--surface-rgb),0.06)" }}
-                                >
-                                  No
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => openEditPayout(w)}
-                                  className="rounded p-1.5 text-tx-3 transition-colors hover:text-tx-1"
-                                  style={{ background: "transparent" }}
-                                  title="Edit payout"
-                                >
-                                  <Edit2 size={12} />
-                                </button>
-                                <button
-                                  onClick={() => setDeletingPayoutId(w.id)}
-                                  className="rounded p-1.5 text-tx-3 transition-colors hover:bg-loss/10 hover:text-loss"
-                                  title="Delete payout"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                          <div className="rounded-xl border p-2.5" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: "rgba(var(--border-rgb),0.08)" }}>
-                            <p className="text-[10px] uppercase tracking-wide text-tx-4">Amount</p>
-                            <p className="mt-1 font-bold font-mono tabular-nums text-profit">+{fmtGBP(amount)}</p>
-                          </div>
-                          <div className="rounded-xl border p-2.5" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: "rgba(var(--border-rgb),0.08)" }}>
-                            <p className="text-[10px] uppercase tracking-wide text-tx-4">Running</p>
-                            <p className="mt-1 font-mono tabular-nums text-tx-3">{fmtGBP(runningTotal)}</p>
-                          </div>
-                          <div className="col-span-2 rounded-xl border p-2.5" style={{ background: "rgba(var(--surface-rgb),0.04)", borderColor: "rgba(var(--border-rgb),0.08)" }}>
-                            <p className="text-[10px] uppercase tracking-wide text-tx-4">Notes</p>
-                            <p className="mt-1 text-tx-3 break-words">{w.notes ?? "-"}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-
-              <div className="hidden overflow-x-auto md:block">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b" style={{ borderColor: theme.border }}>
-                      <th className="text-left text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 pr-4">Date</th>
-                      <th className="text-left text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 pr-4">Firm</th>
-                      <th className="text-right text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 pr-4">Amount</th>
-                      <th className="text-right text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 pr-4">Running</th>
-                      <th className="text-left text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 pr-4">Notes</th>
-                      <th className="text-right text-tx-3 text-[11px] uppercase tracking-wider font-medium pb-2 w-20">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: "rgba(var(--border-rgb),0.06)" }}>
-                    {(() => {
-                      const sorted = [...data.withdrawals].sort((a, b) => b.date.localeCompare(a.date));
-                      const maxPayout = Math.max(...sorted.map((w) => toNum(w.gross)));
-                      // Compute running totals from oldest → newest, then reverse for display
-                      const chronological = [...sorted].reverse();
-                      const runningMap: Record<string, number> = {};
-                      let running = 0;
-                      for (const w of chronological) {
-                        running += toNum(w.gross);
-                        runningMap[w.id] = running;
-                      }
-                      return sorted.map((w, idx) => {
-                        const wFirmCol = bwColor(getFirmColor(w.firm), isBW);
-                        const amount = toNum(w.gross);
-                        const isTop = amount === maxPayout;
-                        const isFirst = idx === sorted.length - 1;
-                        const runningTotal = runningMap[w.id] ?? 0;
-                        const linkedAccountLabel = w.accountId ? payoutAccountLabels.get(w.accountId) : null;
-                        return (
-                          <tr key={w.id} className="group transition-colors"
-                            style={{ background: isTop ? "rgba(34,197,94,0.04)" : undefined }}>
-                            <td className="py-2.5 pr-4 text-tx-2 font-mono tabular-nums text-xs">
-                              <div className="flex items-center gap-1.5">
-                                {isTop && <span className="text-[10px]">🏆</span>}
-                                {isFirst && !isTop && <span className="text-[10px]">🥇</span>}
-                                {fmtDate(w.date)}
-                              </div>
-                            </td>
-                            <td className="py-2.5 pr-4">
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: wFirmCol }} />
-                                  <span className="text-tx-1 font-medium text-xs">{w.firm}</span>
-                                </div>
-                                {linkedAccountLabel && (
-                                  <div className="mt-1 text-[11px] text-tx-3">{linkedAccountLabel}</div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-2.5 pr-4 font-bold font-mono tabular-nums text-right"
-                              style={{ color: isTop ? "#4ade80" : "#22c55e" }}>
-                              +{fmtGBP(amount)}
-                            </td>
-                            <td className="py-2.5 pr-4 text-[11px] font-mono tabular-nums text-right text-tx-3">
-                              {fmtGBP(runningTotal)}
-                            </td>
-                            <td className="py-2.5 pr-4 text-tx-3 text-xs">{w.notes ?? "—"}</td>
-                            <td className="py-2.5 text-right">
-                              {deletingPayoutId === w.id ? (
-                                <div className="flex items-center justify-end gap-1">
-                                  <button
-                                    onClick={() => handleDeletePayout(w.id)}
-                                    className="rounded bg-loss/15 px-2 py-0.5 text-[10px] font-semibold text-loss transition-colors hover:bg-loss/25"
-                                  >Confirm</button>
-                                  <button
-                                    onClick={() => setDeletingPayoutId(null)}
-                                    className="rounded px-2 py-0.5 text-[10px] font-semibold text-tx-3 transition-colors hover:text-tx-1"
-                                    style={{ background: "rgba(var(--surface-rgb),0.06)" }}
-                                  >No</button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-end gap-0.5 transition-opacity md:opacity-0 md:group-hover:opacity-100">
-                                  <button
-                                    onClick={() => openEditPayout(w)}
-                                    className="rounded p-1.5 text-tx-3 transition-colors hover:text-tx-1"
-                                    title="Edit payout"
-                                  ><Edit2 size={11} /></button>
-                                  <button
-                                    onClick={() => setDeletingPayoutId(w.id)}
-                                    className="rounded p-1.5 text-tx-3 transition-colors hover:bg-loss/10 hover:text-loss"
-                                    title="Delete payout"
-                                  ><Trash2 size={11} /></button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t" style={{ borderColor: theme.border }}>
-                      <td colSpan={2} className="pt-3 text-tx-3 text-xs font-medium">Total</td>
-                      <td className="pt-3 text-right text-profit font-bold font-mono tabular-nums">+{fmtGBP(totalWithdrawals)}</td>
-                      <td colSpan={3} />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
+            );
+          })()}
           {/* Passed Challenge History */}
           {(data.passedChallenges ?? []).length > 0 && (
             <div className="card p-5">

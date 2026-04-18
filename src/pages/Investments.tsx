@@ -36,6 +36,7 @@ import type { AppData } from "@/types";
 import { useRegisterPageView } from "@/components/PageViewContext";
 import { getViewIntentState } from "@/lib/viewIntents";
 import { getT212ApiKey, removeT212ApiKey, setT212ApiKey } from "@/lib/deviceSettings";
+import { tauriFetch } from "@/lib/tauriFetch";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import {
   fmtGBP,
@@ -47,6 +48,7 @@ import {
   generateId,
 } from "@/lib/utils";
 import Modal from "@/components/Modal";
+import StatCard from "@/components/StatCard";
 import CustomSelect from "@/components/CustomSelect";
 import DatePicker from "@/components/DatePicker";
 import PageHeader from "@/components/PageHeader";
@@ -357,6 +359,7 @@ function InvestmentSidebar({
   subscriptions: Subscription[];
   stats: { totalValue: number; totalInvested: number; totalPnl: number; totalPnlPct: number };
 }) {
+  const isBW = useBWMode();
   const topPerformers = [...investments]
     .filter((inv) => investmentValue(inv) > 0)
     .sort((a, b) => investmentPnlPct(b) - investmentPnlPct(a))
@@ -397,7 +400,7 @@ function InvestmentSidebar({
           return { ...item, dash, offset, color: ALLOC_COLORS[i % ALLOC_COLORS.length] };
         });
         return (
-          <div className="card p-4 flex flex-col gap-3">
+          <div className={cn("card p-4 flex flex-col gap-3", isBW && "card--parchment-panel")}>
             <h3 className="text-[10px] font-bold text-tx-3 uppercase tracking-wider">Allocation</h3>
             <div className="flex items-center gap-3">
               {/* SVG ring with centre label */}
@@ -441,7 +444,7 @@ function InvestmentSidebar({
 
       {/* ── Portfolio Composition ── */}
       {(etfValue > 0 || stockValue > 0) && (
-        <div className="card p-4 flex flex-col gap-3">
+        <div className={cn("card p-4 flex flex-col gap-3", isBW && "card--parchment-panel")}>
           <div className="flex items-center gap-2">
             <Layers size={13} className="text-accent" />
             <h3 className="text-xs font-semibold text-tx-1 uppercase tracking-wider">Composition</h3>
@@ -470,7 +473,7 @@ function InvestmentSidebar({
 
       {/* ── Top Performers ── */}
       {topPerformers.length > 0 && (
-        <div className="card p-4 flex flex-col gap-3 animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
+        <div className={cn("card p-4 flex flex-col gap-3", isBW && "card--parchment-panel")}>
           <div className="flex items-center gap-2">
             <Trophy size={13} className="text-warn" />
             <h3 className="text-xs font-semibold text-tx-1 uppercase tracking-wider">Top Performers</h3>
@@ -482,8 +485,8 @@ function InvestmentSidebar({
               return (
                 <div
                   key={inv.id}
-                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors animate-fade-up"
-                  style={{ background: "rgba(var(--surface-rgb),0.04)", animationDelay: `${60 + i * 40}ms`, animationFillMode: "both" }}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors"
+                  style={{ background: "rgba(var(--surface-rgb),0.04)" }}
                 >
                   <span
                     className="text-[10px] font-bold w-4 h-4 rounded flex items-center justify-center shrink-0"
@@ -529,7 +532,7 @@ function InvestmentSidebar({
 
       {/* ── Upcoming Renewals ── */}
       {upcoming.length > 0 && (
-        <div className="card p-4 flex flex-col gap-3">
+        <div className={cn("card p-4 flex flex-col gap-3", isBW && "card--parchment-panel")}>
           <div className="flex items-center gap-2">
             <CalendarClock size={13} className="text-accent" />
             <h3 className="text-xs font-semibold text-tx-1 uppercase tracking-wider">Upcoming Renewals</h3>
@@ -543,8 +546,9 @@ function InvestmentSidebar({
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold"
                     style={{
-                      background: isSoon ? "rgba(196,160,107,0.12)" : "rgba(118,153,141,0.10)",
-                      color: isSoon ? INVESTMENT_GOLD : INVESTMENT_TEAL,
+                      background: isSoon ? "var(--color-warn-bg)" : "var(--color-teal-bg)",
+                      color: isSoon ? "var(--color-warn)" : "var(--color-teal)",
+                      border: `1px solid ${isSoon ? "var(--color-warn-border)" : "var(--color-teal-border)"}`,
                     }}
                   >
                     {days === 0 ? "!" : Number.isFinite(days) ? `${days}d` : "—"}
@@ -564,12 +568,13 @@ function InvestmentSidebar({
 
       {/* ── P&L Summary ── */}
       <div
-        className="card p-4 flex flex-col gap-2"
+        className={cn("card p-4 flex flex-col gap-2", isBW && "card--parchment-panel")}
         style={{
-          background: stats.totalPnl >= 0
-            ? "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, transparent 60%)"
-            : "linear-gradient(135deg, rgba(239,68,68,0.06) 0%, transparent 60%)",
-          borderColor: stats.totalPnl >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+          background:
+            stats.totalPnl >= 0
+              ? "linear-gradient(135deg, var(--color-profit-bg) 0%, transparent 60%)"
+              : "linear-gradient(135deg, var(--color-loss-bg) 0%, transparent 60%)",
+          borderColor: stats.totalPnl >= 0 ? "var(--color-profit-border)" : "var(--color-loss-border)",
         }}
       >
         <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium">Total Return</p>
@@ -768,8 +773,8 @@ export default function InvestmentsPage() {
       const headers = { Authorization: apiKey };
 
       const [posRes, cashRes] = await Promise.all([
-        fetch(`${T212_BASE}/equity/portfolio`, { headers }),
-        fetch(`${T212_BASE}/equity/account/cash`, { headers }),
+        tauriFetch(`${T212_BASE}/equity/portfolio`, { headers }),
+        tauriFetch(`${T212_BASE}/equity/account/cash`, { headers }),
       ]);
 
       const failedStatus = !posRes.ok ? posRes.status : cashRes.status;
@@ -905,6 +910,11 @@ export default function InvestmentsPage() {
       .sort((a, b) => investmentPnlPct(b) - investmentPnlPct(a));
   }, [investments, search, filters.performance]);
 
+  const filteredMaxAbsPnlPct = useMemo(
+    () => Math.max(...filteredInvestments.map((inv) => Math.abs(investmentPnlPct(inv))), 1),
+    [filteredInvestments],
+  );
+
   // ── Pie chart data ────────────────────────────────────────────────────────
   const pieData = useMemo(() => {
     const totalVal = investments.reduce((s, inv) => s + investmentValue(inv), 0) || 1;
@@ -1006,6 +1016,12 @@ export default function InvestmentsPage() {
   const totalMonthlySubs = activeSubs.reduce((s, sub) => s + monthlySubCost(sub), 0);
   const annualSubCost = activeSubs.reduce((sum, s) => sum + monthlySubCost(s) * 12, 0);
 
+  const subsMatchingSearch = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return activeSubs;
+    return activeSubs.filter((s) => s.name.toLowerCase().includes(q));
+  }, [activeSubs, search]);
+
   const lastSyncText =
     t212.last_sync > 0
       ? `Last sync: ${new Date(t212.last_sync).toLocaleString("en-GB", {
@@ -1026,9 +1042,11 @@ export default function InvestmentsPage() {
           <div
             className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold"
             style={{
-              background: connected ? "rgba(34,197,94,0.08)" : "rgba(100,116,139,0.08)",
-              border: `1px solid ${connected ? "rgba(34,197,94,0.2)" : "rgba(100,116,139,0.15)"}`,
-              color: connected ? "var(--color-profit)" : INVESTMENT_MUTED,
+              background: connected
+                ? bwColor("rgba(34,197,94,0.08)", isBW)
+                : bwColor("rgba(100,116,139,0.08)", isBW),
+              border: `1px solid ${connected ? bwColor("rgba(34,197,94,0.2)", isBW) : bwColor("rgba(100,116,139,0.15)", isBW)}`,
+              color: connected ? bwColor("#22c55e", isBW) : bwColor(INVESTMENT_MUTED, isBW),
             }}
           >
             {connected ? <Wifi size={9} /> : <WifiOff size={9} />}
@@ -1104,7 +1122,10 @@ export default function InvestmentsPage() {
       {apiKey && (
         <div
           className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-xs -mt-2"
-          style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.12)" }}
+          style={{
+            background: bwColor("rgba(34,197,94,0.04)", isBW),
+            border: `1px solid ${bwColor("rgba(34,197,94,0.12)", isBW)}`,
+          }}
         >
           <div className="flex items-center gap-2">
             <Wifi size={11} className="text-profit shrink-0" />
@@ -1122,7 +1143,10 @@ export default function InvestmentsPage() {
       {syncError && (
         <div
           className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl text-xs"
-          style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}
+          style={{
+            background: bwColor("rgba(239,68,68,0.06)", isBW),
+            border: `1px solid ${bwColor("rgba(239,68,68,0.15)", isBW)}`,
+          }}
         >
           <AlertCircle size={13} className="text-loss mt-0.5 flex-shrink-0" />
           <div className="min-w-0">
@@ -1136,53 +1160,46 @@ export default function InvestmentsPage() {
         </div>
       )}
 
-      {/* ── Stats Row ── */}
+      {/* ── Stats Row (Prop-style StatCards) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {([
-          {
-            label: "Total Value", value: fmtGBP(stats.totalValue), sub: "T212 + manual",
-            color: bwColor(INVESTMENT_TEAL, isBW), bg: bwColor("rgba(118,153,141,0.08)", isBW), border: bwColor("rgba(118,153,141,0.20)", isBW),
-            icon: <BarChart3 size={13} style={{ color: bwColor(INVESTMENT_TEAL, isBW), opacity: 0.7 }} />,
-            delay: 0,
-          },
-          {
-            label: "Cost Basis", value: fmtGBP(stats.totalInvested), sub: "Amount invested",
-            color: bwColor(INVESTMENT_BLUE, isBW), bg: bwColor("rgba(127,153,172,0.08)", isBW), border: bwColor("rgba(127,153,172,0.20)", isBW),
-            icon: <Layers size={13} style={{ color: bwColor(INVESTMENT_BLUE, isBW), opacity: 0.7 }} />,
-            delay: 60,
-          },
-          {
-            label: "Unrealised P&L",
-            value: `${stats.totalPnl >= 0 ? "+" : ""}${fmtGBP(stats.totalPnl)}`,
-            sub: `${stats.totalPnlPct >= 0 ? "+" : ""}${stats.totalPnlPct.toFixed(2)}% return`,
-            color: stats.totalPnl >= 0 ? "var(--color-profit)" : "#dc4040",
-            bg: stats.totalPnl >= 0 ? "rgba(34,197,94,0.06)" : "rgba(239,68,68,0.06)",
-            border: stats.totalPnl >= 0 ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)",
-            icon: stats.totalPnl >= 0
-              ? <TrendingUp size={13} style={{ color: "var(--color-profit)", opacity: 0.7 }} />
-              : <TrendingDown size={13} style={{ color: "#dc4040", opacity: 0.7 }} />,
-            delay: 120,
-          },
-          {
-            label: "Free Cash", value: fmtGBP(t212.free_cash ?? 0), sub: "Available in T212",
-            color: INVESTMENT_GOLD, bg: "rgba(196,160,107,0.08)", border: "rgba(196,160,107,0.20)",
-            icon: <Flame size={13} style={{ color: INVESTMENT_GOLD, opacity: 0.7 }} />,
-            delay: 180,
-          },
-        ] as const).map(({ label, value, sub, color, bg, border, icon, delay }) => (
-          <div
-            key={label}
-            className="card p-4 flex flex-col gap-1.5 animate-fade-up"
-            style={{ background: `linear-gradient(135deg, ${bg} 0%, transparent 100%)`, borderColor: border, animationDelay: `${delay}ms`, animationFillMode: "both" }}
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-tx-4">{label}</p>
-              {icon}
-            </div>
-            <p className="text-lg font-black tabular-nums leading-none" style={{ color }}>{value}</p>
-            {sub && <p className="text-[10px] text-tx-4">{sub}</p>}
-          </div>
-        ))}
+        <StatCard
+          label="Total Value"
+          value={stats.totalValue}
+          subLabel="T212 + manual"
+          icon={<BarChart3 size={15} />}
+          accentColor={bwColor(INVESTMENT_TEAL, isBW)}
+          delay={0}
+        />
+        <StatCard
+          label="Cost Basis"
+          value={stats.totalInvested}
+          subLabel="Amount invested"
+          icon={<Layers size={15} />}
+          accentColor={bwColor(INVESTMENT_BLUE, isBW)}
+          delay={60}
+        />
+        <StatCard
+          label="Unrealised P&L"
+          value={stats.totalPnl}
+          renderValue={
+            <span className="tabular-nums">
+              {stats.totalPnl >= 0 ? "+" : ""}
+              {fmtGBP(stats.totalPnl)}
+            </span>
+          }
+          subLabel={`${stats.totalPnlPct >= 0 ? "+" : ""}${stats.totalPnlPct.toFixed(2)}% return`}
+          icon={stats.totalPnl >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+          accentColor={stats.totalPnl >= 0 ? "var(--color-profit)" : "var(--color-loss)"}
+          delay={120}
+        />
+        <StatCard
+          label="Free Cash"
+          value={t212.free_cash ?? 0}
+          subLabel="Available in T212"
+          icon={<Flame size={15} />}
+          accentColor={bwColor(INVESTMENT_GOLD, isBW)}
+          delay={180}
+        />
       </div>
 
       {/* ── 2-Column Layout ── */}
@@ -1192,7 +1209,7 @@ export default function InvestmentsPage() {
         <div className="flex flex-col gap-6 xl:gap-7">
 
           {/* Holdings Table */}
-          <div className="card p-5 flex flex-col gap-3">
+          <div className={cn("card p-5 flex flex-col gap-3", isBW && "card--parchment-panel")}>
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-tx-1">Holdings</h2>
               <div className="relative">
@@ -1208,7 +1225,7 @@ export default function InvestmentsPage() {
 
             <div className="flex flex-col gap-3 md:hidden">
               {filteredInvestments.length === 0 && investments.length === 0 && (
-                <div className="card p-10 text-center flex flex-col items-center gap-3">
+                <div className={cn("card p-10 text-center flex flex-col items-center gap-3", isBW && "card--parchment-panel")}>
                   <PieChart size={32} className="text-tx-4" />
                   <div>
                     <p className="text-sm font-semibold text-tx-2">No investments tracked</p>
@@ -1229,8 +1246,7 @@ export default function InvestmentsPage() {
                 const pnlP = investmentPnlPct(inv);
                 const isProfit = pnl >= 0;
                 const accentColor = isProfit ? "var(--color-profit)" : "var(--color-loss)";
-                const maxAbsPct = Math.max(...filteredInvestments.map((i) => Math.abs(investmentPnlPct(i))), 1);
-                const barW = Math.min(100, (Math.abs(pnlP) / maxAbsPct) * 100);
+                const barW = Math.min(100, (Math.abs(pnlP) / filteredMaxAbsPnlPct) * 100);
                 const rank = idx + 1;
                 const rankColors = [bwColor(INVESTMENT_GOLD, isBW), bwColor(INVESTMENT_BLUE, isBW), bwColor("#a97955", isBW)];
 
@@ -1240,7 +1256,7 @@ export default function InvestmentsPage() {
                     className="rounded-2xl border p-4"
                     style={{
                       borderColor: "rgba(var(--border-rgb),0.08)",
-                      background: isProfit ? "rgba(34,197,94,0.025)" : "rgba(239,68,68,0.025)",
+                      background: isProfit ? "var(--color-profit-bg)" : "var(--color-loss-bg)",
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -1358,8 +1374,7 @@ export default function InvestmentsPage() {
                     const pnlP = investmentPnlPct(inv);
                     const isProfit = pnl >= 0;
                     const accentColor = isProfit ? "var(--color-profit)" : "var(--color-loss)";
-                    const maxAbsPct = Math.max(...filteredInvestments.map((i) => Math.abs(investmentPnlPct(i))), 1);
-                    const barW = Math.min(100, (Math.abs(pnlP) / maxAbsPct) * 100);
+                    const barW = Math.min(100, (Math.abs(pnlP) / filteredMaxAbsPnlPct) * 100);
                     const rank = idx + 1; // sorted by pnlPct desc
                     const rankColors = [bwColor(INVESTMENT_GOLD, isBW), bwColor(INVESTMENT_BLUE, isBW), bwColor("#a97955", isBW)];
                     return (
@@ -1368,7 +1383,7 @@ export default function InvestmentsPage() {
                         className="group border-b transition-colors duration-150"
                         style={{
                           borderColor: "rgba(var(--border-rgb),0.06)",
-                          background: isProfit ? "rgba(34,197,94,0.025)" : "rgba(239,68,68,0.025)",
+                          background: isProfit ? "var(--color-profit-bg)" : "var(--color-loss-bg)",
                         }}
                       >
                         {/* colored left accent via first-cell border */}
@@ -1432,7 +1447,7 @@ export default function InvestmentsPage() {
           </div>
 
           {/* ── Wealth Targets ── */}
-          <div className="card p-5">
+          <div className={cn("card p-5", isBW && "card--parchment-panel")}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Target size={16} className="text-accent" />
@@ -1542,7 +1557,7 @@ export default function InvestmentsPage() {
           </div>
 
           {/* ── Subscriptions ── */}
-          <div className="card p-5">
+          <div className={cn("card p-5", isBW && "card--parchment-panel")}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Repeat size={16} className="text-accent" />
@@ -1560,7 +1575,7 @@ export default function InvestmentsPage() {
             </div>
 
             {subscriptions.length === 0 && (
-              <div className="card p-10 text-center flex flex-col items-center gap-3">
+              <div className={cn("card p-10 text-center flex flex-col items-center gap-3", isBW && "card--parchment-panel")}>
                 <Receipt size={32} className="text-tx-4" />
                 <div>
                   <p className="text-sm font-semibold text-tx-2">No subscriptions</p>
@@ -1577,15 +1592,23 @@ export default function InvestmentsPage() {
                 {/* Annual cost bar */}
                 <div
                   className="flex items-center justify-between px-3 py-2 rounded-lg mb-3"
-                  style={{ background: "rgba(118,153,141,0.06)", border: "1px solid rgba(118,153,141,0.12)" }}
+                  style={{
+                    background: bwColor("rgba(118,153,141,0.06)", isBW),
+                    border: `1px solid ${bwColor("rgba(118,153,141,0.12)", isBW)}`,
+                  }}
                 >
                   <span className="text-xs text-tx-3">Annual cost</span>
                   <span className="text-sm font-semibold tabular-nums text-tx-1">{fmtGBP(annualSubCost)} / yr</span>
                 </div>
 
                 {/* Active subscriptions */}
+                {subsMatchingSearch.length === 0 ? (
+                  <p className="text-xs text-tx-4 px-1 mb-3">
+                    No subscriptions match your search.
+                  </p>
+                ) : (
                 <div className="flex flex-col gap-2 mb-3">
-                  {activeSubs.slice(0, showAllSubs ? undefined : 5).map((sub) => {
+                  {subsMatchingSearch.slice(0, showAllSubs ? undefined : 5).map((sub) => {
                     const monthlyCost = monthlySubCost(sub);
                     const days = daysUntil(sub.nextRenewal);
                     const isFinite = Number.isFinite(days);
@@ -1598,8 +1621,18 @@ export default function InvestmentsPage() {
                         key={sub.id}
                         className="group flex flex-col gap-2 px-4 py-3 rounded-xl transition-colors"
                         style={{
-                          background: isUrgent ? "rgba(239,68,68,0.04)" : "rgba(118,153,141,0.035)",
-                          border: `1px solid ${isUrgent ? "rgba(239,68,68,0.15)" : isUpcoming ? "rgba(196,160,107,0.18)" : "rgba(118,153,141,0.10)"}`,
+                          background: isUrgent
+                            ? "var(--color-loss-bg)"
+                            : isUpcoming
+                              ? "var(--color-warn-bg)"
+                              : "rgba(var(--surface-rgb),0.05)",
+                          border: `1px solid ${
+                            isUrgent
+                              ? "var(--color-loss-border)"
+                              : isUpcoming
+                                ? "var(--color-warn-border)"
+                                : "rgba(var(--border-rgb),0.10)"
+                          }`,
                         }}
                       >
                         <div className="flex items-center justify-between">
@@ -1608,13 +1641,21 @@ export default function InvestmentsPage() {
                               <span className="text-sm font-medium text-tx-1">{sub.name}</span>
                               {isUrgent && (
                                 <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wider"
-                                  style={{ background: "rgba(239,68,68,0.12)", color: "#dc4040", border: "1px solid rgba(239,68,68,0.2)" }}>
+                                  style={{
+                                    background: "rgba(var(--color-loss-rgb),0.12)",
+                                    color: "var(--color-loss)",
+                                    border: "1px solid rgba(var(--color-loss-rgb),0.22)",
+                                  }}>
                                   {days === 0 ? "Today" : `${days}d`}
                                 </span>
                               )}
                               {isUpcoming && (
                                 <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wider"
-                                  style={{ background: "rgba(196,160,107,0.12)", color: INVESTMENT_GOLD, border: "1px solid rgba(196,160,107,0.2)" }}>
+                                  style={{
+                                    background: "var(--color-warn-bg)",
+                                    color: "var(--color-warn)",
+                                    border: "1px solid var(--color-warn-border)",
+                                  }}>
                                   {days}d
                                 </span>
                               )}
@@ -1651,7 +1692,7 @@ export default function InvestmentsPage() {
                   })}
 
                   {/* View All / Show less */}
-                  {activeSubs.length > 5 && (
+                  {subsMatchingSearch.length > 5 && (
                     <button
                       onClick={() => setShowAllSubs(!showAllSubs)}
                       className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-[11px] font-medium text-tx-3 hover:text-tx-1 hover:bg-[rgba(var(--surface-rgb),0.04)] transition-colors border border-transparent hover:border-[rgba(var(--border-rgb),0.06)]"
@@ -1659,11 +1700,12 @@ export default function InvestmentsPage() {
                       {showAllSubs ? (
                         <><ChevronUp size={12} /> Show less</>
                       ) : (
-                        <><ChevronDown size={12} /> View all {activeSubs.length} subscriptions</>
+                        <><ChevronDown size={12} /> View all {subsMatchingSearch.length} subscriptions</>
                       )}
                     </button>
                   )}
                 </div>
+                )}
 
                 {/* Cancelled / Stopped subscriptions — outside the active gap-2 */}
                 {cancelledSubs.length > 0 && (

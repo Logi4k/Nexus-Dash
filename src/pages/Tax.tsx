@@ -32,6 +32,7 @@ import { fmtGBP, toNum, cn, daysUntil } from "@/lib/utils";
 import { UK_TAX } from "@/lib/utils";
 import { PAGE_THEMES } from "@/lib/theme";
 import PageHeader from "@/components/PageHeader";
+import { StatCardShell } from "@/components/StatCard";
 
 // ─── UK Tax year helpers ───────────────────────────────────────────────────────
 
@@ -288,10 +289,15 @@ function EditableAmount({
       <button onClick={() => setEditing(false)} className="p-1 rounded hover:bg-loss/10 text-loss" aria-label="Cancel"><X size={12} /></button>
     </div>
   ) : (
-    <div className="flex items-center gap-1 group cursor-pointer" onClick={start}>
+    <button
+      type="button"
+      className="flex items-center gap-1 group cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      onClick={start}
+      aria-label={`Edit ${fmtGBP(value, 0)} amount`}
+    >
       <span className="text-xl font-bold text-tx-1 tabular-nums">{fmtGBP(value, 0)}</span>
       <Edit2 size={11} className="text-tx-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity" />
-    </div>
+    </button>
   );
 }
 
@@ -469,27 +475,29 @@ export default function TaxPage() {
           {/* ── Income inputs row ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Salary */}
-            <div className="card p-4 flex flex-col gap-3" style={{ background: bwColor("linear-gradient(135deg, rgba(134,147,159,0.08) 0%, transparent 100%)", isBW), borderColor: bwColor("rgba(134,147,159,0.18)", isBW) }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-tx-3 flex items-center gap-1.5">
-                  <Building2 size={10} style={{ color: theme.accent }} />Employment Salary
-                </span>
+            <StatCardShell
+              label="Employment Salary"
+              icon={<Building2 size={14} />}
+              accentColor={bwColor("#86939f", isBW)}
+              trailing={(
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: theme.dim, color: theme.accent, border: `1px solid ${theme.border}` }}>PAYE</span>
-              </div>
+              )}
+            >
               <EditableAmount label="Annual Salary" value={salary} onSave={setSalary} />
               <p className="text-[11px] text-tx-4">Click to edit your gross annual salary</p>
-            </div>
+            </StatCardShell>
 
             {/* Trading Income */}
-            <div className="card p-4 flex flex-col gap-3" style={{ background: `linear-gradient(135deg, ${bwColor("rgba(34,197,94,0.06)", isBW)} 0%, transparent 100%)`, borderColor: bwColor("rgba(34,197,94,0.15)", isBW) }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-tx-3 flex items-center gap-1.5">
-                  <TrendingUp size={10} />Trading Income
-                </span>
+            <StatCardShell
+              label="Trading Income"
+              icon={<TrendingUp size={14} />}
+              accentColor={bwColor("#22c55e", isBW)}
+              trailing={(
                 <div className="flex items-center gap-1 bg-[rgba(var(--border-rgb),0.05)] rounded-md p-0.5">
                   {(["auto", "manual"] as const).map((m) => (
                     <button
                       key={m}
+                      type="button"
                       onClick={() => setIncomeMode(m)}
                       className={cn(
                         "rounded px-2 py-0.5 text-[10px] capitalize transition-colors",
@@ -499,7 +507,8 @@ export default function TaxPage() {
                     >{m}</button>
                   ))}
                 </div>
-              </div>
+              )}
+            >
               {incomeMode === "auto" ? (
                 <>
                   <div className="text-xl font-bold text-profit tabular-nums">{fmtGBP(autoTradingIncome, 0)}</div>
@@ -528,18 +537,19 @@ export default function TaxPage() {
                   min="0"
                 />
               )}
-            </div>
+            </StatCardShell>
 
             {/* Expenses */}
-            <div className="card p-4 flex flex-col gap-3" style={{ background: `linear-gradient(135deg, ${bwColor("rgba(239,68,68,0.05)", isBW)} 0%, transparent 100%)`, borderColor: bwColor("rgba(239,68,68,0.12)", isBW) }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-tx-3 flex items-center gap-1.5">
-                  <Wallet size={10} />Trading Expenses
-                </span>
+            <StatCardShell
+              label="Trading Expenses"
+              icon={<Wallet size={14} />}
+              accentColor={bwColor("#ef4444", isBW)}
+              trailing={(
                 <div className="flex items-center gap-1 bg-[rgba(var(--border-rgb),0.05)] rounded-md p-0.5">
                   {(["auto", "manual"] as const).map((m) => (
                     <button
                       key={m}
+                      type="button"
                       onClick={() => setExpenseMode(m)}
                       className={cn(
                         "rounded px-2 py-0.5 text-[10px] capitalize transition-colors",
@@ -549,7 +559,8 @@ export default function TaxPage() {
                     >{m}</button>
                   ))}
                 </div>
-              </div>
+              )}
+            >
               {expenseMode === "auto" ? (
                 <>
                   <div className="text-xl font-bold text-loss tabular-nums">-{fmtGBP(autoExpenses, 0)}</div>
@@ -565,11 +576,11 @@ export default function TaxPage() {
                   min="0"
                 />
               )}
-            </div>
+            </StatCardShell>
           </div>
 
           {/* ── Income band bar ── */}
-          <div className="card p-4 flex flex-col gap-3" style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
+          <div className={cn("card p-4 flex flex-col gap-3", isBW && "card--parchment-panel")} style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-tx-2">Income Band Allocation</span>
               <div className="flex items-center gap-3 text-xs">
@@ -589,7 +600,7 @@ export default function TaxPage() {
           </div>
 
           {/* ── Tax Breakdown ── */}
-          <div className="card p-5" style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
+          <div className={cn("card p-5", isBW && "card--parchment-panel")} style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
             <div className="flex items-center gap-2 mb-4">
               <FileText size={15} className="text-accent" />
               <h2 className="font-semibold text-tx-1">{taxYear.label} Self-Assessment Breakdown</h2>
@@ -679,7 +690,7 @@ export default function TaxPage() {
           </div>
 
           {/* ── Payment on Account ── */}
-          <div className="card p-5" style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
+          <div className={cn("card p-5", isBW && "card--parchment-panel")} style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
             <button
               className="w-full flex items-center justify-between"
               onClick={() => setShowPoaInfo(!showPoaInfo)}
@@ -740,7 +751,7 @@ export default function TaxPage() {
             const innerColor = savingsProgress >= 100 ? "var(--color-teal)" : savingsProgress >= 50 ? "var(--color-profit)" : "var(--color-warn)";
             const dashI = (Math.min(savingsProgress, 100) / 100) * circI;
             return (
-              <div className="card p-4" style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(239,68,68,0.03) 50%, rgba(168,85,247,0.02) 100%)" }}>
+              <div className={cn("card p-4", isBW && "card--parchment-panel")} style={{ background: "linear-gradient(135deg, rgba(var(--color-warn-rgb),0.06) 0%, rgba(var(--color-loss-rgb),0.03) 50%, rgba(var(--color-purple-rgb),0.02) 100%)" }}>
                 <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                   <Calculator size={10} />Tax Summary · {taxYear.label}
                 </p>
@@ -843,7 +854,7 @@ export default function TaxPage() {
               },
             ].map((s) => (
               <div key={s.label}
-                className="card p-3.5 flex flex-col gap-1.5 relative overflow-hidden"
+                className={cn("card p-3.5 flex flex-col gap-1.5 relative overflow-hidden", isBW && "card--parchment-panel")}
                 style={{ borderLeft: `2px solid ${s.color}55` }}
               >
                 <div className="flex items-center gap-1.5">
@@ -860,7 +871,7 @@ export default function TaxPage() {
 
           {/* ── Savings Tracker ── */}
           {totalDueJan31 > 0 && (
-            <div className="card p-4 flex flex-col gap-4" style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
+            <div className={cn("card p-4 flex flex-col gap-4", isBW && "card--parchment-panel")} style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
               {/* Header */}
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-profit/10 shrink-0">
@@ -1011,7 +1022,7 @@ export default function TaxPage() {
           )}
 
           {/* ── Self-Assessment Calendar ── */}
-          <div className="card p-4 flex flex-col gap-1" style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
+          <div className={cn("card p-4 flex flex-col gap-1", isBW && "card--parchment-panel")} style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
             <div className="flex items-center gap-2 mb-3">
               <Calendar size={14} className="text-accent" />
               <h3 className="font-semibold text-tx-1 text-sm">Self-Assessment Calendar</h3>
@@ -1087,7 +1098,7 @@ export default function TaxPage() {
           </div>
 
           {/* ── Quick tips ── */}
-          <div className="card p-4" style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
+          <div className={cn("card p-4", isBW && "card--parchment-panel")} style={{ background: theme.dim, border: `1px solid ${theme.border}` }}>
             <h3 className="text-[10px] font-bold text-tx-3 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Info size={11} />SA Tips
             </h3>

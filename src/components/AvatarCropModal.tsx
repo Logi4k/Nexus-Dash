@@ -195,7 +195,7 @@ export default function AvatarCropModal({ open, source, onCancel, onApply }: Pro
             className="absolute inset-[14px] rounded-[24px] pointer-events-none"
             style={{
               border: "1px solid rgba(var(--border-rgb),0.55)",
-              boxShadow: "0 0 0 1px rgba(255,255,255,0.05)",
+              boxShadow: "0 0 0 1px rgba(var(--surface-rgb),0.08)",
             }}
           />
         </div>

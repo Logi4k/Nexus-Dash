@@ -18,7 +18,8 @@
         { "url": "wss://semrkijiwrdanvvcfltl.supabase.co/**" },
         { "url": "https://nfs.faireconomy.media/**" },
         { "url": "https://www.forexlive.com/**" },
-        { "url": "https://www.fxstreet.com/**" }
+        { "url": "https://www.fxstreet.com/**" },
+        { "url": "https://live.trading212.com/**" }
       ]
     }
   ]

@@ -1,6 +1,6 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ArrowLeft, BookOpen, FolderPen, Lightbulb, PanelLeft, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, FolderPen, Lightbulb, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { getQuickActionState } from "@/lib/quickActions";
 import { getViewIntentState } from "@/lib/viewIntents";
@@ -133,7 +133,7 @@ export default function Ideas() {
   const { data: _data, update } = useAppData();
   const data = _data ?? ({} as AppData);
   const location = useLocation();
-  const topics = data.ideaTopics ?? DEFAULT_TOPICS;
+  const topics = data.ideaTopics && data.ideaTopics.length > 0 ? data.ideaTopics : DEFAULT_TOPICS;
   const notes = data.ideaNotes ?? [];
   const handledLocationAction = useRef<string | null>(null);
   const handledViewIntent = useRef<string | null>(null);
@@ -147,7 +147,6 @@ export default function Ideas() {
   const [editingTopicName, setEditingTopicName] = useState("");
   const [topicDeleteConfirmId, setTopicDeleteConfirmId] = useState<string | null>(null);
   const [noteDeleteConfirmId, setNoteDeleteConfirmId] = useState<string | null>(null);
-  const [zenMode, setZenMode] = useState(false);
   const [draftNote, setDraftNote] = useState<IdeaNote | null>(null);
   const [isDraftDirty, setIsDraftDirty] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "dirty">("saved");
@@ -182,12 +181,6 @@ export default function Ideas() {
   }, []);
 
   useEffect(() => {
-    if (isMobile && zenMode) {
-      setZenMode(false);
-    }
-  }, [isMobile, zenMode]);
-
-  useEffect(() => {
     if (!topics.some((topic) => topic.id === activeTopicId)) {
       setActiveTopicId(topics[0]?.id ?? "");
     }
@@ -217,8 +210,9 @@ export default function Ideas() {
       setActiveNoteId(note.id);
       setMobileView("editor");
       setNoteDeleteConfirmId(null);
+      if (!isMobile) setWorkspaceVisible(false);
     }
-  }, [activeTopicId, location.state, update]);
+  }, [activeTopicId, isMobile, location.state, update]);
 
   useEffect(() => {
     const viewIntent = getViewIntentState(location.state);
@@ -279,9 +273,7 @@ export default function Ideas() {
 
   const activeNote = notesWithDraft.find((note) => note.id === activeNoteId) ?? null;
   const activeTopic = topics.find((topic) => topic.id === activeTopicId) ?? null;
-  const isZenActive = !isMobile && zenMode && Boolean(activeNote);
-  const showSidePanels = !isZenActive;
-  const showWorkspace = showSidePanels && (isMobile || workspaceVisible);
+  const showWorkspace = isMobile || workspaceVisible;
   const showEditorPane = Boolean(activeNote);
 
   function newId() {
@@ -297,15 +289,15 @@ export default function Ideas() {
 
     setSaveState(options?.immediate ? "saving" : "saved");
     setIsDraftDirty(false);
-    startTransition(() => {
-      update((d: AppData) => ({
-        ...d,
-        ideaNotes: (d.ideaNotes ?? []).map((note: IdeaNote) =>
-          note.id === nextDraft.id ? nextDraft : note
-        ),
-      }));
-      setSaveState("saved");
-    });
+    // Persist synchronously so topic / workspace switches never read stale store
+    // before the debounced transition would have flushed (fixes “lost” edits).
+    update((d: AppData) => ({
+      ...d,
+      ideaNotes: (d.ideaNotes ?? []).map((note: IdeaNote) =>
+        note.id === nextDraft.id ? nextDraft : note
+      ),
+    }));
+    setSaveState("saved");
   }
 
   useEffect(() => {
@@ -372,7 +364,12 @@ export default function Ideas() {
 
   function createTopic() {
     if (!newTopicName.trim()) return;
-    const topic: IdeaTopic = { id: newId(), name: newTopicName.trim(), emoji: "+" };
+    const name = newTopicName.trim();
+    const topic: IdeaTopic = {
+      id: newId(),
+      name,
+      emoji: name.slice(0, 2).toUpperCase() || "WS",
+    };
     update((d: AppData) => ({ ...d, ideaTopics: [...(d.ideaTopics ?? DEFAULT_TOPICS), topic] }));
     setActiveTopicId(topic.id);
     setNewTopicName("");
@@ -393,7 +390,6 @@ export default function Ideas() {
     if (activeTopicId === id) {
       setActiveTopicId(nextTopicId);
       setActiveNoteId(null);
-      setZenMode(false);
       setMobileView(nextTopicId ? "notes" : "topics");
     }
 
@@ -417,6 +413,7 @@ export default function Ideas() {
     setActiveNoteId(note.id);
     setMobileView("editor");
     setNoteDeleteConfirmId(null);
+    if (!isMobile) setWorkspaceVisible(false);
   }
 
   function updateNoteDraft(id: string, patch: Partial<IdeaNote>) {
@@ -430,21 +427,25 @@ export default function Ideas() {
     });
     setIsDraftDirty(true);
     setSaveState("dirty");
+    if (!isMobile) setWorkspaceVisible(false);
   }
 
   function deleteNote(id: string) {
     update((d: AppData) => ({ ...d, ideaNotes: (d.ideaNotes ?? []).filter((note: IdeaNote) => note.id !== id) }));
     if (activeNoteId === id) {
       setActiveNoteId(null);
+      setDraftNote(null);
+      setIsDraftDirty(false);
+      setSaveState("saved");
       setMobileView("notes");
-      setZenMode(false);
+      if (!isMobile) setWorkspaceVisible(true);
     }
     setNoteDeleteConfirmId(null);
   }
 
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden">
-      <div className={cn("hidden md:block mb-5", isZenActive && "md:hidden")}>
+    <div className="flex flex-1 min-h-[min(640px,calc(100dvh-9.5rem))] flex-col overflow-hidden">
+      <div className="hidden md:block mb-5 flex-shrink-0">
         <div className="text-[11px] font-semibold mb-1" style={{ color: theme.accent, letterSpacing: "0.04em" }}>
           Ideas
         </div>
@@ -452,22 +453,19 @@ export default function Ideas() {
       </div>
 
       <div
-        className={cn(
-          "flex flex-1 min-h-0 overflow-hidden",
-          isZenActive ? "rounded-[22px]" : isMobile ? "rounded-[26px]" : "rounded-[28px]"
-        )}
+        className={cn("flex min-h-0 flex-1 overflow-hidden", isMobile ? "rounded-[26px]" : "rounded-[28px]")}
         style={{
           background: "var(--bg-subtle)",
-          border: isZenActive ? "1px solid rgba(var(--border-rgb),0.04)" : "1px solid rgba(var(--border-rgb),0.07)",
-          boxShadow: isZenActive ? "0 24px 80px rgba(0,0,0,0.12)" : "0 26px 90px rgba(0,0,0,0.16)",
+          border: "1px solid rgba(var(--border-rgb),0.07)",
+          boxShadow: "0 26px 90px rgba(0,0,0,0.16)",
           overflow: "hidden",
         }}
       >
         <aside
           className={cn(
-            "border-r min-h-0 overflow-hidden flex-shrink-0",
-            mobileView === "topics" ? "block w-full" : "hidden",
-            showWorkspace ? "md:block" : "md:hidden",
+            "flex min-h-0 flex-col overflow-hidden border-r flex-shrink-0",
+            mobileView === "topics" ? "flex w-full" : "hidden",
+            showWorkspace ? "md:flex" : "md:hidden",
             "w-full md:w-[250px]"
           )}
           style={{ borderColor: "rgba(var(--border-rgb),0.06)", background: "var(--bg-card)" }}
@@ -529,7 +527,6 @@ export default function Ideas() {
                     setActiveTopicId(topic.id);
                     setActiveNoteId(null);
                     setMobileView("notes");
-                    setZenMode(false);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -539,7 +536,6 @@ export default function Ideas() {
                       setActiveTopicId(topic.id);
                       setActiveNoteId(null);
                       setMobileView("notes");
-                      setZenMode(false);
                     }
                   }}
                 >
@@ -628,9 +624,9 @@ export default function Ideas() {
         {activeTopic && (
         <section
           className={cn(
-            "border-r min-h-0 overflow-hidden flex-shrink-0",
-            mobileView === "notes" ? "block w-full" : "hidden",
-            showSidePanels ? "md:block" : "md:hidden",
+            "flex min-h-0 flex-col overflow-hidden border-r flex-shrink-0",
+            mobileView === "notes" ? "flex w-full" : "hidden",
+            "md:flex",
             "w-full md:w-[320px] flex-shrink-0"
           )}
           style={{ borderColor: "rgba(var(--border-rgb),0.06)", background: "var(--bg-base)" }}
@@ -678,7 +674,13 @@ export default function Ideas() {
             ) : (
               topicNotes.map((note) => {
                 const isActive = note.id === activeNoteId;
-                const preview = note.blocks.map((block) => block.content).find(Boolean) ?? "Empty page";
+                const previewText = note.blocks.map((block) => block.content).join(" ").trim();
+                const preview =
+                  previewText.length > 0
+                    ? previewText.length > 160
+                      ? `${previewText.slice(0, 160)}…`
+                      : previewText
+                    : "Empty page";
                 const isDeletePending = noteDeleteConfirmId === note.id;
                 const dateLabel = new Date(note.updatedAt).toLocaleDateString("en-GB", {
                   day: "2-digit",
@@ -713,12 +715,6 @@ export default function Ideas() {
                     }}
                   >
                     <div className="flex items-start gap-3">
-                      <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-                        style={{ background: theme.dim, color: isActive ? theme.accent : `${theme.accent}80` }}
-                      >
-                        Pg
-                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="text-sm font-semibold truncate" style={{ color: isActive ? "var(--tx-1)" : "var(--tx-2)" }}>
@@ -759,23 +755,12 @@ export default function Ideas() {
         )}
 
         {showEditorPane && activeNote && (
-          <section className={cn("relative flex-1 min-w-0 overflow-hidden z-[var(--z-base)]", mobileView === "editor" ? "block" : "hidden md:block")}>
-            {!isMobile && !workspaceVisible && (
-              <button
-                onClick={() => setWorkspaceVisible(true)}
-                className="absolute top-4 left-4 z-[var(--z-dropdown)] flex items-center gap-2 pl-2.5 pr-4 py-2 rounded-2xl text-[12px] font-semibold shadow-xl transition-[background-color,box-shadow,transform] duration-200 hover:scale-105 active:scale-95"
-                style={{
-                  background: "var(--accent)",
-                  color: "var(--bg-base)",
-                  boxShadow: "0 4px 20px rgba(var(--surface-rgb),0.18), 0 1px 4px rgba(0,0,0,0.12)",
-                }}
-              >
-                <div className="p-1 rounded-lg" style={{ background: "rgba(var(--bg-base-rgb),0.15)" }}>
-                  <PanelLeft size={13} />
-                </div>
-                Show Topics &amp; Notes
-              </button>
+          <section
+            className={cn(
+              "relative z-[var(--z-base)] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+              mobileView === "editor" ? "flex" : "hidden md:flex"
             )}
+          >
             <NoteEditor
               note={activeNote}
               theme={theme}
@@ -783,11 +768,11 @@ export default function Ideas() {
               onBack={() => {
                 commitDraft(draftNote, { immediate: true });
                 setMobileView("notes");
-                setZenMode(false);
               }}
-              zenMode={zenMode}
-              allowZenMode={!isMobile}
-              onToggleZenMode={() => setZenMode((current) => !current)}
+              workspaceSidebarVisible={workspaceVisible}
+              onToggleWorkspaceSidebar={
+                isMobile ? undefined : () => setWorkspaceVisible((current) => !current)
+              }
               saveState={saveState}
             />
           </section>

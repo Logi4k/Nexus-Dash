@@ -389,11 +389,16 @@ const PROGRAM_DEFINITIONS: Record<PropProgramKey, ProgramDefinition> = {
     payoutPolicy: null,
     split: null,
     weekendHolding: false,
-    notes: ["EOD trailing drawdown", "No DLL during evaluation", "Minimum 3 trading days"],
+    notes: [
+      "EOD trailing drawdown (updates at session close, enforced intraday)",
+      "No DLL during evaluation",
+      "40% consistency — largest day ≤ 40% of cumulative profit (implies ≥ 3 trading days in practice)",
+    ],
     sizes: {
       50000: { drawdown: 2000, profitTarget: 2500, dll: { kind: "none" }, maxContracts: "4 mini / 40 micro" },
-      100000: { drawdown: 3000, profitTarget: 5000, dll: { kind: "none" }, maxContracts: "8 mini / 80 micro" },
-      150000: { drawdown: 4500, profitTarget: 7500, dll: { kind: "none" }, maxContracts: "12 mini / 120 micro" },
+      /* 100K / 150K targets per Tradeify Select evaluation specs (2025–2026) */
+      100000: { drawdown: 3000, profitTarget: 6000, dll: { kind: "none" }, maxContracts: "8 mini / 80 micro" },
+      150000: { drawdown: 4500, profitTarget: 9000, dll: { kind: "none" }, maxContracts: "12 mini / 120 micro" },
     },
   },
   "tradeify-select-flex-funded": {
@@ -407,7 +412,7 @@ const PROGRAM_DEFINITIONS: Record<PropProgramKey, ProgramDefinition> = {
     lockOnFirstPayout: true,
     evalConsistency: null,
     fundedConsistency: null,
-    payoutPolicy: "5 profitable days, no DLL, request up to 50% of total profit within the plan cap",
+    payoutPolicy: "5 profitable days, no DLL, min $250 per request, up to 50% of total profit capped per size",
     split: "90 / 10",
     weekendHolding: false,
     notes: ["EOD trailing drawdown", "The floor locks at the first payout request or when the account reaches the lock threshold", "No DLL"],
@@ -417,21 +422,45 @@ const PROGRAM_DEFINITIONS: Record<PropProgramKey, ProgramDefinition> = {
         profitTarget: null,
         dll: { kind: "none" },
         maxContracts: "4 mini / 40 micro",
-        payout: { winningDays: 5, winningDayAmount: 150, minProfitGoal: 0.01, payoutSharePct: 0.5, payoutShareBase: "total-profit", payoutCap: 1000 },
+        payout: {
+          winningDays: 5,
+          winningDayAmount: 150,
+          minProfitGoal: 0.01,
+          minPayoutRequest: 250,
+          payoutSharePct: 0.5,
+          payoutShareBase: "total-profit",
+          payoutCap: 3000,
+        },
       },
       100000: {
         drawdown: 3000,
         profitTarget: null,
         dll: { kind: "none" },
         maxContracts: "8 mini / 80 micro",
-        payout: { winningDays: 5, winningDayAmount: 200, minProfitGoal: 0.01, payoutSharePct: 0.5, payoutShareBase: "total-profit", payoutCap: 1500 },
+        payout: {
+          winningDays: 5,
+          winningDayAmount: 200,
+          minProfitGoal: 0.01,
+          minPayoutRequest: 250,
+          payoutSharePct: 0.5,
+          payoutShareBase: "total-profit",
+          payoutCap: 4000,
+        },
       },
       150000: {
         drawdown: 4500,
         profitTarget: null,
         dll: { kind: "none" },
         maxContracts: "12 mini / 120 micro",
-        payout: { winningDays: 5, winningDayAmount: 250, minProfitGoal: 0.01, payoutSharePct: 0.5, payoutShareBase: "total-profit", payoutCap: 2500 },
+        payout: {
+          winningDays: 5,
+          winningDayAmount: 250,
+          minProfitGoal: 0.01,
+          minPayoutRequest: 250,
+          payoutSharePct: 0.5,
+          payoutShareBase: "total-profit",
+          payoutCap: 5000,
+        },
       },
     },
   },
@@ -704,8 +733,16 @@ export function inferProgramKey(account: Pick<Account, "firm" | "type" | "status
     if (type.includes("growth")) {
       return inferredPhase === "funded" ? "tradeify-growth-funded" : "tradeify-growth-challenge";
     }
-    if (type.includes("select")) {
+    if (type.includes("select") || type.includes("evaluation") || type.includes("eval")) {
       if (inferredPhase === "challenge") return "tradeify-select-evaluation";
+      if (type.includes("daily")) return "tradeify-select-daily-funded";
+      return "tradeify-select-flex-funded";
+    }
+    /* Primary Tradeify challenge product is Select; type often omits the word "Select". */
+    if (inferredPhase === "challenge" && !type.includes("growth")) {
+      return "tradeify-select-evaluation";
+    }
+    if (inferredPhase === "funded") {
       if (type.includes("daily")) return "tradeify-select-daily-funded";
       return "tradeify-select-flex-funded";
     }
@@ -853,10 +890,6 @@ function summarizeTradeCycle(
 
 function resetAccountForPromotedFunding(account: Account, program: PropProgramRule, fundedAt: string): Account {
   const startBalance = getProgramStartBalance(program);
-  // Preserve the challenge peak as the funded account's starting peak
-  // so trailing drawdown starts from the highest point achieved in challenge
-  const challengePeak = toNum(account.peakBalance ?? account.balance);
-  const fundedPeak = Math.max(startBalance, challengePeak);
   return {
     ...account,
     status: "funded",
@@ -864,7 +897,7 @@ function resetAccountForPromotedFunding(account: Account, program: PropProgramRu
     fundedAt,
     balance: startBalance,
     initialBalance: startBalance,
-    peakBalance: fundedPeak,
+    peakBalance: startBalance,
     sodBalance: startBalance,
     payoutCycleStartBalance: program.payout ? startBalance : undefined,
     breachedDate: undefined,

@@ -215,20 +215,21 @@ export function AccountCard({
           label={compareSelected ? "Remove from compare" : "Add to compare"}
           tone={compareSelected ? "accent" : "default"}
           disabled={compareDisabled && !compareSelected}
+          className="!p-1 sm:!p-1.5"
         >
           <Columns2 size={12} />
         </IconButton>
       )}
       {funded && !breached && (
-        <IconButton onClick={handlePayout} label="Record payout" tone="profit">
+        <IconButton onClick={handlePayout} label="Record payout" tone="profit" className="!p-1 sm:!p-1.5">
           <PoundSterling size={12} />
         </IconButton>
       )}
-      <IconButton onClick={handleEdit} label="Edit account">
+      <IconButton onClick={handleEdit} label="Edit account" className="!p-1 sm:!p-1.5">
         <Edit2 size={12} />
       </IconButton>
       {!confirmDelete ? (
-        <IconButton onClick={() => setConfirmDelete(true)} label="Delete account" tone="loss">
+        <IconButton onClick={() => setConfirmDelete(true)} label="Delete account" tone="loss" className="!p-1 sm:!p-1.5">
           <Trash2 size={12} />
         </IconButton>
       ) : (
@@ -255,7 +256,7 @@ export function AccountCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl",
+        "relative overflow-hidden rounded-xl sm:rounded-2xl",
         breached && "opacity-75"
       )}
       style={{
@@ -263,66 +264,74 @@ export function AccountCard({
         border: `1px solid color-mix(in srgb, ${statusColor} 20%, transparent)`,
       }}
     >
-      <div className="sm:hidden px-3.5 py-3">
-        <div className="flex items-start gap-2.5">
+      <div className="sm:hidden px-2 py-2">
+        <div className="flex items-start gap-1.5">
           <button
             type="button"
             onClick={() => setDetailOpen(true)}
             className="min-w-0 flex-1 text-left"
           >
-            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-              <span className={cn("badge text-[10px]", getStatusBg(account.status))}>{account.status}</span>
+            <div className="mb-0.5 flex flex-wrap items-center gap-1">
+              <span className={cn("badge text-[9px]", getStatusBg(account.status))}>{account.status}</span>
               <span
-                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                className="rounded px-1 py-0.5 text-[9px] font-bold"
                 style={{ background: `${firmColor}15`, color: firmColor }}
               >
                 {FIRM_SHORT[account.firm] ?? account.firm.split(" ")[0]}
               </span>
               {snapshot?.program && (
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md text-tx-3">
+                <span className="rounded px-1 py-0.5 text-[9px] font-medium text-tx-3">
                   {snapshot.program.label}
                 </span>
               )}
               {payoutStatus && (
-                <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-md", payoutStatus.badgeTone)}>
+                <span className={cn("rounded px-1 py-0.5 text-[9px] font-medium", payoutStatus.badgeTone)}>
                   {payoutStatus.badgeText}
                 </span>
               )}
             </div>
-            <div className="text-tx-1 text-sm font-bold leading-tight truncate">{displayName}</div>
+            <div className="truncate text-xs font-bold leading-tight text-tx-1">{displayName}</div>
             {!breached && funded && account.fundedAt && (
-              <div className="text-[10px] text-tx-4 mt-0.5">Funded from {fmtDate(account.fundedAt)}</div>
+              <div className="mt-0.5 text-[9px] text-tx-4">Funded {fmtDate(account.fundedAt)}</div>
             )}
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <div className="rounded-xl px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.04)" }}>
-                <p className="text-[9px] uppercase tracking-[0.16em] text-tx-4">Balance</p>
-                <p className={cn("mt-1 text-sm font-black tabular-nums", breached ? "text-tx-3" : "text-tx-1")}>{fmtUSD(balance)}</p>
+            <div className="mt-1.5 flex gap-1.5">
+              <div className="min-w-0 flex-1 rounded-lg border border-border-subtle bg-bg-hover px-2 py-1">
+                <p className="text-[8px] font-semibold uppercase tracking-wider text-tx-4">Bal</p>
+                <p className={cn("mt-0.5 text-xs font-bold tabular-nums leading-none", breached ? "text-tx-3" : "text-tx-1")}>{fmtUSD(balance)}</p>
               </div>
-              <div className="rounded-xl px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.04)" }}>
-                <p className="text-[9px] uppercase tracking-[0.16em] text-tx-4">{challenge ? "Need" : "Buffer"}</p>
-                <p className="mt-1 text-sm font-bold tabular-nums text-tx-1">{challenge ? targetValue : fmtUSD(snapshot?.distanceToMll ?? 0)}</p>
+              <div className="min-w-0 flex-1 rounded-lg border border-border-subtle bg-bg-hover px-2 py-1">
+                <p className="text-[8px] font-semibold uppercase tracking-wider text-tx-4">{challenge ? "Need" : "Buf"}</p>
+                <p className="mt-0.5 truncate text-xs font-bold tabular-nums leading-none text-tx-1">{challenge ? targetValue : fmtUSD(snapshot?.distanceToMll ?? 0)}</p>
               </div>
             </div>
+            {payoutStatus && (
+              <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-tx-4">
+                <span className={cn("font-semibold", payoutStatus.badgeTone)}>{payoutStatus.badgeText}:</span>{" "}
+                {payoutStatus.summary}
+                {payoutStatus.detail.cycleProfit !== null && (
+                  <span className="ml-1 font-mono tabular-nums text-tx-3">{fmtUSD(payoutStatus.detail.cycleProfit)}</span>
+                )}
+              </p>
+            )}
           </button>
-          <div className="flex items-start gap-1 shrink-0">
+          <div className="flex shrink-0 items-start gap-0.5">
             {actionControls}
           </div>
         </div>
 
-        <div className="mt-2.5 rounded-xl px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)" }}>
-          <div className="flex items-center justify-between gap-2 text-[10px]">
-            <span className="min-w-0 truncate text-tx-3">{progressLabel}</span>
+        <div className="mt-1.5 rounded-lg border border-border-subtle bg-bg-subtle px-2 py-1.5">
+          <div className="flex items-center justify-between gap-2 text-[9px]">
+            <span className="min-w-0 flex-1 truncate text-tx-3">{progressLabel}</span>
             <button
               type="button"
               onClick={() => setDetailOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold text-tx-2"
-              style={{ background: "rgba(var(--surface-rgb),0.06)" }}
+              className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-border-subtle bg-bg-hover px-1.5 py-0.5 text-[9px] font-semibold text-tx-2"
             >
-              <BookOpen size={10} />
-              Details
+              <BookOpen size={9} />
+              More
             </button>
           </div>
-          <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--surface-rgb),0.08)" }}>
+          <div className="mt-1 h-1 rounded-full overflow-hidden bg-[rgba(var(--surface-rgb),0.08)]">
             <div
               className="h-full transition-[width,background] duration-500"
               style={{
@@ -338,18 +347,6 @@ export function AccountCard({
             />
           </div>
         </div>
-
-        {payoutStatus && (
-          <div className="mt-2 rounded-xl px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)" }}>
-            <div className="flex items-center justify-between gap-2 text-[10px]">
-              <span className={cn("font-semibold", payoutStatus.badgeTone)}>{payoutStatus.badgeText}</span>
-              {payoutStatus.detail.cycleProfit !== null && (
-                <span className="tabular-nums text-tx-2">{fmtUSD(payoutStatus.detail.cycleProfit)}</span>
-              )}
-            </div>
-            <p className="mt-1 text-[10px] text-tx-3">{payoutStatus.summary}</p>
-          </div>
-        )}
       </div>
 
       <div className="hidden sm:grid gap-3 px-3 py-3 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto]">

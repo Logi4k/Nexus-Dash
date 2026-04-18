@@ -63,14 +63,26 @@ jobs:
           VERSION="${TAG#v}"
           npm run ota:desktop:latest -- --repo Logi4k/Nexus-Dash --version "$VERSION"
 
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p gh_release_files
+          cp src-tauri/target/release/bundle/nsis/*-setup.exe gh_release_files/
+          cp src-tauri/target/release/bundle/nsis/*-setup.exe.sig gh_release_files/
+          cp release/latest.json gh_release_files/
+          if compgen -G "src-tauri/target/release/bundle/msi/*.msi" > /dev/null 2>&1; then
+            for f in src-tauri/target/release/bundle/msi/*.msi; do
+              cp "$f" gh_release_files/
+              if [ -f "${f}.sig" ]; then cp "${f}.sig" gh_release_files/; fi
+            done
+          fi
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           prerelease: false
-          files: |
-            src-tauri/target/release/bundle/nsis/*-setup.exe
-            src-tauri/target/release/bundle/nsis/*-setup.exe.sig
-            release/latest.json
+          files: gh_release_files/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

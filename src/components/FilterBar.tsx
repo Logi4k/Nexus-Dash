@@ -239,21 +239,27 @@ function DropdownFilter({ def, value, onChange, theme }: { def: FilterDef & { ty
         <ChevronDown size={11} />
       </button>
       {open && (
-        <div className="absolute top-full mt-1 left-0 z-[var(--z-dropdown)] rounded-xl overflow-hidden bg-bg-base border border-border"
+        <div className="menu-surface absolute top-full mt-1 left-0 z-[var(--z-dropdown)] overflow-hidden rounded-xl"
           style={{ minWidth: 140 }}>
           <button
             type="button"
             onClick={() => { onChange("all"); setOpen(false); }}
-            className="w-full text-left px-3 py-2 text-[12px] font-medium hover:bg-bg-hover"
-            style={{ color: value === "all" ? theme.accent : undefined }}>
-            <span className={value !== "all" ? "text-tx-3" : ""}>All</span>
+            className={cn(
+              "w-full px-3 py-2 text-left text-[12px] font-medium hover:bg-bg-hover",
+              value === "all" ? "bg-bg-hover font-semibold text-tx-1" : "text-tx-3",
+            )}
+          >
+            All
           </button>
           {def.options.map(opt => (
             <button type="button" key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-[12px] font-medium hover:bg-bg-hover"
-              style={{ color: value === opt.value ? theme.accent : undefined }}>
-              <span className={value !== opt.value ? "text-tx-3" : ""}>{opt.label}</span>
+              className={cn(
+                "w-full px-3 py-2 text-left text-[12px] font-medium hover:bg-bg-hover",
+                value === opt.value ? "bg-bg-hover font-semibold text-tx-1" : "text-tx-3",
+              )}
+            >
+              {opt.label}
             </button>
           ))}
         </div>
@@ -277,14 +283,17 @@ function SortFilter({ def, value, onChange, theme }: { def: FilterDef & { type: 
         <ChevronDown size={11} />
       </button>
       {open && (
-        <div className="absolute top-full mt-1 right-0 z-[var(--z-dropdown)] rounded-xl overflow-hidden bg-bg-base border border-border"
+        <div className="menu-surface absolute top-full mt-1 right-0 z-[var(--z-dropdown)] overflow-hidden rounded-xl"
           style={{ minWidth: 140 }}>
           {def.options.map(opt => (
             <button type="button" key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-[12px] font-medium hover:bg-bg-hover"
-              style={{ color: value === opt.value ? theme.accent : undefined }}>
-              <span className={value !== opt.value ? "text-tx-3" : ""}>{opt.label}</span>
+              className={cn(
+                "w-full px-3 py-2 text-left text-[12px] font-medium hover:bg-bg-hover",
+                value === opt.value ? "bg-bg-hover font-semibold text-tx-1" : "text-tx-3",
+              )}
+            >
+              {opt.label}
             </button>
           ))}
         </div>

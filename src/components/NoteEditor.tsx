@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Camera, Columns2, GripVertical, Hash, Mic, Plus, Trash2, X, ChevronUp, ChevronDown, ListTodo, Heading1, Heading2, Type, List, Quote, Code2 } from "lucide-react";
+import { ArrowLeft, Camera, GripVertical, Hash, Mic, PanelLeft, Plus, Trash2, X, ChevronUp, ChevronDown, ListTodo, Heading1, Heading2, Type, List, Quote, Code2 } from "lucide-react";
 import BlockRenderer from "@/components/BlockRenderer";
 import type { IdeaNote, NoteBlock, NoteBlockType } from "@/types";
 import type { PageTheme } from "@/lib/theme";
@@ -21,9 +21,9 @@ interface Props {
   theme: PageTheme;
   onUpdate: (patch: Partial<IdeaNote>) => void;
   onBack: () => void;
-  zenMode?: boolean;
-  allowZenMode?: boolean;
-  onToggleZenMode?: () => void;
+  /** Desktop: first column (workspace) visibility, toggled from the editor toolbar */
+  workspaceSidebarVisible?: boolean;
+  onToggleWorkspaceSidebar?: () => void;
   saveState?: "saved" | "saving" | "dirty";
 }
 
@@ -32,9 +32,8 @@ export default function NoteEditor({
   theme,
   onUpdate,
   onBack,
-  zenMode = false,
-  allowZenMode = true,
-  onToggleZenMode,
+  workspaceSidebarVisible = true,
+  onToggleWorkspaceSidebar,
   saveState = "saved",
 }: Props) {
   const [slashMenu, setSlashMenu] = useState<{ blockId: string; query: string } | null>(null);
@@ -105,8 +104,19 @@ export default function NoteEditor({
     setSlashMenu(null);
   }
 
+  function resolveInsertAfterId(afterId?: string | null): string | null {
+    if (afterId) return afterId;
+    return focusedBlockId ?? note.blocks[note.blocks.length - 1]?.id ?? note.blocks[0]?.id ?? null;
+  }
+
+  function insertBlockResolved(afterId: string | null | undefined, type: NoteBlockType = "text", extra?: Partial<NoteBlock>) {
+    const id = resolveInsertAfterId(afterId);
+    if (!id) return;
+    insertBlock(id, type, extra);
+  }
+
   function insertImageBlock(dataUrl: string) {
-    const targetId = focusedBlockId ?? note.blocks[note.blocks.length - 1]?.id ?? null;
+    const targetId = resolveInsertAfterId(null);
     if (!targetId) return;
     const newBlock: NoteBlock = { id: newId(), type: "image", content: dataUrl };
     const idx = note.blocks.findIndex((block) => block.id === targetId);
@@ -241,7 +251,7 @@ export default function NoteEditor({
     [slashMenu]
   );
 
-  const canShowZenToggle = Boolean(allowZenMode && onToggleZenMode && note.blocks.length > 0);
+  const canShowWorkspaceToggle = Boolean(onToggleWorkspaceSidebar && note.blocks.length > 0);
   const mobileQuickBlocks: { label: string; icon: typeof Type; type: NoteBlockType }[] = [
     { label: "Text", icon: Type, type: "text" },
     { label: "H2", icon: Heading2, type: "h2" },
@@ -317,7 +327,7 @@ export default function NoteEditor({
     recognition.onresult = (event) => {
       const transcript = event.results?.[0]?.[0]?.transcript?.trim();
       if (!transcript) return;
-      const targetId = focusedBlockId ?? note.blocks[0]?.id;
+      const targetId = resolveInsertAfterId(null);
       if (!targetId) return;
       const targetBlock = note.blocks.find((block) => block.id === targetId);
       if (!targetBlock) return;
@@ -332,7 +342,7 @@ export default function NoteEditor({
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "var(--bg-base)" }}>
+    <div className="flex h-full min-h-0 flex-col" style={{ background: "var(--bg-base)" }}>
       <div className="flex items-center gap-2 px-5 py-2.5 flex-shrink-0" style={{ borderBottom: "1px solid rgba(var(--border-rgb),0.06)" }}>
         <button onClick={onBack} className="md:hidden flex-shrink-0 p-1">
           <ArrowLeft size={14} style={{ color: "var(--tx-3)" }} />
@@ -364,19 +374,19 @@ export default function NoteEditor({
             <Camera size={12} />
             Add image
           </button>
-          {canShowZenToggle && (
+          {canShowWorkspaceToggle && (
             <button
               type="button"
-              onClick={onToggleZenMode}
+              onClick={onToggleWorkspaceSidebar}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
               style={
-                zenMode
-                  ? { background: theme.dim, border: `1px solid ${theme.border}`, color: theme.accent }
-                  : { background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--tx-3)" }
+                workspaceSidebarVisible
+                  ? { background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--tx-3)" }
+                  : { background: theme.dim, border: `1px solid ${theme.border}`, color: theme.accent }
               }
             >
-              <Columns2 size={13} />
-              {zenMode ? "Show panels" : "Zen mode"}
+              <PanelLeft size={13} />
+              {workspaceSidebarVisible ? "Hide workspace" : "Show workspace"}
             </button>
           )}
         </div>
@@ -390,7 +400,7 @@ export default function NoteEditor({
         onChange={handleCameraFileChange}
       />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div
           className="md:hidden sticky top-0 z-[var(--z-sticky)] px-5 py-1.5"
           style={{
@@ -407,7 +417,7 @@ export default function NoteEditor({
                   <button
                     key={item.label}
                     type="button"
-                    onClick={() => focusedBlockId && insertBlock(focusedBlockId, item.type)}
+                    onClick={() => insertBlockResolved(focusedBlockId, item.type)}
                     className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-semibold whitespace-nowrap"
                     style={{ background: "rgba(var(--surface-rgb),0.05)", color: "var(--tx-2)" }}
                   >
@@ -419,7 +429,7 @@ export default function NoteEditor({
             </div>
             <button
               type="button"
-              onClick={() => focusedBlockId && insertBlock(focusedBlockId)}
+              onClick={() => insertBlockResolved(focusedBlockId)}
               className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ml-auto"
               style={{ background: theme.dim, border: `1px solid ${theme.border}`, color: theme.accent }}
               title="Add block"
@@ -429,7 +439,7 @@ export default function NoteEditor({
           </div>
         </div>
 
-        <div className={zenMode ? "w-full max-w-none px-6 pb-28 pt-6 md:px-12 md:pb-12 lg:px-20 relative" : "w-full max-w-[1300px] mx-auto px-6 pb-28 pt-6 md:px-10 md:pb-12 md:pt-8 lg:px-16 relative"}>
+        <div className="w-full max-w-[1300px] mx-auto px-6 pb-28 pt-6 md:px-10 md:pb-12 md:pt-8 lg:px-16 relative">
           <div className="border-b" style={{ borderColor: "rgba(var(--border-rgb),0.06)" }}>
           <div className="px-1 pt-5 pb-5">
             <input
@@ -492,7 +502,7 @@ export default function NoteEditor({
             <div className="mt-3 hidden md:flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => focusedBlockId && insertBlock(focusedBlockId)}
+                onClick={() => insertBlockResolved(focusedBlockId)}
                 className="px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all"
                 style={{ background: theme.dim, border: `1px solid ${theme.border}`, color: theme.accent }}
               >
@@ -501,7 +511,7 @@ export default function NoteEditor({
               {BLOCK_TYPES.map((item) => (
                 <button
                   key={item.type}
-                  onClick={() => focusedBlockId && insertBlock(focusedBlockId, item.type)}
+                  onClick={() => insertBlockResolved(focusedBlockId, item.type)}
                   className="px-2.5 py-1 rounded-xl text-[11px] font-medium transition-all"
                   style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.07)", color: "var(--tx-3)" }}
                 >
@@ -669,10 +679,8 @@ export default function NoteEditor({
 
             {slashMenu && filteredSlashItems.length > 0 && (
               <div
-                className="absolute z-[var(--z-picker)] rounded-2xl overflow-hidden shadow-xl"
+                className="menu-surface absolute z-[var(--z-picker)] overflow-hidden rounded-2xl shadow-xl"
                 style={{
-                  background: "var(--bg-card)",
-                  border: "1px solid rgba(var(--border-rgb),0.08)",
                   minWidth: 220,
                   maxHeight: 260,
                   overflowY: "auto",
@@ -688,7 +696,7 @@ export default function NoteEditor({
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     <span className="text-[13px] font-medium">{item.label}</span>
-                    <span className="text-[10px] uppercase tracking-[0.16em]" style={{ color: theme.accent }}>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-tx-4">
                       /
                     </span>
                   </button>

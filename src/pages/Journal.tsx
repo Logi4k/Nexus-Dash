@@ -24,12 +24,15 @@ import {
   BarChart3,
   ArrowUpRight,
   ArrowDownRight,
+  TrendingUp,
+  TrendingDown,
   Image as ImageIcon,
   X,
   ZoomIn,
   Trophy,
   Sigma,
   NotebookPen,
+  Activity,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, Cell,
@@ -81,6 +84,7 @@ import {
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import { ChartTooltipCard } from "@/components/ui/chart-tooltip-card";
 import Modal from "@/components/Modal";
+import StatCard from "@/components/StatCard";
 import { useRegisterPageView } from "@/components/PageViewContext";
 import { getViewIntentState } from "@/lib/viewIntents";
 import {
@@ -870,7 +874,7 @@ export default function Journal() {
     if (stats.length === 0) return null;
 
     return (
-      <div className="card p-5">
+      <div className={cn("card p-5", isBW && "card--parchment-panel")}>
         <p className="text-[10px] text-tx-4 uppercase tracking-wider font-semibold mb-3 flex items-center gap-1.5">
           {icon}
           {title}
@@ -941,18 +945,38 @@ export default function Journal() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 text-[10px] sm:grid-cols-3">
-                    <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
-                      <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">W / L</p>
-                      <p className="text-sm font-bold tabular-nums text-tx-1">{wins}/{losses}</p>
-                    </div>
-                    <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
-                      <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">WR</p>
-                      <p className="text-sm font-bold tabular-nums text-tx-1">{winRate.toFixed(0)}%</p>
-                    </div>
-                    <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
-                      <p className="text-tx-4 uppercase tracking-[0.14em] mb-1">PF</p>
-                      <p className="text-sm font-bold tabular-nums text-tx-1">{pfLabel}</p>
-                    </div>
+                    <StatCard
+                      compact
+                      label="W / L"
+                      value={0}
+                      prefix=""
+                      suffix=""
+                      decimals={0}
+                      renderValue={<span className="tabular-nums">{wins}/{losses}</span>}
+                      icon={<BarChart3 size={13} />}
+                      accentColor={bwColor("#64748b", isBW)}
+                    />
+                    <StatCard
+                      compact
+                      label="WR"
+                      value={winRate}
+                      prefix=""
+                      suffix="%"
+                      decimals={0}
+                      icon={<Target size={13} />}
+                      accentColor={bwColor("#5b8bbf", isBW)}
+                    />
+                    <StatCard
+                      compact
+                      label="PF"
+                      value={0}
+                      prefix=""
+                      suffix=""
+                      decimals={0}
+                      renderValue={<span className="tabular-nums">{pfLabel}</span>}
+                      icon={<Sigma size={13} />}
+                      accentColor={bwColor("#64748b", isBW)}
+                    />
                   </div>
 
                   <div className="flex flex-wrap gap-1.5 text-[10px]">
@@ -1032,24 +1056,49 @@ export default function Journal() {
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2 text-[10px]">
-                    <div className="rounded-lg px-2 py-1.5" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
-                      <p className="text-tx-4 uppercase tracking-[0.14em] mb-0.5">W / L</p>
-                      <p className="text-sm font-bold tabular-nums text-tx-1 leading-tight">{wins}/{losses}</p>
-                    </div>
-                    <div className="rounded-lg px-2 py-1.5" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
-                      <p className="text-tx-4 uppercase tracking-[0.14em] mb-0.5">WR</p>
-                      <p className="text-sm font-bold tabular-nums text-tx-1 leading-tight">{winRate.toFixed(0)}%</p>
-                    </div>
-                    <div className="rounded-lg px-2 py-1.5" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
-                      <p className="text-tx-4 uppercase tracking-[0.14em] mb-0.5">PF</p>
-                      <p className="text-sm font-bold tabular-nums text-tx-1 leading-tight">{pfLabel}</p>
-                    </div>
-                    <div className="rounded-lg px-2 py-1.5" style={{ background: "rgba(var(--surface-rgb),0.03)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
-                      <p className="text-tx-4 uppercase tracking-[0.14em] mb-0.5">Avg Net</p>
-                      <p className={cn("text-sm font-bold tabular-nums leading-tight", (avgNet ?? 0) >= 0 ? "text-profit" : "text-loss")}>
-                        {avgNetLabel}
-                      </p>
-                    </div>
+                    <StatCard
+                      compact
+                      label="W / L"
+                      value={0}
+                      prefix=""
+                      suffix=""
+                      decimals={0}
+                      renderValue={<span className="tabular-nums">{wins}/{losses}</span>}
+                      icon={<BarChart3 size={13} />}
+                      accentColor={bwColor("#64748b", isBW)}
+                    />
+                    <StatCard
+                      compact
+                      label="WR"
+                      value={winRate}
+                      prefix=""
+                      suffix="%"
+                      decimals={0}
+                      icon={<Target size={13} />}
+                      accentColor={bwColor("#5b8bbf", isBW)}
+                    />
+                    <StatCard
+                      compact
+                      label="PF"
+                      value={0}
+                      prefix=""
+                      suffix=""
+                      decimals={0}
+                      renderValue={<span className="tabular-nums">{pfLabel}</span>}
+                      icon={<Sigma size={13} />}
+                      accentColor={bwColor("#64748b", isBW)}
+                    />
+                    <StatCard
+                      compact
+                      label="Avg Net"
+                      value={avgNet ?? 0}
+                      prefix=""
+                      suffix=""
+                      decimals={2}
+                      renderValue={<span className={cn("tabular-nums", (avgNet ?? 0) >= 0 ? "text-profit" : "text-loss")}>{avgNetLabel}</span>}
+                      icon={<Activity size={13} />}
+                      accentColor={bwColor((avgNet ?? 0) >= 0 ? PROFIT : LOSS, isBW)}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1195,7 +1244,7 @@ export default function Journal() {
         const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
         return (
-          <div className="card px-3 sm:px-4 py-3">
+          <div className={cn("card px-3 sm:px-4 py-3", isBW && "card--parchment-panel")}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] uppercase tracking-widest font-bold text-tx-4">P&L Calendar</p>
               <div className="flex items-center gap-2">
@@ -1320,7 +1369,7 @@ export default function Journal() {
         <div className="flex flex-col gap-5">
 
           {/* Date navigator */}
-          <div className="card p-4">
+          <div className={cn("card p-4", isBW && "card--parchment-panel")}>
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setSelectedDate(prevDay(selectedDate))}
@@ -1406,7 +1455,7 @@ export default function Journal() {
           </div>
 
           {/* Trade Log */}
-          <div className="card overflow-hidden">
+          <div className={cn("card overflow-hidden min-w-0", isBW && "card--parchment-panel")}>
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BarChart3 size={14} className="text-accent" />
@@ -1445,7 +1494,8 @@ export default function Journal() {
                 <p className="text-xs text-tx-4">Click "Log Trade" to record a trade</p>
               </div>
             ) : (
-              <div className="divide-y divide-border">
+              <div className="min-w-0 overflow-x-auto">
+              <div className="divide-y divide-border min-w-0">
                 {tradeLogGroups.map((group) => {
                   const phaseList = Array.from(group.phases);
                   const hasMixedPhases = phaseList.length > 1;
@@ -1526,6 +1576,7 @@ export default function Journal() {
                   );
                 })}
               </div>
+              </div>
             )}
           </div>
 
@@ -1539,7 +1590,7 @@ export default function Journal() {
 
           {/* All-time stats — compact grid on mobile, full cards on desktop */}
           {allStats.total > 0 && (
-            <div className="card p-3 sm:p-4">
+            <div className={cn("card p-3 sm:p-4", isBW && "card--parchment-panel")}>
               <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-2 sm:mb-3 flex items-center gap-1.5">
                 <Sigma size={10} className="text-accent" />Overall Stats
               </p>
@@ -1596,28 +1647,71 @@ export default function Journal() {
               )}
 
               <div className="grid grid-cols-3 gap-1 sm:grid-cols-2 sm:gap-1.5">
-                {[
-                  { label: "Trades",    value: String(allStats.total),                                                             color: "var(--tx-3)", delay: 0 },
-                  { label: "Win Rate",  value: allStats.winRate !== null ? `${allStats.winRate.toFixed(0)}%` : "—",                color: bwColor("#5b8bbf", isBW), delay: 60 },
-                  { label: "Avg Win",   value: allStats.avgWin  !== null ? fmtUSD(allStats.avgWin)  : "—",                        color: bwColor(PROFIT, isBW), delay: 120 },
-                  { label: "Avg Loss",  value: allStats.avgLoss !== null ? fmtUSD(allStats.avgLoss) : "—",                        color: bwColor(LOSS, isBW), delay: 180 },
-                  { label: "Best",      value: allStats.bestTrade  !== null ? `+${fmtUSD(allStats.bestTrade)}`  : "—",            color: bwColor(PROFIT, isBW), delay: 240 },
-                  { label: "P.Factor",  value: allStats.profitFactor !== null ? allStats.profitFactor.toFixed(2) : "—",           color: bwColor("#a78bfa", isBW), delay: 300 },
-                ].map((s) => (
-                  <div
-                    key={s.label}
-                    className="rounded-lg p-1.5 sm:p-2 text-center animate-fade-up"
-                    style={{
-                      background: "rgba(var(--surface-rgb),0.04)",
-                      border: "1px solid rgba(var(--border-rgb),0.07)",
-                      animationDelay: `${s.delay}ms`,
-                      animationFillMode: "both",
-                    }}
-                  >
-                    <p className="text-[8px] sm:text-[10px] text-tx-3 uppercase tracking-wider mb-0.5 truncate">{s.label}</p>
-                    <p className="text-[10px] sm:text-[11px] font-black tabular-nums truncate" style={{ color: s.color }}>{s.value}</p>
-                  </div>
-                ))}
+                <StatCard
+                  compact
+                  label="Trades"
+                  value={allStats.total}
+                  prefix=""
+                  suffix=""
+                  decimals={0}
+                  icon={<BarChart3 size={12} />}
+                  accentColor={bwColor("#64748b", isBW)}
+                />
+                <StatCard
+                  compact
+                  label="Win Rate"
+                  value={allStats.winRate ?? 0}
+                  prefix=""
+                  suffix="%"
+                  decimals={0}
+                  renderValue={allStats.winRate === null ? "—" : undefined}
+                  icon={<Target size={12} />}
+                  accentColor={bwColor("#5b8bbf", isBW)}
+                />
+                <StatCard
+                  compact
+                  label="Avg Win"
+                  value={0}
+                  prefix=""
+                  suffix=""
+                  decimals={0}
+                  renderValue={<span className="tabular-nums">{allStats.avgWin !== null ? fmtUSD(allStats.avgWin) : "—"}</span>}
+                  icon={<TrendingUp size={12} />}
+                  accentColor={bwColor(PROFIT, isBW)}
+                />
+                <StatCard
+                  compact
+                  label="Avg Loss"
+                  value={0}
+                  prefix=""
+                  suffix=""
+                  decimals={0}
+                  renderValue={<span className="tabular-nums">{allStats.avgLoss !== null ? fmtUSD(allStats.avgLoss) : "—"}</span>}
+                  icon={<TrendingDown size={12} />}
+                  accentColor={bwColor(LOSS, isBW)}
+                />
+                <StatCard
+                  compact
+                  label="Best"
+                  value={0}
+                  prefix=""
+                  suffix=""
+                  decimals={0}
+                  renderValue={<span className="tabular-nums">{allStats.bestTrade !== null ? `+${fmtUSD(allStats.bestTrade)}` : "—"}</span>}
+                  icon={<Trophy size={12} />}
+                  accentColor={bwColor(PROFIT, isBW)}
+                />
+                <StatCard
+                  compact
+                  label="P.Factor"
+                  value={0}
+                  prefix=""
+                  suffix=""
+                  decimals={0}
+                  renderValue={<span className="tabular-nums">{allStats.profitFactor !== null ? allStats.profitFactor.toFixed(2) : "—"}</span>}
+                  icon={<Sigma size={12} />}
+                  accentColor={bwColor("#a78bfa", isBW)}
+                />
               </div>
 
               {/* W/L bar */}
@@ -1646,7 +1740,7 @@ export default function Journal() {
           {allStats.total > 0 && (() => {
             const maxAbs = Math.max(...dowStats.map((d) => Math.abs(d.avg)), 0.01);
             return (
-              <div className="card p-4">
+              <div className={cn("card p-4", isBW && "card--parchment-panel")}>
                 <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                   <Calendar size={10} className="text-accent" />By Day
                 </p>
@@ -1689,7 +1783,7 @@ export default function Journal() {
 
           {/* Monthly P&L bar chart */}
           {monthlyStats.length > 0 && (
-            <div className="card p-4">
+            <div className={cn("card p-4", isBW && "card--parchment-panel")}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium flex items-center gap-1.5">
                   <BarChart3 size={10} className="text-accent" />Monthly P&L
@@ -1745,7 +1839,7 @@ export default function Journal() {
 
           {/* Instrument breakdown */}
           {instrStats.length > 0 && (
-            <div className="card p-4">
+            <div className={cn("card p-4", isBW && "card--parchment-panel")}>
               <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                 <BarChart3 size={10} className="text-accent" />By Instrument
               </p>
@@ -1949,18 +2043,18 @@ export default function Journal() {
                   className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-[background-color,border-color,color]"
                   style={{
                     background: tradeForm.firm === f
-                      ? f === "lucid"    ? "rgba(168,85,247,0.18)"
-                      : f === "tradeify" ? "rgba(59,130,246,0.18)"
+                      ? f === "lucid"    ? "rgba(var(--color-purple-rgb),0.18)"
+                      : f === "tradeify" ? "rgba(var(--color-blue-rgb),0.18)"
                       : "rgba(var(--surface-rgb),0.08)"
                       : "rgba(var(--surface-rgb),0.04)",
                     border: `1px solid ${tradeForm.firm === f
-                      ? f === "lucid"    ? "rgba(168,85,247,0.45)"
-                      : f === "tradeify" ? "rgba(59,130,246,0.45)"
+                      ? f === "lucid"    ? "rgba(var(--color-purple-rgb),0.45)"
+                      : f === "tradeify" ? "rgba(var(--color-blue-rgb),0.45)"
                       : "rgba(var(--border-rgb),0.2)"
                       : "rgba(var(--border-rgb),0.09)"}`,
                     color: tradeForm.firm === f
-                      ? f === "lucid"    ? "#c084fc"
-                      : f === "tradeify" ? "#60a5fa"
+                      ? f === "lucid"    ? "var(--color-purple)"
+                      : f === "tradeify" ? "var(--color-blue)"
                       : "var(--tx-2)"
                       : "var(--tx-3)",
                   }}

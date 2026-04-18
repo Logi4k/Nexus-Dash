@@ -40,9 +40,15 @@ export default function CreditCardDisplay({ debt, onClick }: Props) {
   const theme = getTheme(debt.name);
   const utilization = pct(debt.currentBalance, debt.creditLimit);
   const available = debt.creditLimit - debt.currentBalance;
+  const Wrapper = onClick ? "button" : "div";
 
   return (
-    <div className="space-y-4" onClick={onClick}>
+    <Wrapper
+      type={onClick ? "button" : undefined}
+      className={cn("space-y-4 text-left", onClick && "block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]")}
+      onClick={onClick}
+      aria-label={onClick ? `Open ${debt.name} debt details` : undefined}
+    >
       {/* The card */}
       <div
         className={cn(
@@ -154,6 +160,6 @@ export default function CreditCardDisplay({ debt, onClick }: Props) {
           />
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }

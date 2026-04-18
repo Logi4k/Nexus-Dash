@@ -250,6 +250,12 @@ export interface UserSettings {
   dismissedNotificationIds?: string[];
   savedViews?: SavedView[];
   recentEntries?: RecentEntry[];
+  /** Short quarterly theme shown on the dashboard. */
+  quarterlyFocus?: string;
+  /** Optional measurable target (free text, e.g. “£12k payouts / quarter”). */
+  quarterlyMetricTarget?: string;
+  /** Hide the first-run checklist on the dashboard. */
+  onboardingChecklistDismissed?: boolean;
 }
 
 export interface SavedView {

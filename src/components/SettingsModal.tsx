@@ -12,6 +12,7 @@ import {
   ArrowDownToLine,
   AlertTriangle,
   LogOut,
+  Target,
 } from "lucide-react";
 import { toast } from "sonner";
 import Modal from "@/components/Modal";
@@ -183,6 +184,12 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [subscriptionAlertsEnabled, setSubscriptionAlertsEnabled] = useState(
     () => data.userSettings?.subscriptionAlertsEnabled ?? true
   );
+  const [quarterlyFocus, setQuarterlyFocus] = useState(
+    () => data.userSettings?.quarterlyFocus ?? ""
+  );
+  const [quarterlyMetricTarget, setQuarterlyMetricTarget] = useState(
+    () => data.userSettings?.quarterlyMetricTarget ?? ""
+  );
   const [theme, setTheme] = useState<"dark" | "bw">(
     () => data.userSettings?.theme ?? "dark"
   );
@@ -198,7 +205,8 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [desktopUpdateStatus, setDesktopUpdateStatus] = useState<DesktopUpdateStatus | null>(null);
-  const [desktopUpdateAction, setDesktopUpdateAction] = useState<"idle" | "checking" | "installing">("idle");
+  const [desktopUpdateAction, setDesktopUpdateAction] = useState<"idle" | "checking" | "installing" | "restart-ready">("idle");
+  const [installedDesktopVersion, setInstalledDesktopVersion] = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<BackupImportPreview | null>(null);
   const [lastImportBackupAt, setLastImportBackupAt] = useState<string | null>(null);
   const desktopUpdaterVisible = isDesktopUpdaterRuntime();
@@ -210,6 +218,8 @@ export default function SettingsModal({ open, onClose }: Props) {
     setAvatarUrl(data.userProfile?.avatarUrl);
     setRenewalDays(data.userSettings?.subscriptionRenewalDays ?? 7);
     setSubscriptionAlertsEnabled(data.userSettings?.subscriptionAlertsEnabled ?? true);
+    setQuarterlyFocus(data.userSettings?.quarterlyFocus ?? "");
+    setQuarterlyMetricTarget(data.userSettings?.quarterlyMetricTarget ?? "");
     setTheme(data.userSettings?.theme ?? "dark");
     setDensity(data.userSettings?.density ?? "comfortable");
     setMobileNavItems(
@@ -293,6 +303,8 @@ export default function SettingsModal({ open, onClose }: Props) {
         ...(prev.userSettings ?? {}),
         subscriptionRenewalDays: renewalDays,
         subscriptionAlertsEnabled,
+        quarterlyFocus: quarterlyFocus.trim() || undefined,
+        quarterlyMetricTarget: quarterlyMetricTarget.trim() || undefined,
         theme,
         density,
         mobileNavItems,
@@ -319,6 +331,9 @@ export default function SettingsModal({ open, onClose }: Props) {
         ...(prev.userSettings ?? {}),
         subscriptionRenewalDays: 7,
         subscriptionAlertsEnabled: true,
+        quarterlyFocus: undefined,
+        quarterlyMetricTarget: undefined,
+        onboardingChecklistDismissed: false,
         theme: "dark",
         density: "comfortable",
         mobileNavItems: DEFAULT_MOBILE_NAV_ITEMS,
@@ -423,11 +438,11 @@ export default function SettingsModal({ open, onClose }: Props) {
   }
 
   async function handleSyncNow() {
-    const ok = await syncNow();
-    if (ok) {
+    const result = await syncNow();
+    if (result.ok) {
       toast.success("Sync complete");
     } else {
-      toast.error("Sync is unavailable right now.");
+      toast.error(result.message);
     }
   }
 
@@ -483,11 +498,9 @@ export default function SettingsModal({ open, onClose }: Props) {
         return;
       }
 
-      toast.success(`Version ${result.version ?? "update"} installed. Restarting Nexus...`);
-      onClose();
-      setTimeout(() => {
-        void requestDesktopRestart();
-      }, 450);
+      setInstalledDesktopVersion(result.version ?? null);
+      setDesktopUpdateAction("restart-ready");
+      toast.success(`Version ${result.version ?? "update"} installed. Restart Nexus to finish.`);
     } catch (error) {
       const message = formatDesktopUpdaterError(
         error instanceof Error ? error.message : "Desktop update install failed."
@@ -495,6 +508,15 @@ export default function SettingsModal({ open, onClose }: Props) {
       toast.error(message);
       setDesktopUpdateAction("idle");
       await loadDesktopUpdateStatus(false);
+    }
+  }
+
+  async function handleRestartDesktopApp() {
+    try {
+      await requestDesktopRestart();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Restart failed. Close and reopen Nexus to finish the update.";
+      toast.error(message);
     }
   }
 
@@ -656,11 +678,38 @@ export default function SettingsModal({ open, onClose }: Props) {
             </div>
           </div>
 
+          {/* ── Quarterly focus ── */}
+          <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(var(--border-rgb),0.05)", background: "rgba(var(--surface-rgb),0.02)" }}>
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(14,184,154,0.12)" }}>
+                <Target size={13} style={{ color: "var(--color-accent)" }} />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-tx-4">Quarterly focus</span>
+            </div>
+            <p className="text-[10px] text-tx-4 mb-3">
+              Shown on your dashboard as a lightweight north star (not financial advice).
+            </p>
+            <label className="text-[9px] font-medium mb-1.5 block text-tx-4">This quarter I am focused on</label>
+            <input
+              className="nx-input w-full text-xs mb-3"
+              placeholder="e.g. Risk-first evals, fewer revenge trades"
+              value={quarterlyFocus}
+              onChange={(e) => setQuarterlyFocus(e.target.value)}
+            />
+            <label className="text-[9px] font-medium mb-1.5 block text-tx-4">Target metric (optional)</label>
+            <input
+              className="nx-input w-full text-xs"
+              placeholder="e.g. 3 funded payouts, journal 20+ days"
+              value={quarterlyMetricTarget}
+              onChange={(e) => setQuarterlyMetricTarget(e.target.value)}
+            />
+          </div>
+
           {/* ── Appearance Card ── */}
           <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(var(--border-rgb),0.05)", background: "rgba(var(--surface-rgb),0.02)" }}>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(168,85,247,0.12)" }}>
-                <Palette size={13} style={{ color: "#a855f7" }} />
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--color-purple-bg)" }}>
+                <Palette size={13} style={{ color: "var(--color-purple)" }} />
               </div>
               <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-tx-4">Appearance</span>
             </div>
@@ -668,7 +717,7 @@ export default function SettingsModal({ open, onClose }: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-tx-2">Theme</p>
-                <p className="text-[10px] mt-0.5 text-tx-3">Switch between dark and light</p>
+                <p className="text-[10px] mt-0.5 text-tx-3">Dark workspace or high-contrast paper mode</p>
               </div>
               <div className="flex items-center rounded-xl p-0.5" style={{ background: "rgba(var(--surface-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
                 {(["dark","bw"] as const).map(v => (
@@ -682,7 +731,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                         : "text-tx-3 border border-transparent"
                     )}
                   >
-                    {v === "dark" ? "Dark" : "Light"}
+                    {v === "dark" ? "Dark" : "Paper"}
                   </button>
                 ))}
               </div>
@@ -819,8 +868,8 @@ export default function SettingsModal({ open, onClose }: Props) {
           {desktopUpdaterVisible && (
             <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(var(--border-rgb),0.05)", background: "rgba(var(--surface-rgb),0.02)" }}>
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(168,85,247,0.12)" }}>
-                  <ArrowDownToLine size={13} style={{ color: "#a855f7" }} />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--color-purple-bg)" }}>
+                  <ArrowDownToLine size={13} style={{ color: "var(--color-purple)" }} />
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-tx-4">Desktop Updates</span>
               </div>
@@ -883,6 +932,14 @@ export default function SettingsModal({ open, onClose }: Props) {
                   </div>
                 ) : null}
 
+                {desktopUpdateAction === "restart-ready" ? (
+                  <div className="rounded-md px-2 py-1.5 border border-profit/20 bg-profit/10">
+                    <p className="text-[9px] leading-relaxed text-profit">
+                      Version {installedDesktopVersion ?? "update"} is installed. Restart Nexus to finish.
+                    </p>
+                  </div>
+                ) : null}
+
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => void loadDesktopUpdateStatus(true)}
@@ -893,12 +950,25 @@ export default function SettingsModal({ open, onClose }: Props) {
                     {desktopUpdateAction === "checking" ? "Checking..." : "Check"}
                   </button>
                   <button
-                    onClick={() => void handleInstallDesktopUpdate()}
-                    disabled={desktopUpdateAction !== "idle" || !desktopUpdateStatus?.available}
+                    onClick={() => {
+                      if (desktopUpdateAction === "restart-ready") {
+                        void handleRestartDesktopApp();
+                        return;
+                      }
+                      void handleInstallDesktopUpdate();
+                    }}
+                    disabled={
+                      desktopUpdateAction !== "restart-ready" &&
+                      (desktopUpdateAction !== "idle" || !desktopUpdateStatus?.available)
+                    }
                     className="text-[9px] font-semibold px-2 py-1.5 rounded-md flex items-center gap-1.5 transition-all bg-accent-glow border border-border-accent text-tx-1 disabled:opacity-50"
                   >
                     <ArrowDownToLine size={10} className={desktopUpdateAction === "installing" ? "animate-bounce" : ""} />
-                    {desktopUpdateAction === "installing" ? "Installing..." : "Update"}
+                    {desktopUpdateAction === "installing"
+                      ? "Installing..."
+                      : desktopUpdateAction === "restart-ready"
+                        ? "Restart"
+                        : "Update"}
                   </button>
                 </div>
               </div>

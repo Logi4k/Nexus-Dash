@@ -25,6 +25,8 @@ let _realtimeState: "idle" | "connecting" | "connected" | "error" = "idle";
 
 const STORAGE_KEY = "nexus_data";
 const SAVED_AT_KEY = "nexus_savedAt";
+const OFFLINE_MODE_KEY = "nexus.offlineMode";
+const SYNCED_AT_KEY_PREFIX = "nexus.syncedAt.";
 
 // ── Environment detection ────────────────────────────────────────────────────
 const isTauri =
@@ -83,6 +85,34 @@ function localSavedAt(): number {
 }
 
 let _lastLocalSaveAt: number | null = localSavedAt() || null;
+
+function readOfflineMode(): boolean {
+  try {
+    return localStorage.getItem(OFFLINE_MODE_KEY) === "true" || localStorage.getItem(OFFLINE_MODE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function readConfirmedSyncAt(userId: string): number | null {
+  try {
+    const raw = localStorage.getItem(`${SYNCED_AT_KEY_PREFIX}${userId}`);
+    const value = raw ? parseInt(raw, 10) : NaN;
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeConfirmedSyncAt(userId: string, timestamp: number): void {
+  try {
+    if (Number.isFinite(timestamp) && timestamp > 0) {
+      localStorage.setItem(`${SYNCED_AT_KEY_PREFIX}${userId}`, String(timestamp));
+    }
+  } catch {
+    // ignore storage failures
+  }
+}
 
 // ── Helper: Check if data is seed data (should never be pushed to cloud) ──────
 function isSeedData(data: AppData | null): boolean {
@@ -161,6 +191,43 @@ function mergeWithSeed(parsed: Partial<AppData>): AppData {
   return hydrateTradePhases(merged).data;
 }
 
+function createStarterWorkspace(): AppData {
+  const base = seedData as unknown as AppData;
+  return hydrateTradePhases({
+    ...base,
+    expenses: [],
+    genExpenses: [],
+    withdrawals: [],
+    investments: [],
+    wealthTargets: [],
+    accounts: [],
+    debts: [],
+    creditCards: [],
+    subscriptions: [],
+    t212: {
+      last_sync: 0,
+      free_cash: 0,
+      total_value: 0,
+      invested: 0,
+      ppl: 0,
+      result: 0,
+    },
+    t212History: [],
+    marketTickers: [],
+    otherDebts: [],
+    tradeJournal: [],
+    economicEvents: [],
+    journalEntries: [],
+    sessionChecklist: [],
+    passedChallenges: [],
+    ideaTopics: [],
+    ideaNotes: [],
+    categoryBudgets: {},
+  }).data;
+}
+
+const starterWorkspace = createStarterWorkspace();
+
 // ── Singleton store ──────────────────────────────────────────────────────────
 // Initialise synchronously from localStorage so the UI renders immediately.
 // Capture whether localStorage had data so we know if Tauri file is needed.
@@ -168,13 +235,13 @@ function mergeWithSeed(parsed: Partial<AppData>): AppData {
 // _hasLocalData tracks whether localStorage had a real cached copy — used to guard
 // the initial cloud push so we never flood the cloud with seed/demo data.
 const _localDataOnInit = localLoad();
-const _hasLocalData = _localDataOnInit !== null;
+let _hasLocalData = _localDataOnInit !== null;
 
 // FIX: Never initialize with seed data — always start with null or real data
 // This prevents seed data from being pushed to cloud on first sign-in
 let currentData: AppData | null = _localDataOnInit
   ? mergeWithSeed(_localDataOnInit)
-  : (isTauri ? null : null);  // Changed from seedData to null
+  : null;
 
 const listeners = new Set<() => void>();
 const syncListeners = new Set<() => void>();
@@ -232,12 +299,16 @@ function setSyncError(error: string | null): void {
 function setSyncedAt(timestamp: number | null): void {
   if (_syncedAt === timestamp) return;
   _syncedAt = timestamp;
+  if (_currentUserId && timestamp !== null) {
+    writeConfirmedSyncAt(_currentUserId, timestamp);
+  }
   notifySync();
 }
 
 function setCurrentUserId(userId: string | null): void {
   if (_currentUserId === userId) return;
   _currentUserId = userId;
+  _syncedAt = userId ? readConfirmedSyncAt(userId) : null;
   notifySync();
 }
 
@@ -282,6 +353,7 @@ function cloudPayload(data: AppData): AppData {
 export function saveData(data: AppData): void {
   const normalized = hydrateTradePhases(data).data;
   currentData = normalized;
+  _hasLocalData = true;
   localSave(normalized);
   if (isTauri) {
     tauriSave(normalized);
@@ -289,7 +361,7 @@ export function saveData(data: AppData): void {
   notify();
   // ── Supabase sync (fire and forget) ────────────────────────────────────────
   // FIX: Never push seed data to cloud
-  if (_currentUserId && !isSeedData(normalized)) {
+  if (_currentUserId && !readOfflineMode() && !isSeedData(normalized)) {
     beginSyncOp();
     setSyncError(null);
     void Promise.resolve(
@@ -326,10 +398,8 @@ function subscribeSync(callback: () => void): () => void {
   return () => syncListeners.delete(callback);
 }
 
-function getSnapshot(): AppData | null {
-  // FIX: Return seed data for UI rendering when currentData is null
-  // This allows the UI to render while waiting for cloud data
-  return currentData ?? (seedData as unknown as AppData);
+function getSnapshot(): AppData {
+  return currentData ?? starterWorkspace;
 }
 
 export interface SyncStatusSnapshot {
@@ -354,6 +424,7 @@ if (isTauri) {
   tauriLoad().then((fileData) => {
     if (fileData && !_localDataOnInit) {
       currentData = mergeWithSeed(fileData);
+      _hasLocalData = true;
       localSave(currentData);
       notify();
     }
@@ -419,6 +490,11 @@ export async function initSupabaseSync(): Promise<void> {
     console.log("[store] SYNC_ENABLED=false, skipping all cloud operations");
     return;
   }
+  if (readOfflineMode()) {
+    console.log("[store] Offline mode enabled, skipping cloud sync");
+    setCurrentUserId(null);
+    return;
+  }
   setupAuthListener();
   setupReconnectionHandlers();
 
@@ -433,6 +509,7 @@ export async function initSupabaseSync(): Promise<void> {
   }
   console.log("[store] initSupabaseSync: session found, user:", session.user.id);
   setCurrentUserId(session.user.id);
+  const confirmedSyncAt = _syncedAt;
 
   // ── Fetch latest row from Supabase ─────────────────────────────────────────
   try {
@@ -446,6 +523,8 @@ export async function initSupabaseSync(): Promise<void> {
     console.log("[store] Fetch result:", { row: !!row, fetchError });
     if (fetchError) {
       console.error("[store] Fetch error:", fetchError.code, fetchError.message);
+      setSyncError(fetchError.message);
+      throw new Error(fetchError.message);
     }
 
     if (row?.payload) {
@@ -456,9 +535,27 @@ export async function initSupabaseSync(): Promise<void> {
 
       // FIX: Never push seed data to cloud, always prefer cloud data
       const localIsSeed = isSeedData(currentData);
+      const cloudIsSeed = isSeedData(row.payload as AppData);
       const cloudIsProtected = (row.payload as any)?._protected;
+      const cloudChangedSinceLastSync = confirmedSyncAt === null || cloudTs > confirmedSyncAt;
+      const localChangedSinceLastSync =
+        !!currentData && !localIsSeed && confirmedSyncAt !== null && localTs > confirmedSyncAt;
       
-      if (localIsSeed) {
+      if (cloudIsSeed && currentData && !localIsSeed) {
+        console.log("[store] Cloud row looks like seed data, pushing protected local data instead");
+        const { data: pushRow, error: pushErr } = await supabase
+          .from("user_data")
+          .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
+          .select("updated_at")
+          .single();
+        if (pushErr) {
+          setSyncError(pushErr.message);
+          throw new Error(pushErr.message);
+        }
+        setSyncedAt(pushRow?.updated_at ? new Date(pushRow.updated_at as string).getTime() : localTs);
+      } else if (cloudIsSeed) {
+        console.log("[store] Cloud row looks like seed data and no real local data exists; leaving workspace local-only");
+      } else if (localIsSeed) {
         // Local is seed data — always apply cloud data, never push seed to cloud
         console.log("[store] Local is seed data, applying cloud data (never push seed to cloud)");
         currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
@@ -472,15 +569,19 @@ export async function initSupabaseSync(): Promise<void> {
         localSave(currentData, cloudTs);
         notify();
         setSyncedAt(cloudTs);
-      } else if (currentData && localTs > cloudTs && _syncedAt !== null) {
+      } else if (currentData && localChangedSinceLastSync && !cloudChangedSinceLastSync && localTs > cloudTs) {
         // Local is newer AND we have synced before — push local to cloud, keep local data
         // On first sign-in (_syncedAt === null), always prefer cloud to avoid stale seed data overwriting real cloud data
         console.log("[store] Local is newer and previously synced, pushing to cloud");
-        const { data: pushRow } = await supabase
+        const { data: pushRow, error: pushErr } = await supabase
           .from("user_data")
           .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
           .select("updated_at")
           .single();
+        if (pushErr) {
+          setSyncError(pushErr.message);
+          throw new Error(pushErr.message);
+        }
         setSyncedAt(pushRow?.updated_at ? new Date(pushRow.updated_at as string).getTime() : cloudTs);
       } else {
         // Cloud is newer, same, or local has not hydrated yet — apply cloud data
@@ -497,28 +598,30 @@ export async function initSupabaseSync(): Promise<void> {
         // Also guard: never push seed/demo data to the cloud even if currentData
         // is populated (non-Tauri browser path gets seedData as currentData).
         console.log("[store] No cloud row and no local data (or using seed data), skipping initial push");
-        return;
-      }
-
-      // No row yet — push local data to create the initial cloud record
-      console.log("[store] No cloud row found, pushing local data as initial record");
-      const { data: newRow, error } = await supabase
-        .from("user_data")
-        .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
-        .select("updated_at")
-        .single();
-      if (!error && newRow?.updated_at) {
-        setSyncedAt(new Date(newRow.updated_at as string).getTime());
-      } else if (error) {
-        console.error("[store] Upsert error:", error.code, error.message);
-        setSyncError(error.message);
+        // Do not return from initSupabaseSync here — Realtime still needs to subscribe below.
+      } else {
+        // No row yet — push local data to create the initial cloud record
+        console.log("[store] No cloud row found, pushing local data as initial record");
+        const { data: newRow, error } = await supabase
+          .from("user_data")
+          .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
+          .select("updated_at")
+          .single();
+        if (!error && newRow?.updated_at) {
+          setSyncedAt(new Date(newRow.updated_at as string).getTime());
+        } else if (error) {
+          console.error("[store] Upsert error:", error.code, error.message);
+          setSyncError(error.message);
+          throw new Error(error.message);
+        }
       }
     }
   } catch (err) {
     console.error("[store] initSupabaseSync fetch error:", err);
-    // Offline or network error — proceed with local data
     setSyncedAt(0);
-    setSyncError(err instanceof Error ? err.message : "Initial sync failed");
+    const message = err instanceof Error ? err.message : "Initial sync failed";
+    setSyncError(message);
+    throw err instanceof Error ? err : new Error(message);
   } finally {
     endSyncOp();
   }
@@ -551,9 +654,8 @@ export async function initSupabaseSync(): Promise<void> {
           
           const incomingTs = new Date(newRow.updated_at).getTime();
           if (incomingTs > (_syncedAt ?? 0)) {
-            if (!currentData) return;
             // Preserve local avatarUrl — it's a device-local base64 blob, not synced.
-            const localAvatarUrl = currentData.userProfile?.avatarUrl;
+            const localAvatarUrl = currentData?.userProfile?.avatarUrl;
             currentData = withLocalAvatar(mergeWithSeed(newRow.payload), localAvatarUrl);
             localSave(currentData, incomingTs);
             setSyncedAt(incomingTs);
@@ -588,6 +690,7 @@ export async function initSupabaseSync(): Promise<void> {
 // ── Force sync helpers ────────────────────────────────────────────────────────
 export async function forcePullFromCloud(): Promise<boolean> {
   if (!SYNC_ENABLED) return false;
+  if (readOfflineMode()) return false;
   if (!_currentUserId) return false;
   beginSyncOp();
   setSyncError(null);
@@ -597,7 +700,6 @@ export async function forcePullFromCloud(): Promise<boolean> {
       .select("payload, updated_at")
       .eq("user_id", _currentUserId)
       .single();
-    if (!currentData) return false;
     if (row?.payload) {
       // FIX: Never apply seed data from cloud
       if (isSeedData(row.payload as AppData)) {
@@ -605,7 +707,7 @@ export async function forcePullFromCloud(): Promise<boolean> {
         return false;
       }
       
-      const localAvatarUrl = currentData.userProfile?.avatarUrl;
+      const localAvatarUrl = currentData?.userProfile?.avatarUrl;
       const cloudTs = new Date(row.updated_at as string).getTime();
       currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
       localSave(currentData, cloudTs);
@@ -623,6 +725,7 @@ export async function forcePullFromCloud(): Promise<boolean> {
 }
 
 export async function forcePushToCloud(): Promise<boolean> {
+  if (readOfflineMode()) return false;
   if (!_currentUserId) return false;
   if (!currentData) return false;
   
@@ -657,9 +760,18 @@ export async function forcePushToCloud(): Promise<boolean> {
   }
 }
 
-export async function syncNow(): Promise<boolean> {
-  if (!SYNC_ENABLED) return false;
-  if (!_currentUserId) return false;
+export type SyncNowResult = { ok: true } | { ok: false; message: string };
+
+export async function syncNow(): Promise<SyncNowResult> {
+  if (!SYNC_ENABLED) {
+    return { ok: false, message: "Cloud sync is disabled in this build." };
+  }
+  if (readOfflineMode()) {
+    return { ok: false, message: "Turn off offline mode to sync with the cloud." };
+  }
+  if (!_currentUserId) {
+    return { ok: false, message: "Sign in to sync your workspace." };
+  }
 
   beginSyncOp();
   setSyncError(null);
@@ -674,25 +786,36 @@ export async function syncNow(): Promise<boolean> {
     if (error) {
       console.error("[store] syncNow preflight fetch failed:", error.message, error.code);
       setSyncError(error.message);
-      return false;
+      return { ok: false, message: error.message };
     }
 
     const localTs = localSavedAt();
     const cloudTs = row?.updated_at ? new Date(row.updated_at as string).getTime() : null;
+    const cloudIsSeed = row?.payload ? isSeedData(row.payload as AppData) : false;
 
-    // Prefer the newest side. This avoids stale local app state overwriting a
-    // corrected cloud row before the pull happens.
-    if (row?.payload && cloudTs !== null && cloudTs >= localTs) {
-      if (!currentData) return false;
-      const localAvatarUrl = currentData.userProfile?.avatarUrl;
+    const cloudChangedSinceLastSync = cloudTs !== null && (_syncedAt === null || cloudTs > _syncedAt);
+    const localChangedSinceLastSync =
+      !!currentData && !isSeedData(currentData) && _syncedAt !== null && localTs > _syncedAt;
+
+    if (
+      row?.payload &&
+      !cloudIsSeed &&
+      cloudTs !== null &&
+      (!currentData || cloudTs >= localTs || cloudChangedSinceLastSync || !localChangedSinceLastSync)
+    ) {
+      const localAvatarUrl = currentData?.userProfile?.avatarUrl;
       currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
       localSave(currentData, cloudTs);
       setSyncedAt(cloudTs);
       notify();
-      return true;
+      return { ok: true };
     }
 
-    if (!currentData) return false;
+    if (!currentData) {
+      const message = "No local workspace loaded yet — try again in a moment.";
+      setSyncError(message);
+      return { ok: false, message };
+    }
     const { data: pushRow, error: pushError } = await supabase
       .from("user_data")
       .upsert(
@@ -707,18 +830,21 @@ export async function syncNow(): Promise<boolean> {
 
     if (!pushError && pushRow?.updated_at) {
       setSyncedAt(new Date(pushRow.updated_at as string).getTime());
-      return true;
+      return { ok: true };
     }
 
     if (pushError) {
       console.error("[store] syncNow push failed:", pushError.message, pushError.code);
       setSyncError(pushError.message);
+      return { ok: false, message: pushError.message };
     }
 
-    return false;
+    setSyncError(null);
+    return { ok: false, message: "Already up to date — nothing to push." };
   } catch (err) {
-    setSyncError(err instanceof Error ? err.message : "Sync failed");
-    return false;
+    const message = err instanceof Error ? err.message : "Sync failed";
+    setSyncError(message);
+    return { ok: false, message };
   } finally {
     endSyncOp();
   }
@@ -729,8 +855,7 @@ export function useAppData() {
   const data = useSyncExternalStore(subscribe, getSnapshot);
 
   const update = useCallback((updater: (prev: AppData) => AppData) => {
-    if (!currentData) return;
-    saveData(updater(currentData));
+    saveData(updater(currentData ?? createStarterWorkspace()));
   }, []);
 
   return { data, update };

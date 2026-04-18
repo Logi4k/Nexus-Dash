@@ -87,7 +87,7 @@ export default function Sidebar({
   const t212Val          = data.t212?.total_value || 0;
   const netWorth         = totalWithdrawals - totalExpenses + investVal + t212Val - totalDebt;
 
-  const activeFunded     = data.accounts.filter(a => ["funded","Funded"].includes(a.status)).length;
+  const activeFunded     = data.accounts.filter(a => String(a.status).toLowerCase() === "funded").length;
   const activeChallenges = data.accounts.filter(a => a.status.toLowerCase() === "challenge").length;
 
   const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -272,8 +272,8 @@ export default function Sidebar({
                 <button
                   ref={expandedThemeBtnRef}
                   onClick={() => handleThemeClick(true)}
-                  aria-label={currentTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                  title={currentTheme === "dark" ? "Light mode" : "Dark mode"}
+                  aria-label={currentTheme === "dark" ? "Switch to paper mode" : "Switch to dark mode"}
+                  title={currentTheme === "dark" ? "Paper mode" : "Dark mode"}
                   className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
                   style={{ color: "var(--tx-4)", background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
                   {currentTheme === "dark" ? <Sun size={11} /> : <Moon size={11} />}
@@ -298,8 +298,8 @@ export default function Sidebar({
               <button
                 ref={collapsedThemeBtnRef}
                 onClick={() => handleThemeClick(false)}
-                aria-label={currentTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                title={currentTheme === "dark" ? "Light mode" : "Dark mode"}
+                aria-label={currentTheme === "dark" ? "Switch to paper mode" : "Switch to dark mode"}
+                title={currentTheme === "dark" ? "Paper mode" : "Dark mode"}
                 className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
                 style={{ color: "var(--tx-4)", background: "rgba(var(--surface-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
                 {currentTheme === "dark" ? <Sun size={11} /> : <Moon size={11} />}

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monthly income vs costs — chart options</title>
+  <style>
+    :root {
+      --bg: #0c0e12;
+      --card: #14181f;
+      --border: rgba(255,255,255,0.08);
+      --tx: #e8eaef;
+      --tx2: #8b93a7;
+      --profit: #22c55e;
+      --profit-dim: rgba(34,197,94,0.35);
+      --loss: #ef4444;
+      --loss-dim: rgba(239,68,68,0.35);
+      --accent: #c9a227;
+      --grid: rgba(255,255,255,0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      font-family: system-ui, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--tx);
+      line-height: 1.45;
+    }
+    h1 { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    p.lead { margin: 0 0 1.25rem; font-size: 0.8rem; color: var(--tx2); max-width: 52rem; }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1rem 0.75rem;
+    }
+    section h2 {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+    section p.desc {
+      margin: 0 0 0.75rem;
+      font-size: 0.72rem;
+      color: var(--tx2);
+    }
+    footer {
+      margin-top: 1.5rem;
+      font-size: 0.7rem;
+      color: var(--tx2);
+    }
+
+    /* Shared chart frame */
+    .cv {
+      height: 200px;
+      display: flex;
+      flex-direction: column;
+      padding: 0.35rem 0 0.25rem;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(201,162,39,0.06) 0%, rgba(255,255,255,0.02) 45%);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .cv-y {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+      gap: 2px;
+      min-height: 0;
+    }
+    .cv-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 0;
+    }
+    .cv-col .lab {
+      font-size: 0.62rem;
+      color: var(--tx2);
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .cv-stack {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+      padding: 0 1px 2px;
+      border-bottom: 1px solid var(--grid);
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 24%,
+        var(--grid) 24%,
+        var(--grid) 25%
+      );
+    }
+    .bar {
+      width: 42%;
+      max-width: 18px;
+      border-radius: 5px 5px 2px 2px;
+      min-height: 2px;
+      transition: height 0.2s ease;
+    }
+    .bar.inc { background: linear-gradient(180deg, #4ade80, var(--profit)); }
+    .bar.cost { background: linear-gradient(180deg, #f87171, var(--loss)); }
+    .bar.net-pos { background: linear-gradient(180deg, #4ade80, #166534); }
+    .bar.net-neg { background: linear-gradient(180deg, #f87171, #991b1b); }
+
+    /* Mirror: axis in middle */
+    .mirror-stack {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      position: relative;
+      background: linear-gradient(180deg, transparent 49.5%, var(--grid) 49.5%, var(--grid) 50.5%, transparent 50.5%);
+    }
+    .mirror-up, .mirror-down {
+      flex: 1;
+      width: 70%;
+      max-width: 22px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .mirror-up .bar { width: 100%; max-width: none; }
+    .mirror-down { align-items: flex-start; }
+    .mirror-down .bar { width: 100%; max-width: none; border-radius: 2px 2px 5px 5px; }
+
+    /* Stacked column */
+    .stacked-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 0;
+    }
+    .stacked-bars {
+      flex: 1;
+      width: 55%;
+      max-width: 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 0;
+      border-bottom: 1px solid var(--grid);
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 24%,
+        var(--grid) 24%,
+        var(--grid) 25%
+      );
+    }
+    .stacked-bars .seg {
+      width: 100%;
+      border-radius: 0;
+      flex-shrink: 0;
+    }
+    .stacked-bars .seg.inc { background: rgba(34,197,94,0.88); border-radius: 5px 5px 0 0; }
+    .stacked-bars .seg.cost { background: rgba(239,68,68,0.88); border-radius: 0 0 5px 5px; }
+
+    /* Horizontal rows */
+    .hz { display: flex; flex-direction: column; gap: 6px; height: 200px; overflow: hidden; }
+    .hz-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.62rem;
+      color: var(--tx2);
+      min-height: 0;
+      flex: 1;
+    }
+    .hz-row .m { width: 32px; flex-shrink: 0; }
+    .hz-track {
+      flex: 1;
+      height: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 5px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 0 3px;
+    }
+    .hz-track .bar { height: 6px; border-radius: 3px; width: auto; flex: 1; max-width: none; }
+
+    /* SVG lines */
+    .svg-wrap { height: 200px; }
+    .svg-wrap svg { width: 100%; height: 100%; display: block; }
+
+    .heatmap {
+      display: grid;
+      grid-template-columns: 56px repeat(3, 1fr);
+      gap: 4px;
+      font-size: 0.62rem;
+      margin-bottom: 0.25rem;
+    }
+    .heatmap .h { color: var(--tx2); padding: 4px 2px; text-align: center; font-weight: 600; }
+    .heatmap .r { color: var(--tx2); padding: 5px 2px; font-size: 0.58rem; }
+    .heatmap .c {
+      border-radius: 6px;
+      min-height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.55rem;
+      color: rgba(255,255,255,0.92);
+    }
+    .spark-row {
+      display: flex;
+      gap: 4px;
+      align-items: flex-end;
+      height: 72px;
+      padding: 0.5rem 0;
+    }
+    .spark {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.58rem;
+      color: var(--tx2);
+    }
+    .spark .track {
+      height: 44px;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      padding: 4px;
+    }
+    .spark .dot {
+      width: 11px;
+      border-radius: 3px;
+      min-height: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dashboard “monthly income vs costs” — design options</h1>
+  <p class="lead">
+    <strong>No external scripts</strong> — works from <code>file://</code> or any server. Same synthetic data on every tile (income Aug–Sep + Dec; costs all months).
+  </p>
+
+  <div class="grid" id="tiles"></div>
+
+  <footer>
+    Pure HTML/CSS + a tiny bit of DOM math. Pick a direction and we can match it in Recharts on the real dashboard.
+  </footer>
+
+  <script>
+    (function () {
+      const months = ["Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+      const income = [1180, 820, 0, 0, 920, 0, 0, 0];
+      const costs = [320, 410, 890, 1120, 580, 720, 840, 980];
+      const net = months.map(function (_, i) { return income[i] - costs[i]; });
+      const maxIC = Math.max.apply(null, income.concat(costs).concat([1]));
+      const maxAbsNet = Math.max.apply(null, net.map(Math.abs).concat([1]));
+
+      function pct(v) {
+        return Math.max(2, Math.round((v / maxIC) * 100));
+      }
+      function pctNet(v) {
+        return Math.max(3, Math.round((Math.abs(v) / maxAbsNet) * 100));
+      }
+
+      function section(title, desc, inner) {
+        var s = document.createElement("section");
+        s.innerHTML = "<h2>" + title + "</h2><p class='desc'>" + desc + "</p>";
+        s.appendChild(inner);
+        return s;
+      }
+
+      function groupedBars() {
+        var wrap = document.createElement("div");
+        wrap.className = "cv";
+        var y = document.createElement("div");
+        y.className = "cv-y";
+        for (var i = 0; i < months.length; i++) {
+          var col = document.createElement("div");
+          col.className = "cv-col";
+          var st = document.createElement("div");
+          st.className = "cv-stack";
+          var bi = document.createElement("div");
+          bi.className = "bar inc";
+          bi.style.height = pct(income[i]) + "%";
+          bi.title = "Income £" + income[i];
+          var bc = document.createElement("div");
+          bc.className = "bar cost";
+          bc.style.height = pct(costs[i]) + "%";
+          bc.title = "Costs £" + costs[i];
+          st.appendChild(bi);
+          st.appendChild(bc);
+          var lab = document.createElement("div");
+          lab.className = "lab";
+          lab.textContent = months[i];
+          col.appendChild(st);
+          col.appendChild(lab);
+          y.appendChild(col);
+        }
+        wrap.appendChild(y);
+        return wrap;
+      }
+
+      function netDiverging() {
+        var wrap = document.createElement("div");
+        wrap.className = "cv";
+        var y = document.createElement("div");
+        y.className = "cv-y";
+        for (var i = 0; i < months.length; i++) {
+          var col = document.createElement("div");
+          col.className = "cv-col";
+          var st = document.createElement("div");
+          st.className = "cv-stack";
+          var n = net[i];
+          var b = document.createElement("div");
+          b.className = "bar " + (n >= 0 ? "net-pos" : "net-neg");
+          b.style.height = pctNet(n) + "%";
+          b.title = "Net £" + n;
+          st.appendChild(b);
+          var lab = document.createElement("div");
+          lab.className = "lab";
+          lab.textContent = months[i];
+          col.appendChild(st);
+          col.appendChild(lab);
+          y.appendChild(col);
+        }
+        wrap.appendChild(y);
+        return wrap;
+      }
+
+      function mirror() {
+        var wrap = document.createElement("div");
+        wrap.className = "cv";
+        var y = document.createElement("div");
+        y.className = "cv-y";
+        for (var i = 0; i < months.length; i++) {
+          var col = document.createElement("div");
+          col.className = "cv-col";
+          var st = document.createElement("div");
+          st.className = "mirror-stack";
+          var up = document.createElement("div");
+          up.className = "mirror-up";
+          var bi = document.createElement("div");
+          bi.className = "bar inc";
+          bi.style.height = pct(income[i]) + "%";
+          bi.title = "Income £" + income[i];
+          up.appendChild(bi);
+          var dn = document.createElement("div");
+          dn.className = "mirror-down";
+          var bc = document.createElement("div");
+          bc.className = "bar cost";
+          bc.style.height = pct(costs[i]) + "%";
+          bc.title = "Costs £" + costs[i];
+          dn.appendChild(bc);
+          st.appendChild(up);
+          st.appendChild(dn);
+          var lab = document.createElement("div");
+          lab.className = "lab";
+          lab.textContent = months[i];
+          col.appendChild(st);
+          col.appendChild(lab);
+          y.appendChild(col);
+        }
+        wrap.appendChild(y);
+        return wrap;
+      }
+
+      function stacked() {
+        var wrap = document.createElement("div");
+        wrap.className = "cv";
+        var y = document.createElement("div");
+        y.className = "cv-y";
+        var maxSum = Math.max.apply(null, months.map(function (_, i) { return income[i] + costs[i]; }).concat([1]));
+        for (var i = 0; i < months.length; i++) {
+          var col = document.createElement("div");
+          col.className = "stacked-col";
+          var sb = document.createElement("div");
+          sb.className = "stacked-bars";
+          var sum = income[i] + costs[i];
+          var colH = Math.max(12, Math.round((sum / maxSum) * 100));
+          sb.style.height = colH + "%";
+          sb.style.alignSelf = "flex-end";
+          var hi = sum ? Math.round((income[i] / sum) * 100) : 50;
+          var hc = 100 - hi;
+          var incEl = document.createElement("div");
+          incEl.className = "seg inc";
+          incEl.style.height = hi + "%";
+          incEl.title = "Income £" + income[i];
+          var costEl = document.createElement("div");
+          costEl.className = "seg cost";
+          costEl.style.height = hc + "%";
+          costEl.title = "Costs £" + costs[i];
+          sb.appendChild(incEl);
+          sb.appendChild(costEl);
+          var lab = document.createElement("div");
+          lab.className = "lab";
+          lab.textContent = months[i];
+          col.appendChild(sb);
+          col.appendChild(lab);
+          y.appendChild(col);
+        }
+        wrap.appendChild(y);
+        return wrap;
+      }
+
+      function horizontal() {
+        var wrap = document.createElement("div");
+        wrap.className = "hz";
+        for (var i = 0; i < months.length; i++) {
+          var row = document.createElement("div");
+          row.className = "hz-row";
+          var m = document.createElement("div");
+          m.className = "m";
+          m.textContent = months[i];
+          var tr = document.createElement("div");
+          tr.className = "hz-track";
+          var bi = document.createElement("div");
+          bi.className = "bar inc";
+          bi.style.flex = pct(income[i]);
+          bi.title = "Income £" + income[i];
+          var bc = document.createElement("div");
+          bc.className = "bar cost";
+          bc.style.flex = pct(costs[i]);
+          bc.title = "Costs £" + costs[i];
+          tr.appendChild(bi);
+          tr.appendChild(bc);
+          row.appendChild(m);
+          row.appendChild(tr);
+          wrap.appendChild(row);
+        }
+        return wrap;
+      }
+
+      function lineSvg() {
+        var W = 400;
+        var H = 200;
+        var pad = { t: 14, r: 10, b: 22, l: 36 };
+        var iw = W - pad.l - pad.r;
+        var ih = H - pad.t - pad.b;
+        var maxV = maxIC;
+        var minV = Math.min.apply(null, net.concat([0]));
+        var lo = Math.min(0, minV * 1.05);
+        var hi = maxV * 1.05;
+        var span = hi - lo || 1;
+        function xAt(i) {
+          return pad.l + (i / (months.length - 1)) * iw;
+        }
+        function yAt(v) {
+          return pad.t + (1 - (v - lo) / span) * ih;
+        }
+        function pathFor(arr) {
+          var d = "";
+          for (var i = 0; i < arr.length; i++) {
+            d += (i ? " L " : "M ") + xAt(i).toFixed(1) + " " + yAt(arr[i]).toFixed(1);
+          }
+          return d;
+        }
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+        svg.setAttribute("class", "svg-wrap");
+        var gridY = [lo, lo + span * 0.25, lo + span * 0.5, lo + span * 0.75, hi];
+        for (var g = 0; g < gridY.length; g++) {
+          var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", pad.l);
+          line.setAttribute("x2", W - pad.r);
+          line.setAttribute("y1", yAt(gridY[g]).toFixed(1));
+          line.setAttribute("y2", yAt(gridY[g]).toFixed(1));
+          line.setAttribute("stroke", "rgba(255,255,255,0.07)");
+          svg.appendChild(line);
+        }
+        function addPath(arr, color, dash) {
+          var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          p.setAttribute("d", pathFor(arr));
+          p.setAttribute("fill", "none");
+          p.setAttribute("stroke", color);
+          p.setAttribute("stroke-width", "2");
+          if (dash) p.setAttribute("stroke-dasharray", dash);
+          svg.appendChild(p);
+        }
+        addPath(income, "#22c55e", "");
+        addPath(costs, "#ef4444", "");
+        addPath(net, "#c9a227", "5 4");
+        for (var i = 0; i < months.length; i++) {
+          var tx = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          tx.setAttribute("x", xAt(i).toFixed(1));
+          tx.setAttribute("y", H - 6);
+          tx.setAttribute("fill", "#8b93a7");
+          tx.setAttribute("font-size", "9");
+          tx.setAttribute("text-anchor", "middle");
+          tx.textContent = months[i];
+          svg.appendChild(tx);
+        }
+        var wrap = document.createElement("div");
+        wrap.className = "svg-wrap";
+        wrap.appendChild(svg);
+        return wrap;
+      }
+
+      function heatmap() {
+        var maxI = Math.max.apply(null, income.concat([1]));
+        var maxC = Math.max.apply(null, costs.concat([1]));
+        var maxN = Math.max.apply(null, net.map(Math.abs).concat([1]));
+        function cellIn(v) {
+          var el = document.createElement("div");
+          el.className = "c";
+          if (v === 0) {
+            el.style.background = "rgba(255,255,255,0.06)";
+            el.textContent = "—";
+            return el;
+          }
+          var t = v / maxI;
+          el.style.background = "rgba(34,197,94," + (0.25 + t * 0.65) + ")";
+          el.textContent = "£" + Math.round(v);
+          return el;
+        }
+        function cellCost(v) {
+          var el = document.createElement("div");
+          el.className = "c";
+          var t = v / maxC;
+          el.style.background = "rgba(239,68,68," + (0.25 + t * 0.65) + ")";
+          el.textContent = "£" + Math.round(v);
+          return el;
+        }
+        function cellNet(v) {
+          var el = document.createElement("div");
+          el.className = "c";
+          if (v === 0) {
+            el.style.background = "rgba(255,255,255,0.06)";
+            el.textContent = "£0";
+            return el;
+          }
+          var t = Math.abs(v) / maxN;
+          var a = 0.25 + t * 0.65;
+          el.style.background = v >= 0 ? "rgba(34,197,94," + a + ")" : "rgba(239,68,68," + a + ")";
+          el.textContent = (v >= 0 ? "" : "−") + "£" + Math.round(Math.abs(v));
+          return el;
+        }
+        var g = document.createElement("div");
+        g.className = "heatmap";
+        var headers = ["", "Income", "Costs", "Net"];
+        for (var h = 0; h < 4; h++) {
+          var he = document.createElement("div");
+          he.className = "h";
+          he.textContent = headers[h];
+          g.appendChild(he);
+        }
+        for (var i = 0; i < months.length; i++) {
+          var r = document.createElement("div");
+          r.className = "r";
+          r.textContent = months[i];
+          g.appendChild(r);
+          g.appendChild(cellIn(income[i]));
+          g.appendChild(cellCost(costs[i]));
+          g.appendChild(cellNet(net[i]));
+        }
+        return g;
+      }
+
+      function sparks() {
+        var wrap = document.createElement("div");
+        wrap.className = "spark-row";
+        var maxA = maxAbsNet;
+        for (var i = 0; i < months.length; i++) {
+          var sp = document.createElement("div");
+          sp.className = "spark";
+          var tr = document.createElement("div");
+          tr.className = "track";
+          var d = document.createElement("div");
+          d.className = "dot";
+          d.style.height = Math.max(6, Math.round((Math.abs(net[i]) / maxA) * 40)) + "px";
+          d.style.background = net[i] >= 0 ? "var(--profit)" : "var(--loss)";
+          d.title = months[i] + ": net £" + net[i];
+          tr.appendChild(d);
+          var lb = document.createElement("span");
+          lb.textContent = months[i];
+          sp.appendChild(tr);
+          sp.appendChild(lb);
+          wrap.appendChild(sp);
+        }
+        return wrap;
+      }
+
+      var tiles = document.getElementById("tiles");
+      if (!tiles) return;
+
+      tiles.appendChild(section("1 · Grouped bars", "Income and costs side by side (same scale).", groupedBars()));
+      tiles.appendChild(section("2 · Net diverging", "One bar per month: height = |net|, colour = sign.", netDiverging()));
+      tiles.appendChild(section("3 · Mirror (in ↑ costs ↓)", "Zero line in the middle of each column.", mirror()));
+      tiles.appendChild(section("4 · Stacked share", "Column height ∝ (income+costs); split shows mix.", stacked()));
+      tiles.appendChild(section("5 · Horizontal grouped", "Same as (1), month labels on the left.", horizontal()));
+      tiles.appendChild(section("6 · Lines (in / out / net)", "SVG paths — rough match to a Recharts line set.", lineSvg()));
+      tiles.appendChild(section("7 · Heatmap", "Intensity = size within column.", heatmap()));
+      tiles.appendChild(section("8 · Spark row", "Net-only micro bars.", sparks()));
+    })();
+  </script>
+</body>
+</html>

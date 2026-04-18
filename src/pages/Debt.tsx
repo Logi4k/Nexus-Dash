@@ -257,7 +257,7 @@ function DebtRow({
   const paidOffPct = originalBalance > 0 ? (totalPaid / originalBalance) * 100 : 0;
 
   return (
-    <div className="card overflow-hidden">
+    <div className={cn("card overflow-hidden", bw && "card--parchment-panel")}>
       {/* Compact header row */}
       <div className="flex items-center gap-3 p-4">
         {/* Network badge */}
@@ -442,7 +442,7 @@ function StrategyPanel({ debts }: { debts: Debt[] }) {
   if (debts.length === 0) return null;
 
   return (
-    <div className="card p-5 flex flex-col gap-4">
+    <div className={cn("card p-5 flex flex-col gap-4", isBW && "card--parchment-panel")}>
       <div className="flex items-center gap-2">
         <Target size={15} className="text-accent" />
         <h3 className="font-semibold text-tx-1 text-sm">Payoff Strategies</h3>
@@ -714,7 +714,7 @@ export default function DebtPage() {
           </div>
 
           {scenario && (
-            <div className="card p-5">
+            <div className={cn("card p-5", isBW && "card--parchment-panel")}>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.16em] text-tx-4">Scenario planner</div>
@@ -750,7 +750,7 @@ export default function DebtPage() {
 
           {/* Cards list */}
           {debts.length === 0 ? (
-            <div className="card p-10 text-center flex flex-col items-center gap-3">
+            <div className={cn("card p-10 text-center flex flex-col items-center gap-3", isBW && "card--parchment-panel")}>
               <CreditCard size={32} className="text-tx-4" />
               <p className="text-tx-3 text-sm">No credit cards added yet.</p>
               <button className="btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
@@ -778,7 +778,7 @@ export default function DebtPage() {
 
           {/* Payoff projections table */}
           {debts.length > 0 && (
-            <div className="card p-5">
+            <div className={cn("card p-5", isBW && "card--parchment-panel")}>
               <div className="flex items-center gap-2 mb-4">
                 <TrendingDown size={15} className="text-accent" />
                 <h2 className="font-semibold text-tx-1 text-sm">Debt Freedom Projections</h2>
@@ -952,7 +952,7 @@ export default function DebtPage() {
             const dash = (Math.min(stats.paydownPct, 100) / 100) * circ;
             const progressColor = stats.paydownPct >= 75 ? "var(--color-profit)" : stats.paydownPct >= 40 ? "var(--color-teal)" : "var(--color-warn)";
             return (
-              <div className="card p-4" style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, transparent 100%)", borderColor: "rgba(34,197,94,0.15)" }}>
+              <div className={cn("card p-4", isBW && "card--parchment-panel")} style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, transparent 100%)", borderColor: "rgba(34,197,94,0.15)" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <Target size={13} className="text-profit" />
                   <h3 className="font-semibold text-tx-1 text-sm">Debt Freedom</h3>
@@ -1017,7 +1017,7 @@ export default function DebtPage() {
               });
             const totalMonthly = debts.reduce((s, d) => s + d.monthly, 0);
             return (
-              <div className="card p-4">
+              <div className={cn("card p-4", isBW && "card--parchment-panel")}>
                 <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-3 flex items-center gap-1.5">
                   <CreditCard size={10} />By Card
                 </p>
@@ -1074,7 +1074,7 @@ export default function DebtPage() {
 
           {/* Upcoming payments */}
           {debts.length > 0 && (
-            <div className="card p-4">
+            <div className={cn("card p-4", isBW && "card--parchment-panel")}>
               <div className="flex items-center gap-2 mb-3">
                 <Clock size={14} className="text-accent" />
                 <h3 className="font-semibold text-tx-1 text-sm">Upcoming Payments</h3>
@@ -1123,7 +1123,7 @@ export default function DebtPage() {
 
           {/* Interest insight */}
           {debts.length > 0 && stats.totalPayoff > 0 && (
-            <div className="card p-4" style={{ background: "linear-gradient(135deg, rgba(var(--color-warn),0.06) 0%, transparent 100%)", borderColor: "rgba(var(--color-warn),0.10)" }}>
+            <div className={cn("card p-4", isBW && "card--parchment-panel")} style={{ background: "linear-gradient(135deg, rgba(var(--color-warn),0.06) 0%, transparent 100%)", borderColor: "rgba(var(--color-warn),0.10)" }}>
               <div className="flex items-center gap-2 mb-2">
                 <BadgePoundSterling size={14} className="text-warn" />
                 <h3 className="font-semibold text-tx-1 text-sm">Interest Insight</h3>

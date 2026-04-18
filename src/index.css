@@ -117,6 +117,21 @@ html, body {
   --z-lightbox:    3000;
   --z-toast:       5000;
   --z-theme-flash: 9000;
+
+  /* Floating UI — tuned per theme below (.theme-bw overrides) */
+  --shadow-elevated:     0 16px 40px rgba(0, 0, 0, 0.55);
+  --shadow-elevated-soft: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-mobile-nav:   0 10px 28px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 250, 242, 0.35), 0 0 0 1px rgba(var(--accent-rgb), 0.06);
+  --shadow-fab:          0 8px 26px rgba(0, 0, 0, 0.36), 0 0 0 1px rgba(var(--accent-rgb), 0.2);
+  --shadow-fab-open:     0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(var(--accent-rgb), 0.35);
+  --overlay-scrim:       rgba(0, 0, 0, 0.55);
+  --overlay-scrim-soft:  rgba(0, 0, 0, 0.42);
+  --shadow-sheet-up:     0 -8px 40px rgba(0, 0, 0, 0.42);
+  /* Text on saturated semantic chips (loss / profit fills) */
+  --on-solid-emphasis:   #ffffff;
+
+  /* Depth for elevated session / map tiles */
+  --shadow-drop-md: 0 4px 20px rgba(0, 0, 0, 0.38);
 }
 
 html[data-density="compact"] {
@@ -148,7 +163,9 @@ html[data-density="compact"] {
   --accent-dim:   #8d6b41;
   --accent-rgb:   185,143,88;
 
-  --surface-rgb:  122, 97, 70;
+  /* Light “mist” for rgba(var(--surface-rgb), α) washes on cards (same role as dark theme).
+     Keep ledger ink for strokes in --border-rgb — do not use brown mist on parchment. */
+  --surface-rgb:  236, 228, 218;
   --border-rgb:   122, 97, 70;
 
   --bg-base-rgb: 243,237,228;
@@ -202,6 +219,17 @@ html[data-density="compact"] {
   --color-instr-cl:   #b98f58;
   --color-instr-gc:   #b29868;
   --color-instr-fallback: #8a7d6c;
+
+  /* Warmer, lighter shadows for paper — avoids “dark mode grey” on parchment */
+  --shadow-elevated:      0 20px 48px rgba(45, 38, 28, 0.11);
+  --shadow-elevated-soft: 0 14px 34px rgba(45, 38, 28, 0.09);
+  --shadow-mobile-nav:    0 12px 32px rgba(45, 38, 28, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 0 0 1px rgba(var(--border-rgb), 0.22);
+  --shadow-fab:           0 10px 28px rgba(45, 38, 28, 0.12), 0 0 0 1px rgba(var(--accent-rgb), 0.24);
+  --shadow-fab-open:      0 14px 36px rgba(45, 38, 28, 0.14), 0 0 0 1px rgba(var(--accent-rgb), 0.3);
+  --overlay-scrim:        rgba(31, 26, 20, 0.36);
+  --overlay-scrim-soft:   rgba(31, 26, 20, 0.26);
+  --shadow-sheet-up:      0 -10px 44px rgba(45, 38, 28, 0.1);
+  --shadow-drop-md:       0 4px 18px rgba(45, 38, 28, 0.1);
 }
 
 /* ── Suppress CSS transitions during theme switch ─────────────────────────────
@@ -225,6 +253,14 @@ html[data-density="compact"] {
    ──────────────────────────────────────────────────────────────────────────── */
 .theme-bw .bw-chart .recharts-surface {
   filter: grayscale(1) contrast(1.16) brightness(0.94);
+}
+
+/* Paper: Recharts defaults to a white SVG layer — reads as a “digital slab” on cream UI */
+.theme-bw .recharts-surface {
+  fill: transparent !important;
+}
+.theme-bw .recharts-wrapper {
+  background: transparent !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -305,6 +341,10 @@ html[data-density="compact"] {
     box-shadow: 0 0 0 4px rgba(168,180,204,0.15);
   }
 
+  html.theme-bw :focus-visible {
+    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.2);
+  }
+
   /* Nav links and buttons: slightly tighter radius */
   button:focus-visible,
   a:focus-visible {
@@ -383,9 +423,15 @@ html[data-density="compact"] {
     transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   }
   .theme-bw .card-primary {
-    background: #fdfcfb;
-    border-color: rgba(0,0,0,0.08);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    background:
+      radial-gradient(circle at top right, rgba(var(--surface-rgb),0.09), transparent 42%),
+      linear-gradient(180deg, rgba(var(--surface-rgb),0.06), rgba(var(--surface-rgb),0.02)),
+      var(--bg-card);
+    border-color: rgba(var(--border-rgb),0.11);
+    box-shadow:
+      0 10px 26px rgba(101, 74, 41, 0.08),
+      0 1px 2px rgba(101, 74, 41, 0.05),
+      inset 0 1px 0 rgba(255, 250, 242, 0.45);
   }
 
   /* Secondary: standard content cards */
@@ -399,8 +445,11 @@ html[data-density="compact"] {
     transition: background-color 0.3s ease, border-color 0.3s ease;
   }
   .theme-bw .card-secondary {
-    background: #fdfcfb;
-    border-color: rgba(0,0,0,0.06);
+    background:
+      linear-gradient(180deg, rgba(var(--surface-rgb),0.07), rgba(var(--surface-rgb),0.025)),
+      var(--bg-card);
+    border-color: rgba(var(--border-rgb),0.10);
+    box-shadow: 0 6px 18px rgba(101, 74, 41, 0.06), inset 0 1px 0 rgba(255, 250, 242, 0.35);
   }
 
   /* Tertiary: minimal ghost cards — quick actions, hints */
@@ -445,42 +494,111 @@ html[data-density="compact"] {
     box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(var(--surface-rgb),0.06);
   }
 
-  /* ── BW light-mode card background overrides ──────────────────────── */
-  .theme-bw {
-    --bg-base: #f5f3f0;
-    --bg-card: #fdfcfb;
-    --bg-elevated: #f8f6f3;
-  }
+  /* ── BW / Paper: cards stay in the same cream family as --bg-base (no near-white slabs) ── */
   .theme-bw .card,
   .theme-bw .card-hover {
-    background: #fdfcfb;
-    border-color: rgba(0,0,0,0.08);
+    background:
+      radial-gradient(circle at top right, rgba(var(--surface-rgb),0.07), transparent 40%),
+      linear-gradient(180deg, rgba(var(--surface-rgb),0.045), rgba(var(--surface-rgb),0.018)),
+      var(--bg-card);
+    border-color: rgba(var(--border-rgb),0.10);
+    box-shadow:
+      0 10px 26px rgba(101, 74, 41, 0.07),
+      0 1px 2px rgba(101, 74, 41, 0.04),
+      inset 0 1px 0 rgba(255, 250, 242, 0.42);
   }
   .theme-bw .card-hover:hover {
-    border-color: rgba(0,0,0,0.12);
-    background: #f8f6f3;
+    border-color: rgba(var(--border-rgb),0.16);
+    background:
+      radial-gradient(circle at top right, rgba(var(--surface-rgb),0.09), transparent 40%),
+      linear-gradient(180deg, rgba(var(--surface-rgb),0.065), rgba(var(--surface-rgb),0.028)),
+      var(--bg-elevated);
+    box-shadow:
+      0 12px 28px rgba(101, 74, 41, 0.09),
+      inset 0 1px 0 rgba(255, 250, 242, 0.5);
   }
 
-  /* Override dark-mode-only white-alpha backgrounds to subtle visible tints in light mode */
-  .theme-bw .hover\:bg-white\/\[0\.025\]:hover,
-  .theme-bw .hover\:bg-white\/\[0\.02\]:hover {
-    background: rgba(0,0,0,0.04) !important;
+  /* Main dashboard column: subtle dividers so sections don’t melt into the route background */
+  .theme-bw .dash-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
-  .theme-bw .bg-white\/\[0\.06\]  { background: rgba(0,0,0,0.04) !important; }
-  .theme-bw .bg-white\/\[0\.05\]  { background: rgba(0,0,0,0.03) !important; }
-  .theme-bw .bg-white\/\[0\.04\]  { background: rgba(0,0,0,0.03) !important; }
-  .theme-bw .bg-white\/\[0\.02\]  { background: rgba(0,0,0,0.02) !important; }
-  .theme-bw .bg-white\/\[0\.01\]  { background: rgba(0,0,0,0.015) !important; }
-  .theme-bw .bg-white\/\[0\.07\]  { background: rgba(0,0,0,0.05) !important; }
-  .theme-bw .bg-white\/\[0\.08\]  { background: rgba(0,0,0,0.06) !important; }
+  .theme-bw .dash-stack > *:not(:last-child) {
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(var(--border-rgb), 0.1);
+  }
 
-  /* card-hero light mode: remove dark gradient */
+  /* Right sidebar on dashboard — lift each card off the parchment */
+  .theme-bw .dash-sidebar-rail .card {
+    box-shadow:
+      0 2px 14px rgba(101, 74, 41, 0.07),
+      0 0 0 1px rgba(var(--border-rgb), 0.1);
+  }
+
+  /* Nested panels (Prop/Debt rows) — warmer than flat hover chips on paper */
+  .theme-bw .border-border-subtle.bg-bg-hover {
+    background: linear-gradient(
+      180deg,
+      rgba(var(--surface-rgb), 0.09),
+      rgba(var(--bg-elevated), 0.92)
+    ) !important;
+    border-color: rgba(var(--border-rgb), 0.12) !important;
+  }
+
+  /* Dashboard panels: recessed parchment (not a bright near-white slab on cream routes) */
+  .theme-bw .card.card--parchment-panel {
+    background:
+      radial-gradient(circle at 18% 0%, rgba(var(--accent-rgb), 0.08), transparent 44%),
+      linear-gradient(180deg, rgba(var(--bg-base-rgb), 0.72) 0%, rgba(var(--surface-rgb), 0.12) 55%, var(--bg-card) 100%);
+    border-color: rgba(var(--border-rgb), 0.11);
+    box-shadow:
+      0 8px 22px rgba(101, 74, 41, 0.065),
+      inset 0 1px 0 rgba(255, 250, 242, 0.34);
+  }
+
+  /* Portals / pickers / bottom sheets — recessed parchment, not flat near-white */
+  .menu-surface {
+    background: var(--bg-elevated);
+    border: 1px solid rgba(var(--border-rgb), 0.12);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+  .theme-bw .menu-surface {
+    background:
+      radial-gradient(circle at 14% 0%, rgba(var(--accent-rgb), 0.06), transparent 42%),
+      linear-gradient(180deg, rgba(var(--bg-base-rgb), 0.92) 0%, rgba(var(--surface-rgb), 0.2) 50%, var(--bg-card) 100%);
+    border-color: rgba(var(--border-rgb), 0.14);
+    box-shadow:
+      0 16px 42px rgba(101, 74, 41, 0.11),
+      inset 0 1px 0 rgba(255, 250, 242, 0.42);
+  }
+
+  .theme-bw .modal-backdrop {
+    background: var(--overlay-scrim);
+  }
+
+  .theme-bw .modal-action-bar {
+    background:
+      linear-gradient(180deg, rgba(var(--bg-base-rgb), 0) 0%, rgba(var(--bg-card-rgb), 0.55) 22%, rgba(var(--surface-rgb), 0.35) 100%);
+    border-top-color: rgba(var(--border-rgb), 0.14);
+  }
+
+  /* Muted chips in menus/settings — less brass wash on parchment */
+  .theme-bw .bg-accent-muted {
+    background-color: rgba(var(--border-rgb), 0.07) !important;
+  }
+  .theme-bw .bg-accent-glow {
+    background-color: rgba(var(--border-rgb), 0.11) !important;
+  }
+
+  /* card-hero: warm parchment stack (no pure white gradient stops) */
   .theme-bw .card-hero {
     background:
-      radial-gradient(circle at top right, rgba(185,143,88,0.12), transparent 34%),
-      linear-gradient(180deg, #fffaf2 0%, #f8f1e7 100%);
-    border-color: rgba(122,97,70,0.12);
-    box-shadow: 0 20px 42px rgba(101,74,41,0.09), 0 4px 10px rgba(101,74,41,0.05);
+      radial-gradient(circle at top right, rgba(185, 143, 88, 0.14), transparent 36%),
+      linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-card) 48%, var(--bg-base) 100%);
+    border-color: rgba(var(--border-rgb), 0.12);
+    box-shadow: 0 20px 42px rgba(101, 74, 41, 0.09), 0 4px 10px rgba(101, 74, 41, 0.05);
   }
 
   .theme-bw .card-glass {
@@ -642,11 +760,45 @@ html[data-density="compact"] {
     box-shadow: 0 14px 30px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.22);
     transform: translateY(-2px);
   }
+  .theme-bw .btn::after {
+    background: linear-gradient(120deg, transparent 0%, rgba(var(--surface-rgb), 0.16) 34%, transparent 72%);
+  }
+  .theme-bw .btn-primary {
+    box-shadow: 0 10px 28px rgba(101, 74, 41, 0.12), inset 0 1px 0 rgba(var(--surface-rgb), 0.28);
+  }
+  .theme-bw .btn-primary:hover {
+    box-shadow: 0 14px 30px rgba(101, 74, 41, 0.16), inset 0 1px 0 rgba(var(--surface-rgb), 0.34);
+  }
   .btn:hover::after {
     opacity: 1;
     transform: translateX(0);
   }
   .btn-primary:active { transform: translateY(0) scale(0.97); transition-duration: 80ms; }
+
+  /* Secondary outline — pairs with btn-success on cream/light routes (Add vs Record) */
+  .btn-accent-outline {
+    @apply btn;
+    color: var(--tx-1);
+    background: rgba(var(--accent-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-rgb), 0.32);
+    box-shadow: inset 0 1px 0 rgba(255, 250, 242, 0.2);
+    font-weight: 650;
+  }
+  .btn-accent-outline:hover {
+    background: rgba(var(--accent-rgb), 0.16);
+    border-color: rgba(var(--accent-rgb), 0.45);
+    color: var(--tx-1);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 26px rgba(101, 74, 41, 0.08);
+  }
+  .theme-bw .btn-accent-outline:hover {
+    box-shadow: 0 10px 26px rgba(101, 74, 41, 0.1);
+  }
+  .btn-accent-outline:active {
+    transform: translateY(0) scale(0.97);
+    transition-duration: 80ms;
+  }
+
   .btn-ghost {
     @apply btn;
     color: var(--tx-2);
@@ -705,6 +857,19 @@ html[data-density="compact"] {
 
   .modal-action-bar > * {
     min-height: 44px;
+  }
+
+  .theme-bw .modal-action-bar .btn-primary {
+    background: rgba(var(--border-rgb), 0.09);
+    color: var(--tx-1);
+    border: 1px solid rgba(var(--border-rgb), 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 250, 242, 0.35);
+  }
+  .theme-bw .modal-action-bar .btn-primary:hover {
+    background: rgba(var(--border-rgb), 0.13);
+    border-color: rgba(var(--border-rgb), 0.24);
+    color: var(--tx-1);
+    box-shadow: 0 8px 22px rgba(101, 74, 41, 0.08);
   }
 
   .task-empty {
@@ -1002,11 +1167,14 @@ html[data-density="compact"] {
 .shell-frame {
   width: min(100%, 104rem);
   margin-inline: auto;
+  border-radius: 0.5rem;
 }
 
 .route-stage {
   width: 100%;
   min-width: 0;
+  isolation: isolate;
+  contain: layout style;
 }
 
 @media (min-width: 768px) {
@@ -1017,6 +1185,7 @@ html[data-density="compact"] {
 
   .shell-frame {
     width: min(100%, 108rem);
+    border-radius: 0.75rem;
   }
 }
 
@@ -1027,6 +1196,7 @@ html[data-density="compact"] {
 
   .shell-frame {
     width: min(100%, 110rem);
+    border-radius: 1rem;
   }
 
   .modal-action-bar {

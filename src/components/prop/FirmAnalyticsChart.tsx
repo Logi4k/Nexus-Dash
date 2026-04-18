@@ -42,7 +42,7 @@ export function FirmAnalyticsChart({
   expenses: Expense[];
   withdrawals: Withdrawal[];
 }) {
-  const bw = useBWMode();
+  const isBW = useBWMode();
   const [sortBy, setSortBy] = useState<"net" | "spent" | "earned">("net");
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -77,14 +77,20 @@ export function FirmAnalyticsChart({
     [sorted]
   );
 
-  const totalSpent  = sorted.reduce((s, f) => s + f.spent,  0);
-  const totalEarned = sorted.reduce((s, f) => s + f.earned, 0);
-  const totalNet    = totalEarned - totalSpent;
+  const totalSpentAll = useMemo(
+    () => firmData.reduce((s, f) => s + f.spent, 0),
+    [firmData]
+  );
+  const totalEarnedAll = useMemo(
+    () => firmData.reduce((s, f) => s + f.earned, 0),
+    [firmData]
+  );
+  const totalNetAll = totalEarnedAll - totalSpentAll;
 
   if (firmData.length === 0) return null;
 
   return (
-    <div className="card p-5">
+    <div className={cn("card p-5", isBW && "card--parchment-panel")}>
       {/* Header with Collapse/Expand Button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
@@ -123,17 +129,53 @@ export function FirmAnalyticsChart({
         </div>
       </div>
 
-      {/* Totals strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-        {[
-          { label: "Total Spent",  value: totalSpent,  cls: "text-loss" },
-          { label: "Total Earned", value: totalEarned, cls: "text-profit" },
-          { label: "Net P&L",      value: totalNet,    cls: totalNet >= 0 ? "text-profit" : "text-loss" },
-        ].map((s) => (
-          <div key={s.label} className="rounded-lg p-2.5 bg-[rgba(var(--border-rgb),0.03)] border border-[rgba(var(--border-rgb),0.02)] text-center">
-            <p className="text-[10px] text-tx-4 mb-1">{s.label}</p>
-            <p className={cn("text-sm font-bold tabular-nums font-mono", s.cls)}>
-              {s.value >= 0 && s.label === "Net P&L" ? "+" : ""}{fmtGBP(s.value)}
+      {/* Totals strip — all firms; collapsed mobile = single compact bar */}
+      <div
+        className={cn(
+          "mb-4",
+          isCollapsed
+            ? "max-sm:flex max-sm:flex-row max-sm:overflow-hidden max-sm:rounded-lg max-sm:border max-sm:border-[rgba(var(--border-rgb),0.1)] max-sm:divide-x max-sm:divide-[rgba(var(--border-rgb),0.1)] max-sm:bg-[rgba(var(--border-rgb),0.02)] sm:grid sm:grid-cols-3 sm:gap-2 sm:rounded-none sm:border-0 sm:divide-x-0 sm:bg-transparent"
+            : "grid grid-cols-1 gap-2 sm:grid-cols-3",
+        )}
+      >
+        {([
+          { short: "Spent", label: "Total Spent", value: totalSpentAll, cls: "text-loss", showPlus: false },
+          { short: "Earned", label: "Total Earned", value: totalEarnedAll, cls: "text-profit", showPlus: false },
+          { short: "Net", label: "Net P&L", value: totalNetAll, cls: totalNetAll >= 0 ? "text-profit" : "text-loss", showPlus: true },
+        ] as const).map((s) => (
+          <div
+            key={s.label}
+            className={cn(
+              "text-center",
+              isCollapsed
+                ? "max-sm:flex max-sm:flex-1 max-sm:flex-col max-sm:justify-center max-sm:px-1 max-sm:py-1.5 sm:rounded-lg sm:border sm:border-[rgba(var(--border-rgb),0.06)] sm:bg-[rgba(var(--border-rgb),0.03)] sm:p-2.5"
+                : "rounded-lg border border-[rgba(var(--border-rgb),0.06)] bg-[rgba(var(--border-rgb),0.03)] p-2.5",
+            )}
+          >
+            <p
+              className={cn(
+                "text-tx-4 tabular-nums",
+                isCollapsed ? "max-sm:text-[8px] max-sm:font-bold max-sm:uppercase max-sm:tracking-wide max-sm:leading-none sm:mb-1 sm:text-[10px]" : "mb-1 text-[10px]",
+              )}
+            >
+              {isCollapsed ? (
+                <>
+                  <span className="sm:hidden">{s.short}</span>
+                  <span className="hidden sm:inline">{s.label}</span>
+                </>
+              ) : (
+                s.label
+              )}
+            </p>
+            <p
+              className={cn(
+                "font-bold tabular-nums font-mono leading-tight",
+                s.cls,
+                isCollapsed ? "max-sm:text-[11px] sm:text-sm" : "text-sm",
+              )}
+            >
+              {s.showPlus && s.value >= 0 ? "+" : ""}
+              {fmtGBP(s.value)}
             </p>
           </div>
         ))}
@@ -145,7 +187,7 @@ export function FirmAnalyticsChart({
           const spentPct  = (f.spent  / maxVal) * 100;
           const earnPct   = (f.earned / maxVal) * 100;
           const isProfit  = f.net >= 0;
-          const firmCol   = bwColor(getFirmColor(f.firm), bw);
+          const firmCol   = bwColor(getFirmColor(f.firm), isBW);
           return (
             <div key={f.firm} className="flex flex-col gap-1.5 rounded-xl px-3 py-2.5"
               style={{ background: `${firmCol}06`, border: `1px solid ${firmCol}14` }}>

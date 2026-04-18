@@ -15,3 +15,31 @@ export const PAGE_THEMES = {
 
 export type PageThemeKey = keyof typeof PAGE_THEMES;
 export type PageTheme = typeof PAGE_THEMES[PageThemeKey];
+
+/** Map URL path to the page theme key (longest-prefix wins before `/`). */
+export function getPageThemeKeyForPath(pathname: string): PageThemeKey {
+  const p = pathname || "/";
+  if (p === "/") return "dashboard";
+  const routes: [string, PageThemeKey][] = [
+    ["/market", "market"],
+    ["/journal", "journal"],
+    ["/ideas", "ideas"],
+    ["/prop", "prop"],
+    ["/expenses", "expenses"],
+    ["/debt", "debt"],
+    ["/tax", "tax"],
+    ["/investments", "investments"],
+  ];
+  for (const [prefix, key] of routes) {
+    if (p.startsWith(prefix)) return key;
+  }
+  return "dashboard";
+}
+
+/** `#rrggbb` → `r,g,b` for `rgba(var(--accent-rgb), a)` (6-digit hex only after BW transform). */
+export function hexToRgbTriplet(hex: string): string {
+  const h = hex.replace("#", "").slice(0, 6);
+  if (h.length !== 6 || !/^[0-9a-f]+$/i.test(h)) return "196,160,107";
+  const n = parseInt(h, 16);
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+}

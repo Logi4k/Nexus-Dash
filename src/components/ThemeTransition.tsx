@@ -27,12 +27,14 @@ function getBaseBg(): string {
  * Previous versions of this module set vars via style.setProperty which
  * persist across toggles and conflict with the CSS cascade — clean them up.
  */
+const PRESERVED_ROOT_VARS = new Set(["--accent", "--accent-rgb", "--accent-bright", "--accent-dim"]);
+
 function clearInlineVars() {
   const root = document.documentElement;
   const toRemove: string[] = [];
   for (let i = 0; i < root.style.length; i++) {
     const prop = root.style[i];
-    if (prop.startsWith("--")) toRemove.push(prop);
+    if (prop.startsWith("--") && !PRESERVED_ROOT_VARS.has(prop)) toRemove.push(prop);
   }
   toRemove.forEach(p => root.style.removeProperty(p));
 }
