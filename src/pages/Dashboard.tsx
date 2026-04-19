@@ -492,7 +492,7 @@ export default function Dashboard() {
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
           style={{
             width: 400, height: 400, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(196,160,107,0.15) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(var(--accent-rgb), 0.15) 0%, transparent 70%)",
           }}
         />
         <motion.div
@@ -510,7 +510,7 @@ export default function Dashboard() {
           transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
           style={{
             width: 180, height: 180, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(127,153,172,0.08) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(var(--color-blue-rgb), 0.08) 0%, transparent 70%)",
           }}
         />
 
@@ -560,9 +560,9 @@ export default function Dashboard() {
                 <span
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                   style={{
-                    background: "rgba(239,68,68,0.12)",
+                    background: "rgba(var(--color-loss-rgb), 0.12)",
                     color: LOSS,
-                    border: "1px solid rgba(239,68,68,0.2)",
+                    border: "1px solid rgba(var(--color-loss-rgb), 0.2)",
                   }}
                 >
                   <CreditCard size={8} />
@@ -572,9 +572,9 @@ export default function Dashboard() {
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                 style={{
-                  background: "rgba(196,160,107,0.14)",
+                  background: "rgba(var(--accent-rgb), 0.14)",
                   color: ACCENT,
-                  border: "1px solid rgba(196,160,107,0.22)",
+                  border: "1px solid rgba(var(--accent-rgb), 0.22)",
                 }}
               >
                 <Activity size={8} />
@@ -583,7 +583,7 @@ export default function Dashboard() {
               {stats.totalMonths > 0 && (
                 <span
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  style={{ background: "rgba(127,153,172,0.12)", color: BLUE, border: "1px solid rgba(127,153,172,0.22)" }}
+                  style={{ background: "rgba(var(--color-blue-rgb), 0.12)", color: BLUE, border: "1px solid rgba(var(--color-blue-rgb), 0.22)" }}
                 >
                   <Target size={8} />
                   {stats.winRateMonths.toFixed(0)}% monthly win rate
@@ -592,7 +592,7 @@ export default function Dashboard() {
               {stats.streak >= 2 && (
                 <span
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  style={{ background: "rgba(185,137,102,0.12)", color: ORANGE, border: "1px solid rgba(185,137,102,0.22)" }}
+                  style={{ background: "rgba(var(--color-orange-rgb), 0.12)", color: ORANGE, border: "1px solid rgba(var(--color-orange-rgb), 0.22)" }}
                 >
                   <Flame size={8} />
                   {stats.streak}mo streak
@@ -951,16 +951,16 @@ export default function Dashboard() {
             {stats.monthlyChart.length > 0 ? ((isBW: boolean) => {
               const bgIncome = isBW
                 ? "color-mix(in srgb, var(--color-profit-bg) 28%, var(--bg-elevated))"
-                : "rgba(34,197,94,0.07)";
+                : "rgba(var(--color-profit-rgb), 0.07)";
               const bgCost = isBW
                 ? "color-mix(in srgb, var(--color-loss-bg) 28%, var(--bg-elevated))"
-                : "rgba(239,68,68,0.07)";
+                : "rgba(var(--color-loss-rgb), 0.07)";
               const bdrIncome = isBW
                 ? "color-mix(in srgb, var(--color-profit-border) 55%, rgba(var(--border-rgb),0.14))"
-                : "rgba(34,197,94,0.18)";
+                : "rgba(var(--color-profit-rgb), 0.18)";
               const bdrCost = isBW
                 ? "color-mix(in srgb, var(--color-loss-border) 55%, rgba(var(--border-rgb),0.14))"
-                : "rgba(239,68,68,0.18)";
+                : "rgba(var(--color-loss-rgb), 0.18)";
               const stripProfit = isBW
                 ? "color-mix(in srgb, var(--color-profit) 38%, var(--tx-2))"
                 : "var(--color-profit)";
@@ -994,7 +994,7 @@ export default function Dashboard() {
                         : `linear-gradient(180deg, ${ACCENT}10 0%, rgba(var(--surface-rgb),0.02) 44%, rgba(var(--surface-rgb),0.03) 100%)`,
                       border: "1px solid rgba(var(--border-rgb),0.10)",
                       boxShadow: isBW
-                        ? "inset 0 1px 0 rgba(255, 250, 242, 0.22)"
+                        ? "inset 0 1px 0 rgba(var(--surface-rgb),0.22)"
                         : "inset 0 1px 0 rgba(var(--surface-rgb),0.06)",
                     }}
                   >

@@ -12,12 +12,17 @@ import {
   ArrowDownToLine,
   AlertTriangle,
   LogOut,
-  Target,
 } from "lucide-react";
 import { toast } from "sonner";
 import Modal from "@/components/Modal";
 import AvatarCropModal from "@/components/AvatarCropModal";
 import { forcePullFromCloud, syncNow, useAppData, useSyncStatus } from "@/lib/store";
+import {
+  scopedGetItem,
+  scopedSetItem,
+  scopedRemoveItem,
+  listAllScopedKeys,
+} from "@/lib/userScope";
 import { supabase } from "@/lib/supabase";
 import { deleteAvatar, uploadAvatar } from "@/lib/avatarStorage";
 import {
@@ -184,16 +189,13 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [subscriptionAlertsEnabled, setSubscriptionAlertsEnabled] = useState(
     () => data.userSettings?.subscriptionAlertsEnabled ?? true
   );
-  const [quarterlyFocus, setQuarterlyFocus] = useState(
-    () => data.userSettings?.quarterlyFocus ?? ""
-  );
-  const [quarterlyMetricTarget, setQuarterlyMetricTarget] = useState(
-    () => data.userSettings?.quarterlyMetricTarget ?? ""
+  const [debtReminderDays, setDebtReminderDays] = useState<number>(
+    () => data.userSettings?.debtReminderDays ?? 7
   );
   const [theme, setTheme] = useState<"dark" | "bw">(
     () => data.userSettings?.theme ?? "dark"
   );
-  const [density, setDensity] = useState<"comfortable" | "compact">(
+  const [density, setDensity] = useState<"comfortable" | "compact" | "spacious">(
     () => data.userSettings?.density ?? "comfortable"
   );
   const [mobileNavItems, setMobileNavItems] = useState<MobileNavItemId[]>(
@@ -218,8 +220,7 @@ export default function SettingsModal({ open, onClose }: Props) {
     setAvatarUrl(data.userProfile?.avatarUrl);
     setRenewalDays(data.userSettings?.subscriptionRenewalDays ?? 7);
     setSubscriptionAlertsEnabled(data.userSettings?.subscriptionAlertsEnabled ?? true);
-    setQuarterlyFocus(data.userSettings?.quarterlyFocus ?? "");
-    setQuarterlyMetricTarget(data.userSettings?.quarterlyMetricTarget ?? "");
+    setDebtReminderDays(data.userSettings?.debtReminderDays ?? 7);
     setTheme(data.userSettings?.theme ?? "dark");
     setDensity(data.userSettings?.density ?? "comfortable");
     setMobileNavItems(
@@ -229,7 +230,7 @@ export default function SettingsModal({ open, onClose }: Props) {
     );
     setImportPreview(null);
     try {
-      const raw = localStorage.getItem(LAST_IMPORT_BACKUP_KEY);
+      const raw = scopedGetItem(LAST_IMPORT_BACKUP_KEY);
       if (!raw) {
         setLastImportBackupAt(null);
         return;
@@ -303,8 +304,7 @@ export default function SettingsModal({ open, onClose }: Props) {
         ...(prev.userSettings ?? {}),
         subscriptionRenewalDays: renewalDays,
         subscriptionAlertsEnabled,
-        quarterlyFocus: quarterlyFocus.trim() || undefined,
-        quarterlyMetricTarget: quarterlyMetricTarget.trim() || undefined,
+        debtReminderDays,
         theme,
         density,
         mobileNavItems,
@@ -331,8 +331,7 @@ export default function SettingsModal({ open, onClose }: Props) {
         ...(prev.userSettings ?? {}),
         subscriptionRenewalDays: 7,
         subscriptionAlertsEnabled: true,
-        quarterlyFocus: undefined,
-        quarterlyMetricTarget: undefined,
+        debtReminderDays: 7,
         onboardingChecklistDismissed: false,
         theme: "dark",
         density: "comfortable",
@@ -397,12 +396,9 @@ export default function SettingsModal({ open, onClose }: Props) {
     if (!importPreview) return;
     const savedAt = new Date().toISOString();
     try {
-      localStorage.setItem(
+      scopedSetItem(
         LAST_IMPORT_BACKUP_KEY,
-        JSON.stringify({
-          savedAt,
-          data,
-        }),
+        JSON.stringify({ savedAt, data }),
       );
       setLastImportBackupAt(savedAt);
     } catch {
@@ -416,7 +412,7 @@ export default function SettingsModal({ open, onClose }: Props) {
 
   function rollbackLastImport() {
     try {
-      const raw = localStorage.getItem(LAST_IMPORT_BACKUP_KEY);
+      const raw = scopedGetItem(LAST_IMPORT_BACKUP_KEY);
       if (!raw) {
         toast.error("No import rollback snapshot is available.");
         return;
@@ -428,7 +424,7 @@ export default function SettingsModal({ open, onClose }: Props) {
       }
       const rollbackData = parsed.data;
       update(() => rollbackData);
-      localStorage.removeItem(LAST_IMPORT_BACKUP_KEY);
+      scopedRemoveItem(LAST_IMPORT_BACKUP_KEY);
       setLastImportBackupAt(null);
       toast.success("Rolled back the last import.");
       onClose();
@@ -560,28 +556,30 @@ export default function SettingsModal({ open, onClose }: Props) {
             {/* Avatar + username row */}
             <div className="flex items-center gap-3 mb-4">
               <div className="relative flex-shrink-0 group">
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-base select-none overflow-hidden cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label={avatarUrl ? "Replace avatar photo" : "Upload avatar photo"}
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-base select-none overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent"
                   style={avatarUrl ? {} : {
                     background: avatarColor + "20",
                     border: `2px solid ${avatarColor}50`,
                     color: avatarColor,
                   }}
-                  onClick={() => fileInputRef.current?.click()}
                   title="Upload photo"
                 >
                   {avatarUrl
                     ? <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
                     : initials
                   }
-                </div>
-                <div
-                  className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  style={{ background: "rgba(0,0,0,0.55)" }}
-                  onClick={() => fileInputRef.current?.click()}
+                </button>
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: "var(--overlay-scrim)" }}
                 >
                   <Camera size={13} className="text-tx-1" />
-                </div>
+                </span>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
               </div>
               <div className="flex-1 min-w-0">
@@ -603,21 +601,28 @@ export default function SettingsModal({ open, onClose }: Props) {
                 <label className="text-[9px] font-medium mb-2 flex items-center gap-1.5 text-tx-4">
                   Avatar colour
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {AVATAR_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setAvatarColor(color)}
-                      className="w-8 h-8 rounded-xl transition-all flex items-center justify-center flex-shrink-0"
-                      style={{
-                        background: color,
-                        transform: avatarColor === color ? "scale(1.18)" : "scale(1)",
-                        boxShadow: avatarColor === color ? `0 0 10px ${color}80` : "none",
-                        outline: avatarColor === color ? `2px solid ${color}` : "none",
-                        outlineOffset: "2px",
-                      }}
-                    />
-                  ))}
+                <div role="radiogroup" aria-label="Avatar colour" className="flex flex-wrap gap-2">
+                  {AVATAR_COLORS.map((color) => {
+                    const isActive = avatarColor === color;
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        role="radio"
+                        aria-checked={isActive}
+                        aria-label={`Use avatar colour ${color}`}
+                        onClick={() => setAvatarColor(color)}
+                        className="w-8 h-8 rounded-xl transition-all flex items-center justify-center flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent"
+                        style={{
+                          background: color,
+                          transform: isActive ? "scale(1.18)" : "scale(1)",
+                          boxShadow: isActive ? `0 0 10px ${color}80` : "none",
+                          outline: isActive ? `2px solid ${color}` : "none",
+                          outlineOffset: "2px",
+                        }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -626,7 +631,7 @@ export default function SettingsModal({ open, onClose }: Props) {
           {/* ── Notifications Card ── */}
           <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(var(--border-rgb),0.05)", background: "rgba(var(--surface-rgb),0.02)" }}>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(245,158,11,0.12)" }}>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(var(--color-warn-rgb), 0.12)" }}>
                 <Bell size={13} style={{ color: "var(--color-warn)" }} />
               </div>
               <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-tx-4">Notifications</span>
@@ -658,11 +663,14 @@ export default function SettingsModal({ open, onClose }: Props) {
             </div>
 
             <div className="mt-4 pt-3" style={{ borderTop: "1px solid rgba(var(--border-rgb),0.05)" }}>
-              <p className="text-[10px] font-medium mb-2 text-tx-4">Renewal notice</p>
-              <div className="flex flex-wrap gap-1.5">
+              <p className="text-[10px] font-medium mb-2 text-tx-4">Subscription renewal notice</p>
+              <div role="radiogroup" aria-label="Subscription renewal notice lead time" className="flex flex-wrap gap-1.5">
                 {RENEWAL_DAYS_OPTIONS.map(({label, value}) => (
                   <button
                     key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={renewalDays === value}
                     onClick={() => setRenewalDays(value)}
                     className={cn(
                       "px-3 py-1.5 rounded-xl text-[10px] font-semibold transition-all border",
@@ -677,33 +685,30 @@ export default function SettingsModal({ open, onClose }: Props) {
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* ── Quarterly focus ── */}
-          <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(var(--border-rgb),0.05)", background: "rgba(var(--surface-rgb),0.02)" }}>
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(14,184,154,0.12)" }}>
-                <Target size={13} style={{ color: "var(--color-accent)" }} />
+            <div className="mt-4 pt-3" style={{ borderTop: "1px solid rgba(var(--border-rgb),0.05)" }}>
+              <p className="text-[10px] font-medium mb-2 text-tx-4">Debt payment notice</p>
+              <div role="radiogroup" aria-label="Debt payment notice lead time" className="flex flex-wrap gap-1.5">
+                {RENEWAL_DAYS_OPTIONS.map(({label, value}) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={debtReminderDays === value}
+                    onClick={() => setDebtReminderDays(value)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-[10px] font-semibold transition-all border",
+                      debtReminderDays === value
+                        ? "bg-accent-muted border-border-accent text-tx-1"
+                        : "bg-transparent text-tx-4"
+                    )}
+                    style={debtReminderDays !== value ? { border: "1px solid rgba(var(--border-rgb),0.07)" } : undefined}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-tx-4">Quarterly focus</span>
             </div>
-            <p className="text-[10px] text-tx-4 mb-3">
-              Shown on your dashboard as a lightweight north star (not financial advice).
-            </p>
-            <label className="text-[9px] font-medium mb-1.5 block text-tx-4">This quarter I am focused on</label>
-            <input
-              className="nx-input w-full text-xs mb-3"
-              placeholder="e.g. Risk-first evals, fewer revenge trades"
-              value={quarterlyFocus}
-              onChange={(e) => setQuarterlyFocus(e.target.value)}
-            />
-            <label className="text-[9px] font-medium mb-1.5 block text-tx-4">Target metric (optional)</label>
-            <input
-              className="nx-input w-full text-xs"
-              placeholder="e.g. 3 funded payouts, journal 20+ days"
-              value={quarterlyMetricTarget}
-              onChange={(e) => setQuarterlyMetricTarget(e.target.value)}
-            />
           </div>
 
           {/* ── Appearance Card ── */}
@@ -746,19 +751,27 @@ export default function SettingsModal({ open, onClose }: Props) {
                 <p className="text-xs font-medium text-tx-2">Density</p>
                 <p className="text-[10px] mt-0.5 text-tx-3">Choose a roomy or compact workspace</p>
               </div>
-              <div className="flex items-center rounded-xl p-0.5" style={{ background: "rgba(var(--surface-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.06)" }}>
-                {(["comfortable","compact"] as const).map(v => (
+              <div
+                role="radiogroup"
+                aria-label="Density"
+                className="flex items-center rounded-xl p-0.5"
+                style={{ background: "rgba(var(--surface-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.06)" }}
+              >
+                {(["compact","comfortable","spacious"] as const).map(v => (
                   <button
                     key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={density === v}
                     onClick={() => setDensity(v)}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all",
+                      "px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all capitalize",
                       density === v
                         ? "bg-accent-muted border border-border-accent text-tx-1"
                         : "text-tx-3 border border-transparent"
                     )}
                   >
-                    {v === "comfortable" ? "Comfort" : "Compact"}
+                    {v === "comfortable" ? "Comfort" : v === "compact" ? "Compact" : "Spacious"}
                   </button>
                 ))}
               </div>
@@ -818,7 +831,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                 onClick={handleSyncNow}
                 disabled={!syncStatus.enabled || syncStatus.syncInFlight}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold transition-all"
-                style={{ background: "rgba(107,155,191,0.15)", border: "1px solid rgba(107,155,191,0.25)", color: "var(--tx-1)" }}
+                style={{ background: "rgba(var(--color-blue-rgb), 0.15)", border: "1px solid rgba(var(--color-blue-rgb), 0.25)", color: "var(--tx-1)" }}
               >
                 <RefreshCw size={11} className={syncStatus.syncInFlight ? "animate-spin" : ""} />
                 {syncStatus.syncInFlight ? "Syncing..." : "Sync now"}
@@ -857,7 +870,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                   window.location.reload();
                 }}
                 className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold transition-all"
-                style={{ background: "rgba(107,155,191,0.15)", border: "1px solid rgba(107,155,191,0.25)", color: "var(--tx-1)" }}
+                style={{ background: "rgba(var(--color-blue-rgb), 0.15)", border: "1px solid rgba(var(--color-blue-rgb), 0.25)", color: "var(--tx-1)" }}
               >
                 <LogOut size={11} />
                 Sign in
@@ -1044,7 +1057,7 @@ export default function SettingsModal({ open, onClose }: Props) {
           {/* ── Import / Export Data ── */}
           <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(var(--border-rgb),0.05)", background: "rgba(var(--surface-rgb),0.02)" }}>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(245,158,11,0.12)" }}>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(var(--color-warn-rgb), 0.12)" }}>
                 <Download size={13} style={{ color: "var(--color-warn)" }} />
               </div>
               <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-tx-4">Import & Export</span>
@@ -1113,27 +1126,54 @@ export default function SettingsModal({ open, onClose }: Props) {
           </div>
 
           {/* ── Danger Zone ── */}
-          <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(239,68,68,0.1)", background: "rgba(239,68,68,0.02)" }}>
+          <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(var(--color-loss-rgb), 0.1)", background: "rgba(var(--color-loss-rgb), 0.02)" }}>
             <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-loss">Danger Zone</span>
             <p className="text-[10px] mt-1 mb-3 text-tx-4">Permanently delete all data on this device. This cannot be undone.</p>
             <button
               onClick={() => {
                 if (window.confirm("This will permanently delete ALL data on this device and sign you out. Are you sure?")) {
-                  // Clear all Nexus localStorage keys
-                  const keysToClear = [
+                  // Per-user (scoped) keys — wipe every namespace so no other
+                  // account on this browser profile is left with stale data.
+                  const scopedBases = [
                     "nexus_data",
                     "nexus_savedAt",
                     "nexus_custom_instruments",
                     "nexus_custom_sessions",
                     "nexus_custom_firms",
                     "nexus_custom_cats",
+                    "nexus_last_import_backup",
+                    "nexus.t212ApiKey",
+                    "nexus_trade_draft",
+                  ];
+                  for (const base of scopedBases) {
+                    scopedRemoveItem(base, { allScopes: true });
+                    // scopedRemoveItem({allScopes}) also strips the legacy
+                    // unscoped key, but list+clear any stragglers just in case.
+                    for (const k of listAllScopedKeys(base)) localStorage.removeItem(k);
+                  }
+
+                  // Device-level keys: also clear so next launch is fresh.
+                  const deviceKeys = [
                     "nexus.offlineMode",
                     "nexus_tax_goal_override",
                     "nexus_tax_salary",
                     "nexus_tax_saved",
                     "sidebarCollapsed",
                   ];
-                  for (const key of keysToClear) localStorage.removeItem(key);
+                  for (const key of deviceKeys) localStorage.removeItem(key);
+
+                  // Namespaced sync timestamps (nexus.syncedAt.<userId>).
+                  try {
+                    const toRemove: string[] = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                      const k = localStorage.key(i);
+                      if (!k) continue;
+                      if (k.startsWith("nexus.syncedAt.")) toRemove.push(k);
+                    }
+                    for (const k of toRemove) localStorage.removeItem(k);
+                  } catch {
+                    // swallow — localStorage unavailable
+                  }
 
                   // Sign out of Supabase so next launch starts fresh
                   void supabase.auth.signOut().finally(() => {

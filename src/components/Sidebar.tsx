@@ -154,13 +154,25 @@ export default function Sidebar({
                 {fmtGBP(netWorth)}
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1.5">
-                <div className="rounded-lg p-2" style={{ background: bwColor("rgba(34,197,94,0.1)", isBW), border: `1px solid ${bwColor("rgba(34,197,94,0.18)", isBW)}` }}>
-                  <div className="text-[9px] font-medium mb-0.5" style={{ color: bwColor("rgba(34,197,94,0.65)", isBW) }}>Funded</div>
-                  <div className="text-base font-black leading-none" style={{ color: bwColor("var(--color-profit)", isBW) }}>{activeFunded}</div>
+                <div
+                  className="rounded-lg p-2"
+                  style={{
+                    background: "rgba(var(--color-profit-rgb), 0.10)",
+                    border: "1px solid rgba(var(--color-profit-rgb), 0.18)",
+                  }}
+                >
+                  <div className="text-[9px] font-medium mb-0.5" style={{ color: "rgba(var(--color-profit-rgb), 0.75)" }}>Funded</div>
+                  <div className="text-base font-black leading-none text-profit">{activeFunded}</div>
                 </div>
-                <div className="rounded-lg p-2" style={{ background: bwColor("rgba(251,191,36,0.08)", isBW), border: `1px solid ${bwColor("rgba(251,191,36,0.16)", isBW)}` }}>
-                  <div className="text-[9px] font-medium mb-0.5" style={{ color: bwColor("rgba(245,158,11,0.65)", isBW) }}>Challenges</div>
-                  <div className="text-base font-black leading-none" style={{ color: bwColor("var(--color-warn)", isBW) }}>{activeChallenges}</div>
+                <div
+                  className="rounded-lg p-2"
+                  style={{
+                    background: "rgba(var(--color-warn-rgb), 0.10)",
+                    border: "1px solid rgba(var(--color-warn-rgb), 0.18)",
+                  }}
+                >
+                  <div className="text-[9px] font-medium mb-0.5" style={{ color: "rgba(var(--color-warn-rgb), 0.75)" }}>Challenges</div>
+                  <div className="text-base font-black leading-none text-warn">{activeChallenges}</div>
                 </div>
               </div>
             </div>

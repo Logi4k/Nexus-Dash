@@ -76,14 +76,14 @@ export function TradingInsightsSidebar({
             )}
             style={{
               background: isPos
-                ? "linear-gradient(135deg, rgba(34,197,94,0.07) 0%, transparent 60%)"
-                : "linear-gradient(135deg, rgba(239,68,68,0.07) 0%, transparent 60%)",
-              borderColor: isPos ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)",
+                ? "linear-gradient(135deg, rgba(var(--color-profit-rgb), 0.07) 0%, transparent 60%)"
+                : "linear-gradient(135deg, rgba(var(--color-loss-rgb), 0.07) 0%, transparent 60%)",
+              borderColor: isPos ? "rgba(var(--color-profit-rgb), 0.18)" : "rgba(var(--color-loss-rgb), 0.18)",
             }}
           >
             {/* Big background ROI % watermark */}
             <div className="absolute right-2 top-1 text-[52px] font-black tabular-nums select-none pointer-events-none"
-              style={{ color: isPos ? "rgba(34,197,94,0.07)" : "rgba(239,68,68,0.07)", lineHeight: 1 }}
+              style={{ color: isPos ? "rgba(var(--color-profit-rgb), 0.07)" : "rgba(var(--color-loss-rgb), 0.07)", lineHeight: 1 }}
             >
               {roiPct >= 0 ? "+" : ""}{roiPct.toFixed(0)}%
             </div>
@@ -99,9 +99,9 @@ export function TradingInsightsSidebar({
             <div className="flex items-center gap-2 mb-3">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                 style={{
-                  background: isPos ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+                  background: isPos ? "rgba(var(--color-profit-rgb), 0.12)" : "rgba(var(--color-loss-rgb), 0.12)",
                   color: isPos ? "var(--color-teal)" : "var(--color-loss)",
-                  border: `1px solid ${isPos ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+                  border: `1px solid ${isPos ? "rgba(var(--color-profit-rgb), 0.2)" : "rgba(var(--color-loss-rgb), 0.2)"}`,
                 }}
               >
                 {roiPct >= 0 ? "+" : ""}{roiPct.toFixed(1)}% ROI
@@ -185,7 +185,7 @@ export function TradingInsightsSidebar({
         return (
           <div
             className={cn("card relative overflow-hidden p-4", isBW && "card--parchment-panel")}
-            style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.05) 0%, transparent 60%)" }}
+            style={{ background: "linear-gradient(135deg, rgba(var(--color-warn-rgb), 0.05) 0%, transparent 60%)" }}
           >
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
@@ -207,9 +207,9 @@ export function TradingInsightsSidebar({
               {rate !== null && (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full mb-1"
                   style={{
-                    background: rate >= 50 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.1)",
+                    background: rate >= 50 ? "rgba(var(--color-warn-rgb), 0.12)" : "rgba(var(--color-loss-rgb), 0.1)",
                     color: rate >= 50 ? "var(--color-warn)" : "var(--color-loss)",
-                    border: `1px solid ${rate >= 50 ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.2)"}`,
+                    border: `1px solid ${rate >= 50 ? "rgba(var(--color-warn-rgb), 0.25)" : "rgba(var(--color-loss-rgb), 0.2)"}`,
                   }}>
                   {passes}/{total}
                 </span>
@@ -337,9 +337,9 @@ export function TradingInsightsSidebar({
             <span className="text-[11px] text-tx-3 font-medium">Challenge Pass Rate</span>
             <span className="text-sm font-bold px-2.5 py-1 rounded-lg tabular-nums"
               style={{
-                background: passRate >= 50 ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)",
+                background: passRate >= 50 ? "rgba(var(--color-profit-rgb), 0.1)" : "rgba(var(--color-warn-rgb), 0.1)",
                 color: passRate >= 50 ? "var(--color-teal)" : "var(--color-warn)",
-                border: `1px solid ${passRate >= 50 ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)"}`,
+                border: `1px solid ${passRate >= 50 ? "rgba(var(--color-profit-rgb), 0.2)" : "rgba(var(--color-warn-rgb), 0.2)"}`,
               }}>
               {passRate.toFixed(0)}%
             </span>

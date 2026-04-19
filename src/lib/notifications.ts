@@ -114,7 +114,15 @@ function buildPropNotifications(data: AppData): AppNotification[] {
 }
 
 function buildDebtNotifications(data: AppData): AppNotification[] {
-  const leadDays = Math.max(7, data.userSettings?.subscriptionRenewalDays ?? 7);
+  // Debt reminders use their own lead-time, falling back to subscriptionRenewalDays
+  // for existing users that haven't configured one. Minimum of 3 days to avoid
+  // missing imminent payments.
+  const leadDays = Math.max(
+    3,
+    data.userSettings?.debtReminderDays
+      ?? data.userSettings?.subscriptionRenewalDays
+      ?? 7,
+  );
   const allDebts: Debt[] = [...(data.debts ?? []), ...(data.otherDebts ?? [])];
 
   return allDebts

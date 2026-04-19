@@ -237,7 +237,7 @@ export function AccountCard({
           <button
             onClick={handleConfirmDelete}
             className="rounded px-2 py-1 text-[10px] font-semibold transition-colors"
-            style={{ background: "rgba(239,68,68,0.15)", color: "var(--color-loss)", border: "1px solid rgba(239,68,68,0.2)" }}
+            style={{ background: "rgba(var(--color-loss-rgb), 0.15)", color: "var(--color-loss)", border: "1px solid rgba(var(--color-loss-rgb), 0.2)" }}
           >
             Confirm
           </button>

@@ -81,6 +81,7 @@ import {
   prevDay,
   todayISO,
 } from "@/lib/journal";
+import { scopedGetItem, scopedSetItem, scopedRemoveItem } from "@/lib/userScope";
 import { useBWMode, bwColor, bwPageTheme } from "@/lib/useBWMode";
 import { ChartTooltipCard } from "@/components/ui/chart-tooltip-card";
 import Modal from "@/components/Modal";
@@ -179,7 +180,7 @@ export default function Journal() {
       setPendingImages([]);
       setOriginalImageIds([]);
       setTagInput("");
-      const draft = localStorage.getItem(DRAFT_KEY);
+      const draft = scopedGetItem(DRAFT_KEY);
       if (draft) {
         try {
           const parsed = JSON.parse(draft);
@@ -237,7 +238,7 @@ export default function Journal() {
   useEffect(() => {
     if (!addTradeOpen || editTradeId) return;
     const timer = setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(tradeForm));
+      scopedSetItem(DRAFT_KEY, JSON.stringify(tradeForm));
     }, 500);
     return () => clearTimeout(timer);
   }, [tradeForm, addTradeOpen, editTradeId]);
@@ -720,7 +721,7 @@ export default function Journal() {
       setCustomSessions(loadCustomSessions());
     }
 
-    localStorage.removeItem(DRAFT_KEY);
+    scopedRemoveItem(DRAFT_KEY);
     setAddTradeOpen(false);
     setPendingImages([]);
     setOriginalImageIds([]);
@@ -844,7 +845,7 @@ export default function Journal() {
     setPendingImages([]);
     setOriginalImageIds([]);
     setTagInput("");
-    const draft = localStorage.getItem(DRAFT_KEY);
+    const draft = scopedGetItem(DRAFT_KEY);
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
@@ -862,7 +863,7 @@ export default function Journal() {
   function closeTradeModal() {
     // If cancelling an edit, don't delete the images – they already existed
     // If cancelling a new trade, discard any pending (not yet saved to IndexedDB)
-    localStorage.removeItem(DRAFT_KEY);
+    scopedRemoveItem(DRAFT_KEY);
     setPendingImages([]);
     setOriginalImageIds([]);
     setTagInput("");
@@ -1181,7 +1182,7 @@ export default function Journal() {
               {allStats.winRate !== null && (
                 <span
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ background: bwColor("rgba(59,130,246,0.07)", isBW), border: `1px solid ${bwColor("rgba(59,130,246,0.15)", isBW)}`, color: bwColor("#60a5fa", isBW) }}
+                  style={{ background: bwColor("rgba(var(--color-blue-rgb), 0.07)", isBW), border: `1px solid ${bwColor("rgba(var(--color-blue-rgb), 0.15)", isBW)}`, color: bwColor("#60a5fa", isBW) }}
                 >
                   <Target size={11} />
                   {allStats.winRate.toFixed(0)}% WR
@@ -1190,8 +1191,8 @@ export default function Journal() {
               <span
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{
-                  background: allStats.net >= 0 ? bwColor("rgba(34,197,94,0.07)", isBW) : bwColor("rgba(239,68,68,0.07)", isBW),
-                  border: `1px solid ${allStats.net >= 0 ? bwColor("rgba(34,197,94,0.2)", isBW) : bwColor("rgba(239,68,68,0.2)", isBW)}`,
+                  background: allStats.net >= 0 ? bwColor("rgba(var(--color-profit-rgb), 0.07)", isBW) : bwColor("rgba(var(--color-loss-rgb), 0.07)", isBW),
+                  border: `1px solid ${allStats.net >= 0 ? bwColor("rgba(var(--color-profit-rgb), 0.2)", isBW) : bwColor("rgba(var(--color-loss-rgb), 0.2)", isBW)}`,
                   color: allStats.net >= 0 ? bwColor(PROFIT, isBW) : bwColor(LOSS, isBW),
                 }}
               >
@@ -1201,7 +1202,7 @@ export default function Journal() {
               {allStats.profitFactor !== null && (
                 <span
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ background: bwColor("rgba(167,139,250,0.07)", isBW), border: `1px solid ${bwColor("rgba(167,139,250,0.15)", isBW)}`, color: bwColor("#a78bfa", isBW) }}
+                  style={{ background: bwColor("rgba(var(--color-purple-rgb), 0.07)", isBW), border: `1px solid ${bwColor("rgba(var(--color-purple-rgb), 0.15)", isBW)}`, color: bwColor("#a78bfa", isBW) }}
                   title={Number.isFinite(allStats.profitFactor) ? undefined : "Profit Factor — no losing trades recorded"}
                 >
                   <Sigma size={11} />
@@ -1292,7 +1293,7 @@ export default function Journal() {
                     let bg = "rgba(var(--surface-rgb),0.04)";
                     let textCol = "var(--tx-4)";
                     if (!isFuture && isCurrentMonth && net !== null) {
-                      bg = net >= 0 ? bwColor("rgba(34,197,94,0.12)", isBW) : bwColor("rgba(239,68,68,0.12)", isBW);
+                      bg = net >= 0 ? bwColor("rgba(var(--color-profit-rgb), 0.12)", isBW) : bwColor("rgba(var(--color-loss-rgb), 0.12)", isBW);
                       textCol = net >= 0 ? bwColor(PROFIT, isBW) : bwColor(LOSS, isBW);
                     }
                     return (
@@ -1302,7 +1303,7 @@ export default function Journal() {
                         disabled={isFuture}
                         className="flex flex-col items-center justify-center rounded-lg py-1 px-0.5 transition-[background-color,border-color,opacity] disabled:cursor-not-allowed"
                         style={{
-                          background: isSelected3 ? (net !== null && net >= 0 ? bwColor("rgba(34,197,94,0.2)", isBW) : net !== null ? bwColor("rgba(239,68,68,0.2)", isBW) : "rgba(var(--surface-rgb),0.1)") : bg,
+                          background: isSelected3 ? (net !== null && net >= 0 ? bwColor("rgba(var(--color-profit-rgb), 0.2)", isBW) : net !== null ? bwColor("rgba(var(--color-loss-rgb), 0.2)", isBW) : "rgba(var(--surface-rgb),0.1)") : bg,
                           border: isToday3 ? "1px solid rgba(var(--border-rgb),0.35)" : isSelected3 ? "1px solid rgba(var(--surface-rgb),0.4)" : "1px solid transparent",
                           opacity: (!isCurrentMonth || isFuture) ? 0.35 : 1,
                         }}
@@ -1383,7 +1384,7 @@ export default function Journal() {
                   {isToday && (
                     <span
                       className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ background: bwColor("rgba(14,184,154,0.1)", isBW), color: bwColor("#5aadaa", isBW), border: `1px solid ${bwColor("rgba(14,184,154,0.2)", isBW)}` }}
+                      style={{ background: bwColor("rgba(var(--color-teal-rgb), 0.1)", isBW), color: bwColor("#5aadaa", isBW), border: `1px solid ${bwColor("rgba(var(--color-teal-rgb), 0.2)", isBW)}` }}
                     >TODAY</span>
                   )}
                   <button
@@ -1463,7 +1464,7 @@ export default function Journal() {
                 {filteredDayTrades.length > 0 && (
                   <span
                     className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                      style={{ background: bwColor("rgba(14,184,154,0.08)", isBW), color: bwColor("#5aadaa", isBW), border: `1px solid ${bwColor("rgba(14,184,154,0.15)", isBW)}` }}
+                      style={{ background: bwColor("rgba(var(--color-teal-rgb), 0.08)", isBW), color: bwColor("#5aadaa", isBW), border: `1px solid ${bwColor("rgba(var(--color-teal-rgb), 0.15)", isBW)}` }}
                   >
                     {filteredDayTrades.length} trade{filteredDayTrades.length !== 1 ? "s" : ""}
                   </span>
@@ -1987,9 +1988,9 @@ export default function Journal() {
                     className="flex-1 py-2 rounded-lg text-xs font-bold transition-[background-color,border-color,color] capitalize"
                     style={{
                       background: tradeForm.direction === d
-                        ? (d === "long" ? bwColor("rgba(34,197,94,0.15)", isBW) : bwColor("rgba(239,68,68,0.15)", isBW))
+                        ? (d === "long" ? bwColor("rgba(var(--color-profit-rgb), 0.15)", isBW) : bwColor("rgba(var(--color-loss-rgb), 0.15)", isBW))
                         : "rgba(var(--surface-rgb),0.05)",
-                      border: `1px solid ${tradeForm.direction === d ? (d === "long" ? bwColor("rgba(34,197,94,0.4)", isBW) : bwColor("rgba(239,68,68,0.4)", isBW)) : "rgba(var(--border-rgb),0.09)"}`,
+                      border: `1px solid ${tradeForm.direction === d ? (d === "long" ? bwColor("rgba(var(--color-profit-rgb), 0.4)", isBW) : bwColor("rgba(var(--color-loss-rgb), 0.4)", isBW)) : "rgba(var(--border-rgb),0.09)"}`,
                       color: tradeForm.direction === d ? (d === "long" ? bwColor(PROFIT, isBW) : bwColor(LOSS, isBW)) : "var(--tx-3)",
                     }}
                   >
@@ -2120,8 +2121,8 @@ export default function Journal() {
               <div
                 className="rounded-xl px-3.5 py-2.5"
                 style={{
-                  background: isProfit ? bwColor("rgba(34,197,94,0.06)", isBW) : bwColor("rgba(239,68,68,0.06)", isBW),
-                  border: `1px solid ${isProfit ? bwColor("rgba(34,197,94,0.18)", isBW) : bwColor("rgba(239,68,68,0.18)", isBW)}`,
+                  background: isProfit ? bwColor("rgba(var(--color-profit-rgb), 0.06)", isBW) : bwColor("rgba(var(--color-loss-rgb), 0.06)", isBW),
+                  border: `1px solid ${isProfit ? bwColor("rgba(var(--color-profit-rgb), 0.18)", isBW) : bwColor("rgba(var(--color-loss-rgb), 0.18)", isBW)}`,
                 }}
               >
                 <div className="flex items-center gap-1 mb-2">

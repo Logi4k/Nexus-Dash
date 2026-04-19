@@ -1,6 +1,7 @@
 import { FUTURES_CONTRACTS } from "@/lib/utils";
 import { bwColor } from "@/lib/useBWMode";
 import { normalizeAccountStatus } from "@/lib/accountStatus";
+import { scopedGetItem, scopedSetItem } from "@/lib/userScope";
 
 export const INSTRUMENTS = ["ES", "NQ", "YM", "RTY", "CL", "GC", "MES", "MNQ", "MYM", "MCL", "MGC"];
 export const PROFIT = "#22c55e";
@@ -87,9 +88,13 @@ export function lastNDays(anchor: string, n: number): string[] {
 export const DRAFT_KEY = "nexus_trade_draft";
 export const CUSTOM_INSTRUMENTS_KEY = "nexus_custom_instruments";
 
+// All four "custom list" caches below are per-user and go through the scoped
+// localStorage helpers so two users sharing a browser profile don't see each
+// other's saved instruments/sessions/firms/categories.
+
 export function loadCustomInstruments(): string[] {
   try {
-    const raw = localStorage.getItem(CUSTOM_INSTRUMENTS_KEY);
+    const raw = scopedGetItem(CUSTOM_INSTRUMENTS_KEY);
     if (!raw) return [];
     return JSON.parse(raw) as string[];
   } catch { return []; }
@@ -100,19 +105,19 @@ export function saveCustomInstrument(name: string): void {
   if (!trimmed) return;
   const current = loadCustomInstruments();
   if (current.includes(trimmed)) return;
-  localStorage.setItem(CUSTOM_INSTRUMENTS_KEY, JSON.stringify([...current, trimmed]));
+  scopedSetItem(CUSTOM_INSTRUMENTS_KEY, JSON.stringify([...current, trimmed]));
 }
 
 export function deleteCustomInstrument(name: string): void {
   const current = loadCustomInstruments();
-  localStorage.setItem(CUSTOM_INSTRUMENTS_KEY, JSON.stringify(current.filter((i) => i !== name)));
+  scopedSetItem(CUSTOM_INSTRUMENTS_KEY, JSON.stringify(current.filter((i) => i !== name)));
 }
 
 export const CUSTOM_SESSIONS_KEY = "nexus_custom_sessions";
 
 export function loadCustomSessions(): string[] {
   try {
-    const raw = localStorage.getItem(CUSTOM_SESSIONS_KEY);
+    const raw = scopedGetItem(CUSTOM_SESSIONS_KEY);
     if (!raw) return [];
     return JSON.parse(raw) as string[];
   } catch { return []; }
@@ -123,19 +128,19 @@ export function saveCustomSession(name: string): void {
   if (!trimmed) return;
   const current = loadCustomSessions();
   if (current.includes(trimmed)) return;
-  localStorage.setItem(CUSTOM_SESSIONS_KEY, JSON.stringify([...current, trimmed]));
+  scopedSetItem(CUSTOM_SESSIONS_KEY, JSON.stringify([...current, trimmed]));
 }
 
 export function deleteCustomSession(name: string): void {
   const current = loadCustomSessions();
-  localStorage.setItem(CUSTOM_SESSIONS_KEY, JSON.stringify(current.filter((s) => s !== name)));
+  scopedSetItem(CUSTOM_SESSIONS_KEY, JSON.stringify(current.filter((s) => s !== name)));
 }
 
 export const CUSTOM_FIRMS_KEY = "nexus_custom_firms";
 
 export function loadCustomFirms(): string[] {
   try {
-    const raw = localStorage.getItem(CUSTOM_FIRMS_KEY);
+    const raw = scopedGetItem(CUSTOM_FIRMS_KEY);
     if (!raw) return [];
     return JSON.parse(raw) as string[];
   } catch { return []; }
@@ -146,19 +151,19 @@ export function saveCustomFirm(name: string): void {
   if (!trimmed) return;
   const current = loadCustomFirms();
   if (current.includes(trimmed)) return;
-  localStorage.setItem(CUSTOM_FIRMS_KEY, JSON.stringify([...current, trimmed]));
+  scopedSetItem(CUSTOM_FIRMS_KEY, JSON.stringify([...current, trimmed]));
 }
 
 export function deleteCustomFirm(name: string): void {
   const current = loadCustomFirms();
-  localStorage.setItem(CUSTOM_FIRMS_KEY, JSON.stringify(current.filter((f) => f !== name)));
+  scopedSetItem(CUSTOM_FIRMS_KEY, JSON.stringify(current.filter((f) => f !== name)));
 }
 
 export const CUSTOM_CATS_KEY = "nexus_custom_cats";
 
 export function loadCustomCats(): string[] {
   try {
-    const raw = localStorage.getItem(CUSTOM_CATS_KEY);
+    const raw = scopedGetItem(CUSTOM_CATS_KEY);
     if (!raw) return [];
     return JSON.parse(raw) as string[];
   } catch { return []; }
@@ -169,12 +174,12 @@ export function saveCustomCat(name: string): void {
   if (!trimmed) return;
   const current = loadCustomCats();
   if (current.includes(trimmed)) return;
-  localStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify([...current, trimmed]));
+  scopedSetItem(CUSTOM_CATS_KEY, JSON.stringify([...current, trimmed]));
 }
 
 export function deleteCustomCat(name: string): void {
   const current = loadCustomCats();
-  localStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(current.filter((c) => c !== name)));
+  scopedSetItem(CUSTOM_CATS_KEY, JSON.stringify(current.filter((c) => c !== name)));
 }
 
 export type LightboxState = {

@@ -1272,8 +1272,8 @@ export default function PropAccounts() {
                     id={`payout-row-${w.id}`}
                     className="group/payout relative rounded-xl border px-2.5 py-2"
                     style={{
-                      background: isTop ? "rgba(34,197,94,0.05)" : theme.dim,
-                      borderColor: isTop ? "rgba(34,197,94,0.18)" : theme.border,
+                      background: isTop ? "rgba(var(--color-profit-rgb), 0.05)" : theme.dim,
+                      borderColor: isTop ? "rgba(var(--color-profit-rgb), 0.18)" : theme.border,
                     }}
                   >
                     <div className="flex items-start gap-2">
@@ -1284,7 +1284,7 @@ export default function PropAccounts() {
                             {isTop && (
                               <span
                                 className="inline-flex items-center gap-0.5 rounded-full px-1 py-0.5 text-[8px] font-bold uppercase tracking-wide text-warn"
-                                style={{ background: "rgba(196,160,107,0.12)", border: "1px solid rgba(196,160,107,0.22)" }}
+                                style={{ background: "rgba(var(--accent-rgb), 0.12)", border: "1px solid rgba(var(--accent-rgb), 0.22)" }}
                               >
                                 <Award size={9} /> Top
                               </span>
@@ -1359,7 +1359,7 @@ export default function PropAccounts() {
                   key={w.id}
                   id={`payout-row-${w.id}`}
                   className="group/payout border-b border-border/40 transition-colors hover:bg-[rgba(var(--surface-rgb),0.035)]"
-                  style={{ background: isTop ? "rgba(34,197,94,0.035)" : undefined }}
+                  style={{ background: isTop ? "rgba(var(--color-profit-rgb), 0.035)" : undefined }}
                 >
                   <td className="align-middle py-3 pl-4 pr-2">
                     <div className="flex flex-col gap-1">
@@ -1437,8 +1437,8 @@ export default function PropAccounts() {
                     <div
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
                       style={{
-                        background: "rgba(34,197,94,0.1)",
-                        border: "1px solid rgba(34,197,94,0.22)",
+                        background: "rgba(var(--color-profit-rgb), 0.1)",
+                        border: "1px solid rgba(var(--color-profit-rgb), 0.22)",
                         color: "#4ade80",
                       }}
                     >
@@ -1475,7 +1475,7 @@ export default function PropAccounts() {
                   {sorted.map((w, idx) => payoutRow(w, idx, "mobile"))}
                   <div
                     className="flex items-center justify-between rounded-xl px-4 py-3"
-                    style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.14)" }}
+                    style={{ background: "rgba(var(--color-profit-rgb), 0.08)", border: "1px solid rgba(var(--color-profit-rgb), 0.14)" }}
                   >
                     <span className="text-xs font-semibold text-tx-2">Total received</span>
                     <span className="text-base font-black font-mono tabular-nums text-profit">+{fmtGBP(totalWithdrawals)}</span>
@@ -1535,7 +1535,7 @@ export default function PropAccounts() {
                           >
                             <div
                               className="flex items-center justify-between rounded-xl px-4 py-2.5"
-                              style={{ background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.14)" }}
+                              style={{ background: "rgba(var(--color-profit-rgb), 0.07)", border: "1px solid rgba(var(--color-profit-rgb), 0.14)" }}
                             >
                               <span className="text-xs font-semibold text-tx-2">Total received</span>
                               <span className="text-lg font-black font-mono tabular-nums text-profit">
@@ -1599,7 +1599,7 @@ export default function PropAccounts() {
                           <button
                             onClick={() => handleDeleteChallenge(c.id)}
                             className="rounded px-2 py-1 text-[10px] font-semibold transition-colors"
-                            style={{ background: "rgba(239,68,68,0.15)", color: "var(--color-loss)" }}
+                            style={{ background: "rgba(var(--color-loss-rgb), 0.15)", color: "var(--color-loss)" }}
                           >Delete</button>
                           <button
                             onClick={() => setDeleteChallengeConfirm(null)}

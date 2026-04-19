@@ -38,11 +38,11 @@ function getTradePhaseLabel(phase: "challenge" | "funded" | undefined | null): s
 function getTradePhaseColors(phase: "challenge" | "funded" | undefined | null, bw: boolean) {
   const text = phase === "funded" ? bwColor("#22c55e", bw) : bwColor("#d4a84a", bw);
   const background = phase === "funded"
-    ? bwColor("rgba(34,197,94,0.10)", bw)
-    : bwColor("rgba(212,168,74,0.14)", bw);
+    ? bwColor("rgba(var(--color-profit-rgb), 0.10)", bw)
+    : bwColor("rgba(var(--color-orange-rgb), 0.14)", bw);
   const border = phase === "funded"
-    ? bwColor("rgba(34,197,94,0.22)", bw)
-    : bwColor("rgba(212,168,74,0.28)", bw);
+    ? bwColor("rgba(var(--color-profit-rgb), 0.22)", bw)
+    : bwColor("rgba(var(--color-orange-rgb), 0.28)", bw);
   return { text, background, border };
 }
 
@@ -125,9 +125,9 @@ export function TradeRow({
 
   const accentColor  = isWin ? bwColor(PROFIT, bw) : isLoss ? bwColor(LOSS, bw) : "var(--tx-3)";
   const rowBg        = isWin
-    ? bwColor("rgba(34,197,94,0.035)", bw)
+    ? bwColor("rgba(var(--color-profit-rgb), 0.035)", bw)
     : isLoss
-    ? bwColor("rgba(239,68,68,0.035)", bw)
+    ? bwColor("rgba(var(--color-loss-rgb), 0.035)", bw)
     : "transparent";
 
   useEffect(() => {
@@ -250,7 +250,7 @@ export function TradeRow({
                     <button
                       onClick={onDelete}
                       className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                      style={{ background: bwColor("rgba(239,68,68,0.15)", bw), color: bwColor(LOSS, bw) }}
+                      style={{ background: bwColor("rgba(var(--color-loss-rgb), 0.15)", bw), color: bwColor(LOSS, bw) }}
                     >
                       Del
                     </button>
@@ -301,7 +301,7 @@ export function TradeRow({
                   <button
                     onClick={onDelete}
                     className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                    style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}
+                    style={{ background: "rgba(var(--color-loss-rgb), 0.15)", color: "#f87171" }}
                   >
                     Del
                   </button>

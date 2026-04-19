@@ -1,5 +1,5 @@
 import { lazy, useEffect, useState } from "react";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { Toaster, toast } from "sonner";
 import { MotionConfig } from "framer-motion";
 import Layout from "@/components/Layout";
@@ -20,6 +20,7 @@ const Tax = lazy(() => import("@/pages/Tax"));
 const Investments = lazy(() => import("@/pages/Investments"));
 const Journal = lazy(() => import("@/pages/Journal"));
 const Ideas = lazy(() => import("@/pages/Ideas"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function readOfflineMode(): boolean {
   try {
@@ -131,7 +132,7 @@ function AppRoutes() {
           <Route path="investments" element={<ErrorBoundary route="Investments"><Investments /></ErrorBoundary>} />
           <Route path="journal" element={<ErrorBoundary route="Journal"><Journal /></ErrorBoundary>} />
           <Route path="ideas" element={<ErrorBoundary route="Ideas"><Ideas /></ErrorBoundary>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<ErrorBoundary route="Not Found"><NotFound /></ErrorBoundary>} />
         </Route>
       </Routes>
       <Toaster

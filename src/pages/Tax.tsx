@@ -189,9 +189,9 @@ function BandBar({ salary, tradingProfit }: { salary: number; tradingProfit: num
   const tradingPct = Math.min(p(tradingProfit), 100 - salaryPct);
 
   const zones = [
-    { label: "Tax-free", from: 0,           to: paPct,      color: "rgba(34,197,94,0.12)" },
-    { label: "Basic 20%", from: paPct,       to: basicTopPct, color: "rgba(245,158,11,0.10)" },
-    { label: "Higher 40%", from: basicTopPct, to: 100,        color: "rgba(239,68,68,0.08)" },
+    { label: "Tax-free", from: 0,           to: paPct,      color: "rgba(var(--color-profit-rgb), 0.12)" },
+    { label: "Basic 20%", from: paPct,       to: basicTopPct, color: "rgba(var(--color-warn-rgb), 0.10)" },
+    { label: "Higher 40%", from: basicTopPct, to: 100,        color: "rgba(var(--color-loss-rgb), 0.08)" },
   ];
 
   return (
@@ -218,34 +218,34 @@ function BandBar({ salary, tradingProfit }: { salary: number; tradingProfit: num
 
         {/* Salary fill */}
         <div className="absolute top-1.5 bottom-1.5 left-1.5 rounded-lg transition-[width,background-color] duration-700"
-          style={{ width: `calc(${salaryPct}% - 6px)`, background: bwColor("rgba(59,130,246,0.7)", bw) }} />
+          style={{ width: `calc(${salaryPct}% - 6px)`, background: bwColor("rgba(var(--color-blue-rgb), 0.7)", bw) }} />
         {/* Trading fill */}
         {tradingPct > 0 && (
           <div className="absolute top-1.5 bottom-1.5 rounded-lg transition-[left,width,background-color] duration-700"
-            style={{ left: `${salaryPct}%`, width: `${tradingPct}%`, background: "rgba(34,197,94,0.7)" }} />
+            style={{ left: `${salaryPct}%`, width: `${tradingPct}%`, background: "rgba(var(--color-profit-rgb), 0.7)" }} />
         )}
 
         {/* PA threshold line */}
         {paPct > 2 && paPct < 97 && (
-          <div className="absolute top-0 h-full w-px" style={{ left: `${paPct}%`, background: "rgba(34,197,94,0.6)" }}>
-            <span className="absolute bottom-1 left-0.5 text-[7px] font-bold" style={{ color: "rgba(34,197,94,0.9)" }}>PA</span>
+          <div className="absolute top-0 h-full w-px" style={{ left: `${paPct}%`, background: "rgba(var(--color-profit-rgb), 0.6)" }}>
+            <span className="absolute bottom-1 left-0.5 text-[7px] font-bold" style={{ color: "rgba(var(--color-profit-rgb), 0.9)" }}>PA</span>
           </div>
         )}
         {/* Basic rate top line */}
         {basicTopPct > 2 && basicTopPct < 98 && (
-          <div className="absolute top-0 h-full w-px" style={{ left: `${basicTopPct}%`, background: "rgba(245,158,11,0.6)" }}>
-            <span className="absolute bottom-1 left-0.5 text-[7px] font-bold" style={{ color: "rgba(245,158,11,0.9)" }}>40%</span>
+          <div className="absolute top-0 h-full w-px" style={{ left: `${basicTopPct}%`, background: "rgba(var(--color-warn-rgb), 0.6)" }}>
+            <span className="absolute bottom-1 left-0.5 text-[7px] font-bold" style={{ color: "rgba(var(--color-warn-rgb), 0.9)" }}>40%</span>
           </div>
         )}
       </div>
 
       <div className="flex items-center gap-4 text-[10px] text-tx-3">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-sm inline-block" style={{ background: bwColor("rgba(59,130,246,0.7)", bw) }} />
+          <span className="w-2 h-2 rounded-sm inline-block" style={{ background: bwColor("rgba(var(--color-blue-rgb), 0.7)", bw) }} />
           Employment salary
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(34,197,94,0.7)" }} />
+          <span className="w-2 h-2 rounded-sm inline-block" style={{ background: "rgba(var(--color-profit-rgb), 0.7)" }} />
           Trading profit
         </span>
       </div>
@@ -887,9 +887,9 @@ export default function TaxPage() {
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                     style={{
-                      background: bwColor("rgba(14,184,154,0.1)", isBW),
+                      background: bwColor("rgba(var(--color-teal-rgb), 0.1)", isBW),
                       color: bwColor("#5aadaa", isBW),
-                      border: `1px solid ${bwColor("rgba(14,184,154,0.2)", isBW)}`,
+                      border: `1px solid ${bwColor("rgba(var(--color-teal-rgb), 0.2)", isBW)}`,
                     }}
                   >
                     Fully saved ✓
@@ -986,7 +986,7 @@ export default function TaxPage() {
                     {savingsGoalOverride !== null && (
                       <span
                         className="text-[10px] px-1 rounded font-medium shrink-0"
-                        style={{ background: bwColor("rgba(14,184,154,0.1)", isBW),                color: bwColor("#5aadaa", isBW) }}
+                        style={{ background: bwColor("rgba(var(--color-teal-rgb), 0.1)", isBW),                color: bwColor("#5aadaa", isBW) }}
                       >
                         custom
                       </span>
@@ -999,8 +999,8 @@ export default function TaxPage() {
               <div
                 className="flex items-center justify-between p-3 rounded-xl"
                 style={{
-                  background: "rgba(14,184,154,0.05)",
-                  border: "1px solid rgba(14,184,154,0.1)",
+                  background: "rgba(var(--color-teal-rgb), 0.05)",
+                  border: "1px solid rgba(var(--color-teal-rgb), 0.1)",
                 }}
               >
                 <div>

@@ -28,7 +28,7 @@ export function ChartTooltipCard({
         minWidth,
         background: "rgba(var(--bg-card-rgb),0.96)",
         border: "1px solid rgba(var(--border-rgb),0.12)",
-        boxShadow: "0 18px 42px rgba(0,0,0,0.24)",
+        boxShadow: "var(--elev-3)",
         backdropFilter: "blur(18px)",
       }}
     >

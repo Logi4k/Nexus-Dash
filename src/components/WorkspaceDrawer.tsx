@@ -1,4 +1,4 @@
-import { Clock3, Download, FolderOpen, Keyboard, LayoutPanelTop, Layers3, X } from "lucide-react";
+import { Clock3, Download, FolderOpen, LayoutPanelTop, Layers3, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { RecentEntry, SavedView } from "@/types";
 import type { RegisteredPageView } from "@/lib/viewIntents";

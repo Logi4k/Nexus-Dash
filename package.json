@@ -1,7 +1,7 @@
 {
   "name": "nexus",
   "private": true,
-  "version": "1.2.11",
+  "version": "1.2.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,8 @@
     "test": "vitest run",
     "preview": "vite preview",
     "tauri": "tauri",
+    "android:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/android-build.ps1",
+    "android:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/android-install.ps1",
     "ota:desktop:latest": "node scripts/generate-desktop-github-ota.mjs"
   },
   "dependencies": {

@@ -93,10 +93,16 @@ export default function TitleBar() {
         </button>
         <button
           onClick={handleClose}
-          className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 active:scale-90 hover:bg-red-500/80"
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 active:scale-90"
+          style={{
+            // Hover fill uses semantic loss token so it honours theme overrides
+            ["--close-hover-bg" as string]: "rgba(var(--color-loss-rgb), 0.78)",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--close-hover-bg)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "")}
           aria-label="Close"
         >
-          <X size={12} className="text-white" />
+          <X size={12} style={{ color: "var(--on-solid-emphasis)" }} />
         </button>
       </div>
     </div>

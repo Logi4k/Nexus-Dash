@@ -231,12 +231,18 @@ function LayoutBody() {
   }, [loc.pathname, pushRecent]);
 
   // Route-aware accent on :root so PageHeader, TitleBar, mobile nav, and focus rings match the active page.
+  // Writes the full 5-slot accent family (--accent, --accent-strong, --accent-dim,
+  // --accent-border, --accent-glow, --accent-rgb) so CSS can respond without JS.
   useEffect(() => {
     const key = getPageThemeKeyForPath(loc.pathname);
     const th = bwPageTheme(PAGE_THEMES[key], isBW);
     const root = document.documentElement;
+    const rgb = hexToRgbTriplet(th.accent);
     root.style.setProperty("--accent", th.accent);
-    root.style.setProperty("--accent-rgb", hexToRgbTriplet(th.accent));
+    root.style.setProperty("--accent-rgb", rgb);
+    root.style.setProperty("--accent-border", `rgba(${rgb}, 0.28)`);
+    root.style.setProperty("--accent-glow", `rgba(${rgb}, 0.12)`);
+    root.style.setProperty("--accent-dim", th.dim);
   }, [loc.pathname, isBW]);
 
   // Scroll direction tracking for nav hide/show
@@ -660,7 +666,7 @@ function LayoutBody() {
       {
         id: "action-workspace-drawer",
         label: "Open workspace drawer",
-        description: "Open recents, saved views, sync status, and hotkeys",
+        description: "Open recents, saved views, and sync status",
         group: "Quick Actions",
         keywords: ["workspace", "drawer", "control center"],
         Icon: Layers3,

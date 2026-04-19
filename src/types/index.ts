@@ -242,18 +242,16 @@ export type MobileNavItemId =
   | "investments";
 
 export interface UserSettings {
-  subscriptionRenewalDays: number;  // notify this many days before renewal
+  subscriptionRenewalDays: number;  // notify this many days before a subscription renews
   subscriptionAlertsEnabled?: boolean;  // master toggle for subscription alerts
+  /** Notify this many days before a debt payment due date (defaults to subscriptionRenewalDays when absent). */
+  debtReminderDays?: number;
   theme?: "dark" | "bw";
-  density?: "comfortable" | "compact";
+  density?: "comfortable" | "compact" | "spacious";
   mobileNavItems?: MobileNavItemId[];
   dismissedNotificationIds?: string[];
   savedViews?: SavedView[];
   recentEntries?: RecentEntry[];
-  /** Short quarterly theme shown on the dashboard. */
-  quarterlyFocus?: string;
-  /** Optional measurable target (free text, e.g. “£12k payouts / quarter”). */
-  quarterlyMetricTarget?: string;
   /** Hide the first-run checklist on the dashboard. */
   onboardingChecklistDismissed?: boolean;
 }
@@ -294,6 +292,10 @@ export interface AppData {
   subscriptions: Subscription[];
   t212: T212;
   t212History: { ts: number; v: number }[];
+  /** Trading212 read-only API key, synced so it's available on every device.
+      Kept in both AppData and localStorage (device cache) so startup reads
+      stay synchronous. Mirrors are reconciled in migrateLegacyT212ApiKey. */
+  t212ApiKey?: string;
   taxProfile: TaxProfile;
   marketTickers: MarketTicker[];
   otherDebts: Debt[];

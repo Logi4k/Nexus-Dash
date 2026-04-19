@@ -457,7 +457,7 @@ export default function Ideas() {
         style={{
           background: "var(--bg-subtle)",
           border: "1px solid rgba(var(--border-rgb),0.07)",
-          boxShadow: "0 26px 90px rgba(0,0,0,0.16)",
+          boxShadow: "var(--elev-3)",
           overflow: "hidden",
         }}
       >

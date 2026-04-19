@@ -39,18 +39,18 @@ import PageHeader from "@/components/PageHeader";
 function getCardAccent(name: string): { color: string; network: string; bg: string } {
   const n = name.toLowerCase();
   if (n.includes("barclaycard") || n.includes("barclay")) {
-    return { color: "#7f99ac", network: "VISA", bg: "rgba(127,153,172,0.10)" };
+    return { color: "#7f99ac", network: "VISA", bg: "rgba(var(--color-blue-rgb), 0.10)" };
   }
   if (n.includes("american express") || n.includes("amex")) {
-    return { color: "#c4a06b", network: "AMEX", bg: "rgba(196,160,107,0.10)" };
+    return { color: "#c4a06b", network: "AMEX", bg: "rgba(var(--accent-rgb), 0.10)" };
   }
   if (n.includes("mastercard") || n.includes("master")) {
-    return { color: "#b98966", network: "MC", bg: "rgba(185,137,102,0.10)" };
+    return { color: "#b98966", network: "MC", bg: "rgba(var(--color-orange-rgb), 0.10)" };
   }
   if (n.includes("hsbc")) {
-    return { color: "#95656a", network: "VISA", bg: "rgba(149,101,106,0.10)" };
+    return { color: "#95656a", network: "VISA", bg: "rgba(var(--color-loss-rgb), 0.10)" };
   }
-  return { color: "#8f88aa", network: "VISA", bg: "rgba(143,136,170,0.10)" };
+  return { color: "#8f88aa", network: "VISA", bg: "rgba(var(--color-purple-rgb), 0.10)" };
 }
 
 function utilizationColor(u: number) {
@@ -952,7 +952,7 @@ export default function DebtPage() {
             const dash = (Math.min(stats.paydownPct, 100) / 100) * circ;
             const progressColor = stats.paydownPct >= 75 ? "var(--color-profit)" : stats.paydownPct >= 40 ? "var(--color-teal)" : "var(--color-warn)";
             return (
-              <div className={cn("card p-4", isBW && "card--parchment-panel")} style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, transparent 100%)", borderColor: "rgba(34,197,94,0.15)" }}>
+              <div className={cn("card p-4", isBW && "card--parchment-panel")} style={{ background: "linear-gradient(135deg, rgba(var(--color-profit-rgb), 0.06) 0%, transparent 100%)", borderColor: "rgba(var(--color-profit-rgb), 0.15)" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <Target size={13} className="text-profit" />
                   <h3 className="font-semibold text-tx-1 text-sm">Debt Freedom</h3>

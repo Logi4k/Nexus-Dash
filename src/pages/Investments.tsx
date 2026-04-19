@@ -491,7 +491,7 @@ function InvestmentSidebar({
                   <span
                     className="text-[10px] font-bold w-4 h-4 rounded flex items-center justify-center shrink-0"
                     style={{
-                      background: i === 0 ? "rgba(196,160,107,0.16)" : "rgba(var(--surface-rgb),0.07)",
+                      background: i === 0 ? "rgba(var(--accent-rgb), 0.16)" : "rgba(var(--surface-rgb),0.07)",
                       color: i === 0 ? INVESTMENT_GOLD : "var(--tx-3)",
                     }}
                   >
@@ -637,6 +637,8 @@ export default function InvestmentsPage() {
     const key = apiKeyDraft.trim();
     if (!key) return;
     setT212ApiKey(key);
+    // Also persist into synced AppData so other devices see the key on next sync.
+    update((prev) => ({ ...prev, t212ApiKey: key }));
     setDeviceApiKey(key);
     setConnected(true);
     setShowApiKeyInput(false);
@@ -645,6 +647,7 @@ export default function InvestmentsPage() {
 
   function removeApiKey() {
     removeT212ApiKey();
+    update((prev) => ({ ...prev, t212ApiKey: undefined }));
     setDeviceApiKey("");
     setConnected(false);
     setShowApiKeyInput(false);
@@ -1043,9 +1046,9 @@ export default function InvestmentsPage() {
             className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold"
             style={{
               background: connected
-                ? bwColor("rgba(34,197,94,0.08)", isBW)
-                : bwColor("rgba(100,116,139,0.08)", isBW),
-              border: `1px solid ${connected ? bwColor("rgba(34,197,94,0.2)", isBW) : bwColor("rgba(100,116,139,0.15)", isBW)}`,
+                ? bwColor("rgba(var(--color-profit-rgb), 0.08)", isBW)
+                : bwColor("rgba(var(--border-rgb), 0.08)", isBW),
+              border: `1px solid ${connected ? bwColor("rgba(var(--color-profit-rgb), 0.2)", isBW) : bwColor("rgba(var(--border-rgb), 0.15)", isBW)}`,
               color: connected ? bwColor("#22c55e", isBW) : bwColor(INVESTMENT_MUTED, isBW),
             }}
           >
@@ -1123,8 +1126,8 @@ export default function InvestmentsPage() {
         <div
           className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-xs -mt-2"
           style={{
-            background: bwColor("rgba(34,197,94,0.04)", isBW),
-            border: `1px solid ${bwColor("rgba(34,197,94,0.12)", isBW)}`,
+            background: bwColor("rgba(var(--color-profit-rgb), 0.04)", isBW),
+            border: `1px solid ${bwColor("rgba(var(--color-profit-rgb), 0.12)", isBW)}`,
           }}
         >
           <div className="flex items-center gap-2">
@@ -1144,8 +1147,8 @@ export default function InvestmentsPage() {
         <div
           className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl text-xs"
           style={{
-            background: bwColor("rgba(239,68,68,0.06)", isBW),
-            border: `1px solid ${bwColor("rgba(239,68,68,0.15)", isBW)}`,
+            background: bwColor("rgba(var(--color-loss-rgb), 0.06)", isBW),
+            border: `1px solid ${bwColor("rgba(var(--color-loss-rgb), 0.15)", isBW)}`,
           }}
         >
           <AlertCircle size={13} className="text-loss mt-0.5 flex-shrink-0" />
@@ -1339,7 +1342,7 @@ export default function InvestmentsPage() {
             <div className="hidden overflow-x-auto -mx-4 md:mx-0 md:block">
               <table className="min-w-[600px] w-full text-xs px-4 md:px-0">
                 <thead>
-                  <tr className="border-b" style={{ borderColor: "rgba(118,153,141,0.08)" }}>
+                  <tr className="border-b" style={{ borderColor: "rgba(var(--color-teal-rgb), 0.08)" }}>
                     {["Ticker", "Name", "Type", "Units", "Avg Cost", "Current", "Value", "P&L", "P&L%", ""].map((h) => (
                       <th key={h} className="text-left py-2 px-2 text-tx-4 uppercase tracking-wide font-medium">
                         {h}
@@ -1477,7 +1480,7 @@ export default function InvestmentsPage() {
                     <div
                       key={wt.id}
                       className="rounded-xl p-4 flex flex-col gap-3 group"
-                      style={{ background: "rgba(118,153,141,0.04)", border: "1px solid rgba(118,153,141,0.10)" }}
+                      style={{ background: "rgba(var(--color-teal-rgb), 0.04)", border: "1px solid rgba(var(--color-teal-rgb), 0.10)" }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
@@ -1564,7 +1567,7 @@ export default function InvestmentsPage() {
                 <h2 className="font-semibold text-tx-1">Subscriptions</h2>
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
-                  style={{ background: bwColor("rgba(118,153,141,0.10)", isBW), color: bwColor(INVESTMENT_TEAL, isBW), border: `1px solid ${bwColor("rgba(118,153,141,0.18)", isBW)}` }}
+                  style={{ background: bwColor("rgba(var(--color-teal-rgb), 0.10)", isBW), color: bwColor(INVESTMENT_TEAL, isBW), border: `1px solid ${bwColor("rgba(var(--color-teal-rgb), 0.18)", isBW)}` }}
                 >
                   {fmtGBP(totalMonthlySubs)}/mo
                 </span>
@@ -1593,8 +1596,8 @@ export default function InvestmentsPage() {
                 <div
                   className="flex items-center justify-between px-3 py-2 rounded-lg mb-3"
                   style={{
-                    background: bwColor("rgba(118,153,141,0.06)", isBW),
-                    border: `1px solid ${bwColor("rgba(118,153,141,0.12)", isBW)}`,
+                    background: bwColor("rgba(var(--color-teal-rgb), 0.06)", isBW),
+                    border: `1px solid ${bwColor("rgba(var(--color-teal-rgb), 0.12)", isBW)}`,
                   }}
                 >
                   <span className="text-xs text-tx-3">Annual cost</span>
@@ -1684,7 +1687,7 @@ export default function InvestmentsPage() {
                           <div className="h-full rounded-full transition-[width,background] duration-500"
                             style={{
                               width: `${shareOfTotal}%`,
-                              background: isUrgent ? "#dc404066" : isUpcoming ? "#c4a06b66" : "rgba(118,153,141,0.55)",
+                              background: isUrgent ? "#dc404066" : isUpcoming ? "#c4a06b66" : "rgba(var(--color-teal-rgb), 0.55)",
                             }} />
                         </div>
                       </div>
@@ -1739,7 +1742,7 @@ export default function InvestmentsPage() {
                 )}
 
                 {/* Total monthly cost footer */}
-                <div className="pt-3 border-t flex justify-between text-sm" style={{ borderColor: "rgba(118,153,141,0.08)" }}>
+                <div className="pt-3 border-t flex justify-between text-sm" style={{ borderColor: "rgba(var(--color-teal-rgb), 0.08)" }}>
                   <span className="text-tx-3">Total monthly cost</span>
                   <span className="font-semibold text-tx-1">{fmtGBP(totalMonthlySubs)}</span>
                 </div>

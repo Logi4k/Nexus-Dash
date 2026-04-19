@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/capabilities.json",
+  "identifier": "desktop-updater",
+  "description": "Desktop OTA updater (tauri-plugin-updater is not linked on Android/iOS).",
+  "windows": ["main"],
+  "platforms": ["linux", "macOS", "windows"],
+  "permissions": ["updater:default"]
+}

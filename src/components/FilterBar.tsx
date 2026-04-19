@@ -103,7 +103,7 @@ export default function FilterBar({ filters, values, onChange, onClear, theme, s
 
       {/* ── Mobile bottom sheet ────────────────────────────────────────────── */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-[var(--z-mobile-nav)] md:hidden" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setMobileOpen(false)}>
+        <div className="fixed inset-0 z-[var(--z-mobile-nav)] md:hidden" style={{ background: "var(--overlay-scrim)" }} onClick={() => setMobileOpen(false)}>
           <div
             role="dialog"
             aria-modal="true"

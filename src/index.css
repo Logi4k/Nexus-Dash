@@ -10,12 +10,80 @@ html, body {
    CSS VARIABLES — Dark theme (default)
 ───────────────────────────────────────────────────────────────────────────── */
 :root {
+  /* ───── Layout ───── */
   --sidebar-w: 240px;
+
+  /* ───── Density ─────
+     Density multiplier is applied to --space-* and --radius-* tokens via
+     calc() so it propagates to every component that consumes the tokens. */
   --density-scale: 1;
-  --motion-curve: cubic-bezier(0.22, 1, 0.36, 1);
-  --motion-fast: 180ms;
-  --motion-medium: 280ms;
-  --motion-slow: 420ms;
+  --density-pad: 1.25rem;
+  --density-gap: 1.25rem;
+
+  /* ───── Radii (tokenised) ───── */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 22px;
+  --radius-3xl: 28px;
+  --radius-pill: 9999px;
+
+  /* ───── Spacing scale (tokenised — multiples of 4px, scaled by density) ───── */
+  --space-1: calc(0.25rem * var(--density-scale));
+  --space-2: calc(0.5rem  * var(--density-scale));
+  --space-3: calc(0.75rem * var(--density-scale));
+  --space-4: calc(1rem    * var(--density-scale));
+  --space-5: calc(1.25rem * var(--density-scale));
+  --space-6: calc(1.5rem  * var(--density-scale));
+  --space-7: calc(1.75rem * var(--density-scale));
+  --space-8: calc(2rem    * var(--density-scale));
+  --space-10: calc(2.5rem * var(--density-scale));
+  --space-12: calc(3rem   * var(--density-scale));
+
+  /* ───── Typography scale ───── */
+  --text-xs:     0.714rem;    /* 10px */
+  --text-sm:     0.857rem;    /* 12px */
+  --text-base:   0.929rem;    /* 13px */
+  --text-md:     1rem;        /* 14px */
+  --text-lg:     1.143rem;    /* 16px */
+  --text-xl:     1.286rem;    /* 18px */
+  --text-2xl:    1.714rem;    /* 24px */
+  --text-3xl:    2rem;        /* 28px */
+  --text-display: 2.571rem;   /* 36px */
+  --leading-tight:    1.1;
+  --leading-snug:     1.25;
+  --leading-normal:   1.5;
+  --leading-relaxed:  1.65;
+  --weight-normal:    400;
+  --weight-medium:    500;
+  --weight-semibold:  600;
+  --weight-bold:      700;
+  --weight-extrabold: 800;
+  --font-sans:  "DM Sans", system-ui, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  --font-mono:  "JetBrains Mono", "Fira Code", "SF Mono", monospace;
+
+  /* ───── Motion ───── */
+  --motion-curve:  cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-exit:   cubic-bezier(0.4, 0, 1, 1);
+  --motion-instant: 80ms;
+  --motion-fast:    160ms;
+  --motion-base:    220ms;
+  --motion-medium:  280ms;
+  --motion-slow:    420ms;
+  /* Legacy aliases kept for existing consumers until migrated */
+  --ease-standard: var(--motion-curve);
+
+  /* ───── Elevation ─────
+     elev-0 = flat, elev-1 = row/card, elev-2 = raised card, elev-3 = menu/popover,
+     elev-4 = modal. Per-theme overrides live in theme blocks below. */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(0,0,0,0.18);
+  --elev-2: 0 8px 22px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.12);
+  --elev-3: 0 12px 30px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18);
+  --elev-4: 0 24px 64px rgba(0,0,0,0.40), 0 8px 22px rgba(0,0,0,0.28);
 
   /* backgrounds */
   --bg-base:     #090c11;
@@ -34,11 +102,21 @@ html, body {
   --tx-3: rgba(243,238,229,0.62);
   --tx-4: rgba(243,238,229,0.46);
 
-  /* accent — muted brass for primary actions and focused states */
-  --accent:       #c4a06b;
-  --accent-bright:#dcc08e;
-  --accent-dim:   #8f7553;
-  --accent-rgb:   196,160,107;
+  /* ───── Accent — 5-slot token family ─────
+     --accent          primary accent (hover / active chrome)
+     --accent-strong   saturated variant for focus rings, key affordances
+     --accent-bright   highlight for gradients and glows
+     --accent-dim      de-emphasised variant for subtle fills
+     --accent-border   rgba border around accented rows / pills
+     --accent-glow     wash behind accented chips / hover tints
+     --accent-rgb      raw r,g,b triplet for rgba() composition */
+  --accent:         #c4a06b;
+  --accent-strong:  #d9b57d;
+  --accent-bright:  #dcc08e;
+  --accent-dim:     #8f7553;
+  --accent-rgb:     196,160,107;
+  --accent-border:  rgba(var(--accent-rgb), 0.28);
+  --accent-glow:    rgba(var(--accent-rgb), 0.12);
 
   /* component surface helpers */
   --surface-rgb:  242,232,214;  /* used for rgba(var(--surface-rgb), opacity) overlays */
@@ -129,13 +207,23 @@ html, body {
   --shadow-sheet-up:     0 -8px 40px rgba(0, 0, 0, 0.42);
   /* Text on saturated semantic chips (loss / profit fills) */
   --on-solid-emphasis:   #ffffff;
+  /* Text colour that sits on top of solid accent fills (btn-primary) */
+  --on-accent:           #16120d;
 
   /* Depth for elevated session / map tiles */
   --shadow-drop-md: 0 4px 20px rgba(0, 0, 0, 0.38);
 }
 
 html[data-density="compact"] {
-  --density-scale: 0.92;
+  --density-scale: 0.88;
+  --density-pad: 1rem;
+  --density-gap: 0.9rem;
+}
+
+html[data-density="spacious"] {
+  --density-scale: 1.08;
+  --density-pad: 1.5rem;
+  --density-gap: 1.5rem;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -158,10 +246,19 @@ html[data-density="compact"] {
   --tx-3: #5a4d3f;
   --tx-4: #7c6d5a;
 
-  --accent:       #b98f58;
-  --accent-bright:#d3b07f;
-  --accent-dim:   #8d6b41;
-  --accent-rgb:   185,143,88;
+  --accent:         #b98f58;
+  --accent-strong:  #a77a43;
+  --accent-bright:  #d3b07f;
+  --accent-dim:     #8d6b41;
+  --accent-rgb:     185,143,88;
+  --accent-border:  rgba(var(--accent-rgb), 0.32);
+  --accent-glow:    rgba(var(--accent-rgb), 0.14);
+
+  /* Light-mode elevation — warmer, softer shadows (no cold grey) */
+  --elev-1: 0 1px 2px rgba(101, 74, 41, 0.06);
+  --elev-2: 0 8px 20px rgba(101, 74, 41, 0.08), 0 1px 2px rgba(101, 74, 41, 0.05);
+  --elev-3: 0 14px 34px rgba(101, 74, 41, 0.10), 0 2px 4px rgba(101, 74, 41, 0.05);
+  --elev-4: 0 24px 56px rgba(101, 74, 41, 0.14), 0 8px 18px rgba(101, 74, 41, 0.08);
 
   /* Light “mist” for rgba(var(--surface-rgb), α) washes on cards (same role as dark theme).
      Keep ledger ink for strokes in --border-rgb — do not use brown mist on parchment. */
@@ -286,48 +383,12 @@ html[data-density="compact"] {
   body {
     background-color: var(--bg-base);
     color: var(--tx-1);
-    font-family: "DM Sans", system-ui, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-    line-height: 1.5;
+    font-family: var(--font-sans);
+    line-height: var(--leading-normal);
     overflow-x: hidden;
     /* overflow: hidden moved to Layout's root div — body-level hidden blocks
        browser zoom, print, and assistive technology scroll */
     transition: background-color 0.3s ease, color 0.3s ease;
-  }
-
-  html[data-density="compact"] .shell-content {
-    padding-inline: 0.75rem;
-  }
-
-  html[data-density="compact"] .shell-frame {
-    gap: 1rem;
-  }
-
-  html[data-density="compact"] .card,
-  html[data-density="compact"] .card-hover,
-  html[data-density="compact"] .card-hero,
-  html[data-density="compact"] .card-glass {
-    border-radius: 1.25rem;
-  }
-
-  html[data-density="compact"] .nx-input {
-    padding-top: 0.6rem;
-    padding-bottom: 0.6rem;
-    font-size: 0.93rem;
-  }
-
-  html[data-density="compact"] .btn {
-    min-height: 36px;
-    padding: 8px 16px;
-    font-size: 12px;
-  }
-
-  html[data-density="compact"] .btn-sm {
-    padding: 5px 10px;
-    font-size: 11px;
-  }
-
-  html[data-density="compact"] .page-title {
-    font-size: clamp(1.9rem, 2vw + 1rem, 2.7rem);
   }
 
   /* ── Focus visible — keyboard navigation ────────────────────────────────── */
@@ -338,11 +399,13 @@ html[data-density="compact"] {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: 6px;
-    box-shadow: 0 0 0 4px rgba(168,180,204,0.15);
+    /* Match the outline colour to the active accent so the ring adapts to the
+       current page theme and to both light/dark modes. */
+    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.18);
   }
 
   html.theme-bw :focus-visible {
-    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.2);
+    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.22);
   }
 
   /* Nav links and buttons: slightly tighter radius */
@@ -373,6 +436,80 @@ html[data-density="compact"] {
    COMPONENTS
 ───────────────────────────────────────────────────────────────────────────── */
 @layer components {
+
+  /* ── Density overrides ─────────────────────────────────────────────────────
+     Must live in @layer components so they beat the base rules below.
+     `--density-scale` multiplies --space-* tokens so any component that
+     consumes them reacts automatically. These rules target components that
+     still use fixed px/rem. */
+  html[data-density="compact"] .card,
+  html[data-density="compact"] .card-hover,
+  html[data-density="compact"] .card-primary,
+  html[data-density="compact"] .card-secondary,
+  html[data-density="compact"] .card-hero,
+  html[data-density="compact"] .card-glass {
+    border-radius: var(--radius-xl);
+  }
+  html[data-density="spacious"] .card,
+  html[data-density="spacious"] .card-hover,
+  html[data-density="spacious"] .card-primary,
+  html[data-density="spacious"] .card-secondary,
+  html[data-density="spacious"] .card-hero,
+  html[data-density="spacious"] .card-glass {
+    border-radius: var(--radius-3xl);
+  }
+
+  html[data-density="compact"] .nx-input {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    font-size: 0.86rem;
+  }
+  html[data-density="spacious"] .nx-input {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  html[data-density="compact"] .btn {
+    min-height: 34px;
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+  html[data-density="spacious"] .btn {
+    min-height: 44px;
+    padding: 12px 22px;
+    font-size: 14px;
+  }
+
+  html[data-density="compact"] .btn-sm {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  html[data-density="spacious"] .btn-sm {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
+  html[data-density="compact"] .page-title {
+    font-size: clamp(1.6rem, 2vw + 0.8rem, 2.2rem);
+  }
+  html[data-density="spacious"] .page-title {
+    font-size: clamp(2.2rem, 2.2vw + 1.2rem, 2.9rem);
+  }
+
+  html[data-density="compact"] .nav-item {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+    min-height: 40px;
+  }
+  html[data-density="spacious"] .nav-item {
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
+    min-height: 48px;
+  }
+
+  html[data-density="compact"] .tbl td { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+  html[data-density="spacious"] .tbl td { padding-top: 0.9rem;  padding-bottom: 0.9rem; }
 
   /* ── Display Numbers — hero-scale financial figures ───────────────────────── */
   .display-num {
@@ -750,7 +887,7 @@ html[data-density="compact"] {
   .btn-primary {
     @apply btn;
     background: linear-gradient(135deg, var(--accent-bright), var(--accent));
-    color: #16120d;
+    color: var(--on-accent, #16120d);
     font-weight: 700;
     border: 1px solid color-mix(in srgb, var(--accent-bright) 60%, transparent);
     box-shadow: 0 10px 28px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.18);
@@ -904,7 +1041,11 @@ html[data-density="compact"] {
   }
   .progress-fill {
     @apply absolute left-0 top-0 h-full rounded-full duration-700 ease-out;
-    background: linear-gradient(90deg, #22c55e, #4ade80);
+    background: linear-gradient(
+      90deg,
+      var(--color-profit),
+      color-mix(in srgb, var(--color-profit) 72%, white)
+    );
     transition:
       width 700ms ease-out,
       background 700ms ease-out,
@@ -952,9 +1093,9 @@ html[data-density="compact"] {
   /* ── Misc ────────────────────────────────────────────────────────────────── */
   .live-dot {
     @apply inline-block w-2 h-2 rounded-full;
-    background: #22c55e;
+    background: var(--color-profit);
     animation: pulseDot 2s ease-in-out infinite;
-    box-shadow: 0 0 4px rgba(34,197,94,0.3);
+    box-shadow: 0 0 4px rgba(var(--color-profit-rgb), 0.3);
   }
 
   .line-clamp-5 {
@@ -1157,10 +1298,13 @@ html[data-density="compact"] {
 @keyframes float    { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
 
 .shell-content {
-  padding: 1.25rem;
-  padding-bottom: var(--shell-bottom-pad, calc(env(safe-area-inset-bottom) + 6.25rem));
+  /* Split into longhand so density overrides on padding-inline actually win.
+     Using `padding` shorthand would reset every axis and defeat overrides. */
+  padding-block-start: var(--density-pad);
+  padding-inline: var(--density-pad);
+  padding-block-end: var(--shell-bottom-pad, calc(env(safe-area-inset-bottom) + 6.25rem));
   scroll-padding-bottom: calc(var(--shell-bottom-pad, calc(env(safe-area-inset-bottom) + 6.25rem)) + 1rem);
-  transition: padding-bottom 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: padding-bottom var(--motion-base) var(--motion-curve);
   overflow-x: clip;
 }
 
@@ -1168,6 +1312,8 @@ html[data-density="compact"] {
   width: min(100%, 104rem);
   margin-inline: auto;
   border-radius: 0.5rem;
+  /* Page stack gap honours density */
+  gap: var(--density-gap);
 }
 
 .route-stage {
@@ -1179,8 +1325,9 @@ html[data-density="compact"] {
 
 @media (min-width: 768px) {
   .shell-content {
-    padding: 1.75rem 1.75rem 3rem;
-    padding-bottom: 3rem;
+    padding-block-start: calc(var(--density-pad) + 0.5rem);
+    padding-inline: calc(var(--density-pad) + 0.5rem);
+    padding-block-end: 3rem;
   }
 
   .shell-frame {
@@ -1191,7 +1338,9 @@ html[data-density="compact"] {
 
 @media (min-width: 1280px) {
   .shell-content {
-    padding: 2.25rem 2.5rem 3.25rem;
+    padding-block-start: calc(var(--density-pad) + 1rem);
+    padding-inline: calc(var(--density-pad) + 1.25rem);
+    padding-block-end: 3.25rem;
   }
 
   .shell-frame {
@@ -1247,6 +1396,18 @@ html[data-density="compact"] {
   /* Credit card: no tilt */
   .credit-card-visual:hover {
     transform: none;
+  }
+
+  /* Scroll-behaviour: respect reduced motion by skipping smooth scroll */
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  /* Loading shimmer / skeleton animations: disable to avoid flashing */
+  [class*="animate-"],
+  .shimmer,
+  .skeleton {
+    animation: none !important;
   }
 
 }

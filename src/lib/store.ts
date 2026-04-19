@@ -1,5 +1,10 @@
-// Set DEBUG=true to see internal sync state in the console. Disable before shipping.
-const DEBUG = false;
+// Debug logging is gated by Vite's DEV flag. Set VITE_DEBUG_STORE=true in a
+// local .env to opt-in when running production-like builds locally.
+const DEBUG =
+  (import.meta as unknown as { env?: { DEV?: boolean; VITE_DEBUG_STORE?: string } })
+    .env?.DEV === true ||
+  (import.meta as unknown as { env?: { VITE_DEBUG_STORE?: string } })
+    .env?.VITE_DEBUG_STORE === "true";
 const log = (...args: unknown[]) => { if (DEBUG) console.log("[store]", ...args); };
 
 // Gate all Supabase cloud operations. When false, all data stays local (LocalStorage/Tauri file only).
@@ -11,6 +16,7 @@ import seedData from "@/data/data.json";
 import { supabase, getSession } from "@/lib/supabase";
 import { hydrateTradePhases } from "@/lib/tradePhases";
 import { getT212ApiKey, migrateLegacyT212ApiKey, stripLegacyT212ApiKey } from "@/lib/deviceSettings";
+import { scopedGetItem, scopedSetItem, scopedRemoveItem, setScope } from "@/lib/userScope";
 
 // ── Supabase sync state ──────────────────────────────────────────────────────
 let _syncedAt: number | null = null;       // ms-since-epoch of last confirmed sync
@@ -54,9 +60,14 @@ async function tauriSave(data: AppData): Promise<void> {
 }
 
 // ── localStorage helpers (browser fallback) ──────────────────────────────────
+// These go through userScope so that signed-in users each get their own
+// per-userId slot: `nexus_data:${userId}` / `nexus_savedAt:${userId}`.
+// Before auth (or while offline) we fall back to the `:guest` scope, which
+// also transparently migrates a pre-existing unscoped `nexus_data` entry so
+// existing installs don't lose their local cache.
 function localLoad(): AppData | null {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = scopedGetItem(STORAGE_KEY);
     if (stored) return JSON.parse(stored) as AppData;
   } catch {
     // ignore
@@ -66,8 +77,8 @@ function localLoad(): AppData | null {
 
 function localSave(data: AppData, savedAt = Date.now()): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    localStorage.setItem(SAVED_AT_KEY, savedAt.toString());
+    scopedSetItem(STORAGE_KEY, JSON.stringify(data));
+    scopedSetItem(SAVED_AT_KEY, savedAt.toString());
     _lastLocalSaveAt = savedAt;
     notifySync();
   } catch {
@@ -77,7 +88,7 @@ function localSave(data: AppData, savedAt = Date.now()): void {
 
 function localSavedAt(): number {
   try {
-    const ts = localStorage.getItem(SAVED_AT_KEY);
+    const ts = scopedGetItem(SAVED_AT_KEY);
     return ts ? parseInt(ts, 10) : 0;
   } catch {
     return 0;
@@ -308,8 +319,19 @@ function setSyncedAt(timestamp: number | null): void {
 function setCurrentUserId(userId: string | null): void {
   if (_currentUserId === userId) return;
   _currentUserId = userId;
+  // Switch the active localStorage scope so every subsequent scoped read/write
+  // targets this user's namespace (`${key}:${userId}`), keeping multi-user
+  // profiles on shared browsers from bleeding data into each other.
+  setScope(userId);
+  // Refresh the local-save timestamp from the newly active scope so conflict
+  // resolution during cloud sync compares like with like.
+  _lastLocalSaveAt = localSavedAt() || null;
   _syncedAt = userId ? readConfirmedSyncAt(userId) : null;
   notifySync();
+}
+
+export function getCurrentUserId(): string | null {
+  return _currentUserId;
 }
 
 function setRealtimeState(state: "idle" | "connecting" | "connected" | "error"): void {
@@ -384,7 +406,7 @@ export function saveData(data: AppData): void {
       endSyncOp();
     });
   } else if (_currentUserId && isSeedData(normalized)) {
-    console.log("[store] Skipping cloud sync for seed data");
+    log("Skipping cloud sync for seed data");
   }
 }
 
@@ -487,11 +509,11 @@ function setupReconnectionHandlers(): void {
 // ── Supabase sync initialisation ─────────────────────────────────────────────
 export async function initSupabaseSync(): Promise<void> {
   if (!SYNC_ENABLED) {
-    console.log("[store] SYNC_ENABLED=false, skipping all cloud operations");
+    log("SYNC_ENABLED=false, skipping all cloud operations");
     return;
   }
   if (readOfflineMode()) {
-    console.log("[store] Offline mode enabled, skipping cloud sync");
+    log("Offline mode enabled, skipping cloud sync");
     setCurrentUserId(null);
     return;
   }
@@ -507,20 +529,20 @@ export async function initSupabaseSync(): Promise<void> {
     endSyncOp();
     return;
   }
-  console.log("[store] initSupabaseSync: session found, user:", session.user.id);
+  log("initSupabaseSync: session found, user:", session.user.id);
   setCurrentUserId(session.user.id);
   const confirmedSyncAt = _syncedAt;
 
   // ── Fetch latest row from Supabase ─────────────────────────────────────────
   try {
-    console.log("[store] Fetching user_data for user:", _currentUserId);
+    log("Fetching user_data for user:", _currentUserId);
     const { data: row, error: fetchError } = await supabase
       .from("user_data")
       .select("payload, updated_at")
       .eq("user_id", _currentUserId)
       .maybeSingle();
 
-    console.log("[store] Fetch result:", { row: !!row, fetchError });
+    log("Fetch result:", { row: !!row, fetchError });
     if (fetchError) {
       console.error("[store] Fetch error:", fetchError.code, fetchError.message);
       setSyncError(fetchError.message);
@@ -531,7 +553,7 @@ export async function initSupabaseSync(): Promise<void> {
       const cloudTs = new Date(row.updated_at as string).getTime();
       const localTs = currentData ? localSavedAt() : 0;
       const localAvatarUrl = currentData?.userProfile?.avatarUrl;
-      console.log("[store] Cloud data found. cloudTs:", cloudTs, "localTs:", localTs, "cloud wins:", !currentData || localTs <= cloudTs);
+      log("Cloud data found. cloudTs:", cloudTs, "localTs:", localTs, "cloud wins:", !currentData || localTs <= cloudTs);
 
       // FIX: Never push seed data to cloud, always prefer cloud data
       const localIsSeed = isSeedData(currentData);
@@ -542,7 +564,7 @@ export async function initSupabaseSync(): Promise<void> {
         !!currentData && !localIsSeed && confirmedSyncAt !== null && localTs > confirmedSyncAt;
       
       if (cloudIsSeed && currentData && !localIsSeed) {
-        console.log("[store] Cloud row looks like seed data, pushing protected local data instead");
+        log("Cloud row looks like seed data, pushing protected local data instead");
         const { data: pushRow, error: pushErr } = await supabase
           .from("user_data")
           .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
@@ -554,17 +576,17 @@ export async function initSupabaseSync(): Promise<void> {
         }
         setSyncedAt(pushRow?.updated_at ? new Date(pushRow.updated_at as string).getTime() : localTs);
       } else if (cloudIsSeed) {
-        console.log("[store] Cloud row looks like seed data and no real local data exists; leaving workspace local-only");
+        log("Cloud row looks like seed data and no real local data exists; leaving workspace local-only");
       } else if (localIsSeed) {
         // Local is seed data — always apply cloud data, never push seed to cloud
-        console.log("[store] Local is seed data, applying cloud data (never push seed to cloud)");
+        log("Local is seed data, applying cloud data (never push seed to cloud)");
         currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
         localSave(currentData, cloudTs);
         notify();
         setSyncedAt(cloudTs);
       } else if (cloudIsProtected && _syncedAt === null) {
         // Cloud data is protected and this is first sync — always apply cloud data
-        console.log("[store] Cloud data is protected, applying cloud data");
+        log("Cloud data is protected, applying cloud data");
         currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
         localSave(currentData, cloudTs);
         notify();
@@ -572,7 +594,7 @@ export async function initSupabaseSync(): Promise<void> {
       } else if (currentData && localChangedSinceLastSync && !cloudChangedSinceLastSync && localTs > cloudTs) {
         // Local is newer AND we have synced before — push local to cloud, keep local data
         // On first sign-in (_syncedAt === null), always prefer cloud to avoid stale seed data overwriting real cloud data
-        console.log("[store] Local is newer and previously synced, pushing to cloud");
+        log("Local is newer and previously synced, pushing to cloud");
         const { data: pushRow, error: pushErr } = await supabase
           .from("user_data")
           .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
@@ -585,7 +607,7 @@ export async function initSupabaseSync(): Promise<void> {
         setSyncedAt(pushRow?.updated_at ? new Date(pushRow.updated_at as string).getTime() : cloudTs);
       } else {
         // Cloud is newer, same, or local has not hydrated yet — apply cloud data
-        console.log("[store] Applying cloud data. Account count:", (row.payload as AppData)?.accounts?.length);
+        log("Applying cloud data. Account count:", (row.payload as AppData)?.accounts?.length);
         currentData = withLocalAvatar(mergeWithSeed(row.payload as Partial<AppData>), localAvatarUrl);
         localSave(currentData, cloudTs);
         notify();
@@ -597,11 +619,11 @@ export async function initSupabaseSync(): Promise<void> {
         // rather than creating a seed/demo cloud row.
         // Also guard: never push seed/demo data to the cloud even if currentData
         // is populated (non-Tauri browser path gets seedData as currentData).
-        console.log("[store] No cloud row and no local data (or using seed data), skipping initial push");
+        log("No cloud row and no local data (or using seed data), skipping initial push");
         // Do not return from initSupabaseSync here — Realtime still needs to subscribe below.
       } else {
         // No row yet — push local data to create the initial cloud record
-        console.log("[store] No cloud row found, pushing local data as initial record");
+        log("No cloud row found, pushing local data as initial record");
         const { data: newRow, error } = await supabase
           .from("user_data")
           .upsert({ user_id: _currentUserId, payload: cloudPayload(currentData) as unknown as Record<string, unknown> }, { onConflict: "user_id" })
@@ -648,7 +670,7 @@ export async function initSupabaseSync(): Promise<void> {
           
           // FIX: Never apply seed data from cloud
           if (isSeedData(newRow.payload as AppData)) {
-            console.log("[store] Skipping Realtime update: incoming data is seed data");
+            log("Skipping Realtime update: incoming data is seed data");
             return;
           }
           
@@ -703,7 +725,7 @@ export async function forcePullFromCloud(): Promise<boolean> {
     if (row?.payload) {
       // FIX: Never apply seed data from cloud
       if (isSeedData(row.payload as AppData)) {
-        console.log("[store] forcePullFromCloud: skipping seed data from cloud");
+        log("forcePullFromCloud: skipping seed data from cloud");
         return false;
       }
       
@@ -731,7 +753,7 @@ export async function forcePushToCloud(): Promise<boolean> {
   
   // FIX: Never push seed data to cloud
   if (isSeedData(currentData)) {
-    console.log("[store] forcePushToCloud: skipping seed data");
+    log("forcePushToCloud: skipping seed data");
     return false;
   }
   

@@ -37,17 +37,19 @@ export default {
         // ── Accent ───────────────────────────────────────────────────
         accent: {
           DEFAULT: "var(--accent)",
+          strong:  "var(--accent-strong)",
           bright:  "var(--accent-bright)",
           dim:     "var(--accent-dim)",
           muted:   "rgba(var(--surface-rgb),0.08)",
-          glow:    "rgba(var(--surface-rgb),0.10)",
+          glow:    "var(--accent-glow)",
+          border:  "var(--accent-border)",
         },
-        // ── Semantic ─────────────────────────────────────────────────
-        profit: "#22c55e",
-        loss:   "#ef4444",
-        warn:   "#f59e0b",
-        info:   "#3b82f6",
-        purple: "#a855f7",
+        // ── Semantic (CSS-var driven — single source of truth) ───────
+        profit: "var(--color-profit)",
+        loss:   "var(--color-loss)",
+        warn:   "var(--color-warn)",
+        info:   "var(--color-blue)",
+        purple: "var(--color-purple)",
       },
 
       fontFamily: {
@@ -55,30 +57,66 @@ export default {
         mono: ['"JetBrains Mono"', '"Fira Code"', '"SF Mono"', "monospace"],
       },
 
+      fontSize: {
+        "xxs":     "var(--text-xs)",
+        "display": "var(--text-display)",
+      },
+
       borderRadius: {
-        "2xl": "16px",
-        "3xl": "20px",
-        "4xl": "24px",
+        "md":  "var(--radius-md)",
+        "lg":  "var(--radius-lg)",
+        "xl":  "var(--radius-xl)",
+        "2xl": "var(--radius-2xl)",
+        "3xl": "var(--radius-3xl)",
+        "4xl": "28px",
+      },
+
+      transitionDuration: {
+        "instant": "80ms",
+        "fast":    "160ms",
+        "base":    "220ms",
+        "medium":  "280ms",
+        "slow":    "420ms",
+      },
+
+      transitionTimingFunction: {
+        "standard":  "var(--motion-curve)",
+        "entrance":  "var(--motion-entrance)",
+        "exit":      "var(--motion-exit)",
+      },
+
+      zIndex: {
+        "base":        "var(--z-base)",
+        "dropdown":    "var(--z-dropdown)",
+        "sticky":      "var(--z-sticky)",
+        "mobile-nav":  "var(--z-mobile-nav)",
+        "fab":         "var(--z-fab)",
+        "drawer":      "var(--z-drawer)",
+        "palette":     "var(--z-cmd-palette)",
+        "modal-bg":    "var(--z-modal-bg)",
+        "modal":       "var(--z-modal)",
+        "picker-bg":   "var(--z-picker-bg)",
+        "picker":      "var(--z-picker)",
+        "lightbox":    "var(--z-lightbox)",
+        "toast":       "var(--z-toast)",
       },
 
       boxShadow: {
-        "card":       "0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)",
-        "card-lg":    "0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)",
-        "card-hover": "0 12px 40px rgba(0,0,0,0.65), 0 4px 12px rgba(0,0,0,0.5)",
-        "glow-teal":  "0 0 8px rgba(255,255,255,0.04)",
-        "glow-green": "0 0 8px rgba(34,197,94,0.08)",
-        "glow-red":   "0 0 8px rgba(239,68,68,0.08)",
-        "inner-glow": "inset 0 1px 0 rgba(255,255,255,0.07)",
-        "modal":      "0 24px 64px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5)",
+        "card":       "var(--elev-1)",
+        "card-lg":    "var(--elev-2)",
+        "card-hover": "var(--elev-3)",
+        "modal":      "var(--elev-4)",
+        "glow-teal":  "0 0 8px rgba(var(--color-teal-rgb), 0.08)",
+        "glow-green": "0 0 8px rgba(var(--color-profit-rgb), 0.08)",
+        "glow-red":   "0 0 8px rgba(var(--color-loss-rgb), 0.08)",
+        "inner-glow": "inset 0 1px 0 rgba(var(--surface-rgb), 0.07)",
       },
 
       backgroundImage: {
-        "hero":         "linear-gradient(135deg, #111520 0%, #0d1018 45%, #080a10 100%)",
-        "hero-teal":    "linear-gradient(135deg, #111520 0%, #0d1018 50%, #080a10 100%)",
-        "card-shine":   "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.04) 100%)",
-        "accent-grad":  "linear-gradient(135deg, #f1f5f9 0%, #ffffff 100%)",
-        "profit-grad":  "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-        "loss-grad":    "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+        "card-shine":  "linear-gradient(135deg, rgba(var(--surface-rgb),0.06) 0%, rgba(var(--surface-rgb),0.02) 50%, rgba(var(--surface-rgb),0.04) 100%)",
+        "accent-grad": "linear-gradient(135deg, var(--accent-bright) 0%, var(--accent) 100%)",
+        "profit-grad": "linear-gradient(135deg, var(--color-profit) 0%, color-mix(in srgb, var(--color-profit) 78%, black) 100%)",
+        "loss-grad":   "linear-gradient(135deg, var(--color-loss) 0%, color-mix(in srgb, var(--color-loss) 78%, black) 100%)",
       },
 
       animation: {

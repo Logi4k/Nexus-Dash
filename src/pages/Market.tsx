@@ -54,9 +54,9 @@ interface FFCalendarCacheEntry {
 }
 
 const FF_IMPACT: Record<string, { color: string; bg: string; border: string; label: string }> = {
-  High:   { color: "#f87171", bg: "rgba(239,68,68,0.08)",  border: "rgba(239,68,68,0.2)",  label: "H" },
-  Medium: { color: "#c4a06b", bg: "rgba(196,160,107,0.08)", border: "rgba(196,160,107,0.2)", label: "M" },
-  Low:    { color: "#7c8798", bg: "rgba(124,135,152,0.06)", border: "rgba(124,135,152,0.15)", label: "L" },
+  High:   { color: "#f87171", bg: "rgba(var(--color-loss-rgb), 0.08)",  border: "rgba(var(--color-loss-rgb), 0.2)",  label: "H" },
+  Medium: { color: "#c4a06b", bg: "rgba(var(--accent-rgb), 0.08)", border: "rgba(var(--accent-rgb), 0.2)", label: "M" },
+  Low:    { color: "#7c8798", bg: "rgba(var(--border-rgb), 0.06)", border: "rgba(var(--border-rgb), 0.15)", label: "L" },
 };
 
 const FF_CACHE_PREFIX = "nexus.ff_calendar";
@@ -606,9 +606,9 @@ function ForexCalendar() {
             <span
               className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
               style={{
-                background: "rgba(148,163,184,0.08)",
+                background: "rgba(var(--border-rgb), 0.08)",
                 color: "var(--tx-3)",
-                border: "1px solid rgba(148,163,184,0.18)",
+                border: "1px solid rgba(var(--border-rgb), 0.18)",
               }}
             >
               {cacheStatus === "cached" ? "Cached" : "Cached fallback"}
@@ -713,7 +713,7 @@ function ForexCalendar() {
                               </span>
                             )}
                             {hasActual ? (
-                              <span className="font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(34,197,94,0.1)", color: "var(--color-profit)" }}>
+                              <span className="font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(var(--color-profit-rgb), 0.1)", color: "var(--color-profit)" }}>
                                 {ev.actual}
                               </span>
                             ) : (

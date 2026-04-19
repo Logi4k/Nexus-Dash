@@ -247,7 +247,7 @@ export default function CustomSelect({
             <button
               type="button"
               onClick={() => onSaveCustom(resolvedCustomValue.trim())}
-              className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-tx-3 hover:text-profit hover:bg-[rgba(34,197,94,0.1)] transition-colors border border-border"
+              className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-tx-3 hover:text-profit transition-colors border border-border hover:bg-profit-subtle"
               title={`Save "${resolvedCustomValue.trim()}" to list`}
             >
               +

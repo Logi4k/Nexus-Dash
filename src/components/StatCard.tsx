@@ -14,14 +14,14 @@ const ACCENT_VAR_MAP: Record<string, { bg: string; border: string }> = {
 };
 
 const COLOR_FALLBACK: Record<string, { bg: string; border: string }> = {
-  "#22c55e": { bg: "var(--color-profit-bg)",   border: "var(--color-profit-border)"  },
-  "#ef4444": { bg: "var(--color-loss-bg)",  border: "var(--color-loss-border)"  },
-  "#f59e0b": { bg: "var(--color-warn-bg)", border: "var(--color-warn-border)" },
-  "#9b8ec2": { bg: "rgba(155,142,194,0.05)",border: "rgba(155,142,194,0.16)"},
-  "#6b9bbf": { bg: "rgba(91,139,191,0.05)", border: "rgba(91,139,191,0.16)" },
-  "#c49060": { bg: "rgba(212,168,74,0.05)", border: "rgba(212,168,74,0.16)" },
-  "#6aafaa": { bg: "rgba(106,175,170,0.05)",border: "rgba(106,175,170,0.16)"},
-  "#7a80b4": { bg: "rgba(122,128,180,0.05)",border: "rgba(122,128,180,0.16)"},
+  "#22c55e": { bg: "var(--color-profit-bg)", border: "var(--color-profit-border)" },
+  "#ef4444": { bg: "var(--color-loss-bg)",   border: "var(--color-loss-border)"   },
+  "#f59e0b": { bg: "var(--color-warn-bg)",   border: "var(--color-warn-border)"   },
+  "#9b8ec2": { bg: "var(--color-purple-bg)", border: "var(--color-purple-border)" },
+  "#6b9bbf": { bg: "var(--color-blue-bg)",   border: "var(--color-blue-border)"   },
+  "#c49060": { bg: "var(--color-orange-bg)", border: "var(--color-orange-border)" },
+  "#6aafaa": { bg: "var(--color-teal-bg)",   border: "var(--color-teal-border)"   },
+  "#7a80b4": { bg: "var(--color-indigo-bg)", border: "var(--color-indigo-border)" },
 };
 
 function hexToRgbTriplet(hex: string): [number, number, number] | null {

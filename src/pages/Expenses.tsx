@@ -182,8 +182,8 @@ function MonthlyTrendChart({
             <div
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold"
               style={{
-                background: momUp ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.08)",
-                border: `1px solid ${momUp ? "rgba(239,68,68,0.2)" : "rgba(34,197,94,0.2)"}`,
+                background: momUp ? "rgba(var(--color-loss-rgb), 0.08)" : "rgba(var(--color-profit-rgb), 0.08)",
+                border: `1px solid ${momUp ? "rgba(var(--color-loss-rgb), 0.2)" : "rgba(var(--color-profit-rgb), 0.2)"}`,
                 color: momUp ? "#dc4040" : "var(--color-profit)",
               }}
             >
@@ -214,15 +214,15 @@ function MonthlyTrendChart({
 
           return (
             <div key={d.month} className="group rounded-xl p-3 md:p-0 transition-[background-color,border-color] duration-200 hover:bg-[rgba(var(--surface-rgb),0.03)]"
-              style={{ border: isPeak ? "1px solid rgba(239,68,68,0.15)" : isCurrent ? "1px solid rgba(90,173,170,0.15)" : "1px solid rgba(var(--border-rgb),0.05)" }}>
+              style={{ border: isPeak ? "1px solid rgba(var(--color-loss-rgb), 0.15)" : isCurrent ? "1px solid rgba(var(--color-teal-rgb), 0.15)" : "1px solid rgba(var(--border-rgb),0.05)" }}>
               <div className="flex items-center justify-between gap-3 mb-2 md:hidden">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
                   <span className="text-[11px] font-mono text-tx-3 tabular-nums">{d.month}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isPeak && <span className="text-[8px] font-bold text-loss px-1 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.1)" }}>PEAK</span>}
-                  {isCurrent && !isPeak && <span className="text-[8px] font-bold text-accent px-1 py-0.5 rounded" style={{ background: "rgba(14,184,154,0.1)" }}>NOW</span>}
+                  {isPeak && <span className="text-[8px] font-bold text-loss px-1 py-0.5 rounded" style={{ background: "rgba(var(--color-loss-rgb), 0.1)" }}>PEAK</span>}
+                  {isCurrent && !isPeak && <span className="text-[8px] font-bold text-accent px-1 py-0.5 rounded" style={{ background: "rgba(var(--color-teal-rgb), 0.1)" }}>NOW</span>}
                   <span className="text-[11px] font-bold font-mono tabular-nums" style={{ color }}>
                     {fmtGBP(d.total, 0)}
                   </span>
@@ -248,11 +248,11 @@ function MonthlyTrendChart({
               <div className="w-full md:w-20 shrink-0 flex items-center gap-1 justify-start md:justify-end flex-wrap">
                 {isPeak && (
                   <span className="text-[10px] font-bold text-loss px-1.5 py-0.5 rounded"
-                    style={{ background: "rgba(239,68,68,0.1)" }}>PEAK</span>
+                    style={{ background: "rgba(var(--color-loss-rgb), 0.1)" }}>PEAK</span>
                 )}
                 {isCurrent && !isPeak && (
                   <span className="text-[10px] font-bold text-accent px-1.5 py-0.5 rounded"
-                    style={{ background: "rgba(14,184,154,0.1)" }}>NOW</span>
+                    style={{ background: "rgba(var(--color-teal-rgb), 0.1)" }}>NOW</span>
                 )}
                 {isLow && !isCurrent && !isPeak && (
                   <span className="text-[10px] font-bold text-tx-4 px-1.5 py-0.5 rounded"
@@ -299,8 +299,8 @@ function MonthlyTrendChart({
             style={{
               left: 0,
               width: `${(avgVal / maxVal) * 100}%`,
-              background: "rgba(161,161,170,0.4)",
-              borderRight: "1px dashed rgba(161,161,170,0.5)",
+              background: "rgba(var(--border-rgb), 0.4)",
+              borderRight: "1px dashed rgba(var(--border-rgb), 0.5)",
             }}
           />
         </div>
@@ -786,14 +786,14 @@ function PropFirmTab({
               <div className="card p-4 overflow-hidden relative"
                 style={{
                   background: isPos
-                    ? "linear-gradient(135deg, rgba(34,197,94,0.07) 0%, transparent 60%)"
-                    : "linear-gradient(135deg, rgba(239,68,68,0.07) 0%, transparent 60%)",
-                  borderColor: isPos ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)",
+                    ? "linear-gradient(135deg, rgba(var(--color-profit-rgb), 0.07) 0%, transparent 60%)"
+                    : "linear-gradient(135deg, rgba(var(--color-loss-rgb), 0.07) 0%, transparent 60%)",
+                  borderColor: isPos ? "rgba(var(--color-profit-rgb), 0.18)" : "rgba(var(--color-loss-rgb), 0.18)",
                 }}
               >
                 {/* Watermark */}
                 <div className="absolute right-1 top-0 text-[46px] font-black tabular-nums select-none pointer-events-none"
-                  style={{ color: isPos ? "rgba(34,197,94,0.07)" : "rgba(239,68,68,0.07)", lineHeight: 1 }}
+                  style={{ color: isPos ? "rgba(var(--color-profit-rgb), 0.07)" : "rgba(var(--color-loss-rgb), 0.07)", lineHeight: 1 }}
                 >
                   {stats.roi >= 0 ? "+" : ""}{stats.roi.toFixed(0)}%
                 </div>
@@ -803,9 +803,9 @@ function PropFirmTab({
                 </div>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mb-3"
                   style={{
-                    background: isPos ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+                    background: isPos ? "rgba(var(--color-profit-rgb), 0.12)" : "rgba(var(--color-loss-rgb), 0.12)",
                     color: isPos ? "#4a9a7a" : "#f87171",
-                    border: `1px solid ${isPos ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+                    border: `1px solid ${isPos ? "rgba(var(--color-profit-rgb), 0.2)" : "rgba(var(--color-loss-rgb), 0.2)"}`,
                   }}
                 >
                   {stats.roi >= 0 ? "+" : ""}{stats.roi.toFixed(1)}% ROI
@@ -832,7 +832,7 @@ function PropFirmTab({
 
           {/* Peak month callout */}
           {stats.peakMonth.month && (
-            <div className="card p-4" style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.05) 0%, transparent 100%)", borderColor: "rgba(239,68,68,0.1)" }}>
+            <div className="card p-4" style={{ background: "linear-gradient(135deg, rgba(var(--color-loss-rgb), 0.05) 0%, transparent 100%)", borderColor: "rgba(var(--color-loss-rgb), 0.1)" }}>
               <p className="text-[10px] text-tx-4 uppercase tracking-wider font-medium mb-1">Peak Month</p>
               <p className="text-sm font-bold text-tx-1">{fmtMonthLabel(stats.peakMonth.month)}</p>
               <p className="text-lg font-bold text-loss tabular-nums">{fmtGBP(stats.peakMonth.total)}</p>
@@ -1071,7 +1071,7 @@ function OtherExpensesTab({
       </div>
 
       {/* Entries list */}
-      <div className="card overflow-hidden" style={{ border: "1px solid rgba(14,184,154,0.1)" }}>
+      <div className="card overflow-hidden" style={{ border: "1px solid rgba(var(--color-teal-rgb), 0.1)" }}>
         {sorted.length === 0 ? (
           <div className="task-empty m-3">
             <div className="task-empty-copy">

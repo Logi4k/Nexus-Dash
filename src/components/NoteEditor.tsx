@@ -607,7 +607,7 @@ export default function NoteEditor({
                         onClick={() => deleteBlock(block.id)}
                         disabled={note.blocks.length <= 1}
                         className="w-5 h-5 rounded-md flex items-center justify-center disabled:opacity-30"
-                        style={{ background: "rgba(184,64,64,0.06)", color: "var(--color-loss)" }}
+                        style={{ background: "rgba(var(--color-loss-rgb), 0.06)", color: "var(--color-loss)" }}
                         title="Delete block"
                       >
                         <Trash2 size={10} />
@@ -665,7 +665,7 @@ export default function NoteEditor({
                           onClick={() => deleteBlock(block.id)}
                           disabled={note.blocks.length <= 1}
                           className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30"
-                          style={{ background: "rgba(184,64,64,0.08)", color: "var(--color-loss)" }}
+                          style={{ background: "rgba(var(--color-loss-rgb), 0.08)", color: "var(--color-loss)" }}
                           title="Delete block"
                         >
                           <Trash2 size={12} />

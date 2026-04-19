@@ -413,7 +413,7 @@ export default function MobileNav({
                     letterSpacing: "-0.02em",
                     color: "var(--on-solid-emphasis)",
                     border: "2px solid var(--bg-card)",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    boxShadow: "var(--elev-1)",
                     zIndex: 2,
                     cursor: "pointer",
                   }}
@@ -659,7 +659,7 @@ export default function MobileNav({
                 <Bell size={13} style={{ color: "var(--color-profit)" }} />
                 <span className="text-[11px] font-bold text-tx-1">Notifications</span>
                 {notificationCount > 0 && (
-                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.12)", color: "var(--color-loss)" }}>
+                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(var(--color-loss-rgb), 0.12)", color: "var(--color-loss)" }}>
                     {notificationCount}
                   </span>
                 )}

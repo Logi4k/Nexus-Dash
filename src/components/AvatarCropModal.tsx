@@ -187,7 +187,7 @@ export default function AvatarCropModal({ open, source, onCancel, onApply }: Pro
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              boxShadow: "inset 0 0 0 999px rgba(4,7,12,0.34)",
+              boxShadow: "inset 0 0 0 999px var(--overlay-scrim)",
               borderRadius: 32,
             }}
           />
